@@ -1,65 +1,255 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { collection, query, onSnapshot, orderBy, where, doc } from "firebase/firestore";
+import Link from "next/link";
+import { db } from "@/lib/firebase";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { NextEventWidget } from "@/components/dashboard/NextEventWidget";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+import { Users, Calendar, Trophy, Beer, AlertCircle, Crown } from "lucide-react";
+import type { Member, Penalty, SetEvent, StammtischVote } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
+  const { user } = useAuth();
+  const [members, setMembers] = useState<Member[]>([]);
+  const [events, setEvents] = useState<SetEvent[]>([]);
+  const [penalties, setPenalties] = useState<Penalty[]>([]);
+  const [votes, setVotes] = useState<StammtischVote[]>([]);
+  const [myOpenPenalties, setMyOpenPenalties] = useState(0);
+
+  // Stats
+  const [nextEvent, setNextEvent] = useState<{
+    title: string;
+    date: string;
+    location?: string;
+    time?: string;
+    type: 'set' | 'vote';
+  } | null>(null);
+
+  const [penaltyPot, setPenaltyPot] = useState(0);
+  const [contributionsTotal, setContributionsTotal] = useState(0);
+  const [expensesTotal, setExpensesTotal] = useState(0);
+  const [startingBalance, setStartingBalance] = useState(0);
+  const [seasonLeader, setSeasonLeader] = useState<{ name: string; points: number } | null>(null);
+  const [hostedCount, setHostedCount] = useState(0);
+
+  useEffect(() => {
+    // 1. Fetch Members
+    const unsubMembers = onSnapshot(collection(db, "members"), (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
+      setMembers(data);
+      // Calculate Leader
+      if (data.length > 0) {
+        const leader = data.reduce((prev, current) =>
+          (prev.points || 0) > (current.points || 0) ? prev : current
+        );
+        setSeasonLeader({ name: leader.name, points: leader.points || 0 });
+      }
+    });
+
+    // 2. Fetch Events
+    const currentYear = new Date().getFullYear();
+    const startOfYear = `${currentYear}-01-01`;
+    const endOfYear = `${currentYear}-12-31`;
+
+    const qEvents = query(collection(db, "set_events"), orderBy("date", "asc"));
+    const unsubEvents = onSnapshot(qEvents, (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SetEvent));
+      setEvents(data);
+
+      // Calculate "Events Hosted" (in current year)
+      // Note: In real app, might want to filter by date >= startOfYear <= endOfYear
+      // For now, assuming all set events are relevant or simple filter
+      const hosted = data.filter(e => e.date >= startOfYear && e.date <= endOfYear).length;
+      setHostedCount(hosted);
+    });
+
+    // 3. Fetch Penalties
+    const unsubPenalties = onSnapshot(collection(db, "penalties"), (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Penalty));
+      setPenalties(data);
+      const total = data.reduce((sum, p) => sum + (p.isPaid ? (p.amount || 0) : 0), 0);
+      setPenaltyPot(total);
+    });
+
+    // 4. Fetch Contributions
+    const unsubContributions = onSnapshot(collection(db, "contributions"), (snap) => {
+      setContributionsTotal(snap.size * 15);
+    });
+
+    // 5. Fetch Expenses
+    const unsubExpenses = onSnapshot(collection(db, "expenses"), (snap) => {
+      const total = snap.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
+      setExpensesTotal(total);
+    });
+
+    // 6. Fetch Config
+    const unsubConfig = onSnapshot(doc(db, "config", "cash"), (docSnap) => {
+      if (docSnap.exists()) {
+        setStartingBalance(docSnap.data().startingBalance || 0);
+      }
+    });
+
+    // 4. Fetch Votes (for potential next event)
+    const unsubVotes = onSnapshot(collection(db, "stammtisch_votes"), (snap) => {
+      const data = snap.docs.map(doc => doc.data() as StammtischVote);
+      setVotes(data);
+    });
+
+    // 8. Fetch My Open Penalties
+    let unsubMyPenalties = () => { };
+    if (user) {
+      const qMyPenalties = query(
+        collection(db, "penalties"),
+        where("userId", "==", user.uid),
+        where("isPaid", "==", false)
+      );
+      unsubMyPenalties = onSnapshot(qMyPenalties, (snap) => {
+        const total = snap.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0);
+        setMyOpenPenalties(total);
+      });
+    }
+
+    return () => {
+      unsubMembers();
+      unsubEvents();
+      unsubPenalties();
+      unsubContributions();
+      unsubExpenses();
+      unsubConfig();
+      unsubVotes();
+      unsubMyPenalties();
+    };
+  }, [user]);
+
+  // Determine Next Event
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // 1. Check for upcoming Set Event
+    const upcomingSetEvent = events.find(e => e.date >= today);
+    if (upcomingSetEvent) {
+      setNextEvent({
+        title: upcomingSetEvent.title,
+        date: upcomingSetEvent.date,
+        location: upcomingSetEvent.location,
+        type: 'set'
+      });
+      return;
+    }
+
+    // 2. If no set event, check for dates with votes
+    // Group votes by date
+    const votesByDate: { [date: string]: number } = {};
+    votes.forEach(v => {
+      if (v.date >= today) {
+        votesByDate[v.date] = (votesByDate[v.date] || 0) + 1;
+      }
+    });
+
+    // Find date with max votes
+    let maxVotes = 0;
+    let bestDate: string | null = null;
+    Object.entries(votesByDate).forEach(([date, count]) => {
+      if (count > maxVotes) {
+        maxVotes = count;
+        bestDate = date;
+      } else if (count === maxVotes && bestDate && date < bestDate) {
+        // Tie breaker: sooner date
+        bestDate = date;
+      }
+    });
+
+    if (bestDate && maxVotes > 0) {
+      setNextEvent({
+        title: "Planned Stammtisch",
+        date: bestDate,
+        location: "Location TBD",
+        type: 'vote'
+      });
+    } else {
+      setNextEvent(null);
+    }
+
+  }, [events, votes]);
+
+  const currentCashBalance = startingBalance + contributionsTotal + penaltyPot - expensesTotal;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="flex flex-col gap-6">
+      {/* Header Section */}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
+        <p className="text-muted-foreground">Welcome back! Here is what's happening smoothly.</p>
+      </div>
+
+      {/* Top Section: Next Event & Quick Stats */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Next Event */}
+        <NextEventWidget event={nextEvent} />
+
+        {/* Stats Grid */}
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link href="/members">
+            <StatCard
+              title="Total Members"
+              value={members.length}
+              icon={Users}
+              description="Active regular members"
+              className="hover:border-primary/50 transition-colors h-full cursor-pointer"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </Link>
+
+          <Link href="/cash">
+            <StatCard
+              title="My Open Penalties"
+              value={`€${myOpenPenalties.toFixed(2)}`}
+              icon={AlertCircle}
+              description="Unpaid fines"
+              className={`transition-colors h-full cursor-pointer ${myOpenPenalties > 0 ? "border-orange-500/50 hover:bg-orange-500/10" : "hover:border-primary/50"}`}
+            />
+          </Link>
+
+          <Link href="/cash">
+            <StatCard
+              title="Current Cash Balance"
+              value={`€${currentCashBalance.toFixed(2)}`}
+              icon={Beer}
+              description="Available funds"
+              className="border-red-500/20 hover:border-red-500/50 transition-colors h-full cursor-pointer"
+            />
+          </Link>
+
+          <Link href="/stats">
+            <StatCard
+              title="Season Leader"
+              value={seasonLeader ? seasonLeader.name : "-"}
+              icon={Trophy}
+              description={seasonLeader ? `${seasonLeader.points} Points` : "No points yet"}
+              className="border-yellow-500/20 hover:border-yellow-500/50 transition-colors h-full cursor-pointer"
+            />
+          </Link>
+
+          <Link href="/hall-of-fame">
+            <StatCard
+              title="Hall of Fame"
+              value="Legends"
+              icon={Crown}
+              description="Top Donors & Hosts"
+              className="border-purple-500/20 hover:border-purple-500/50 transition-colors h-full cursor-pointer"
+            />
+          </Link>
         </div>
-      </main>
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+        <QuickActions />
+      </div>
     </div>
   );
 }
+
