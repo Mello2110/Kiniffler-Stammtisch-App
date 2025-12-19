@@ -1,6 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type TitleContextType = {
     title: string;
@@ -11,17 +13,37 @@ const TitleContext = createContext<TitleContextType | undefined>(undefined);
 
 export function TitleProvider({ children }: { children: React.ReactNode }) {
     const [title, setTitleState] = useState("Stammtisch");
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const stored = localStorage.getItem("sidebarTitle");
-        if (stored) {
-            setTitleState(stored);
-        }
+        // Subscribe to global settings
+        const ref = doc(db, "settings", "general");
+        const unsubscribe = onSnapshot(ref, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data();
+                if (data.title) {
+                    setTitleState(data.title);
+                }
+            } else {
+                // If doc doesn't exist, create default
+                setDoc(ref, { title: "Stammtisch" }, { merge: true });
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, []);
 
-    const setTitle = (newTitle: string) => {
+    const setTitle = async (newTitle: string) => {
+        // Optimistic update
         setTitleState(newTitle);
-        localStorage.setItem("sidebarTitle", newTitle);
+        // Write to firestore
+        try {
+            const ref = doc(db, "settings", "general");
+            await setDoc(ref, { title: newTitle }, { merge: true });
+        } catch (error) {
+            console.error("Error setting title:", error);
+        }
     };
 
     return (

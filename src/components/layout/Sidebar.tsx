@@ -109,12 +109,10 @@ export function Sidebar({ className }: { className?: string }) {
                             {title}
                         </h1>
                         <Beer
-                            onClick={() => isAdmin && setIsEditing(true)}
+                            onClick={() => setIsEditing(true)}
                             className={cn(
                                 "ml-2 h-6 w-6 text-primary shrink-0 transition-transform",
-                                isAdmin
-                                    ? "cursor-pointer hover:scale-110 hover:drop-shadow-sm"
-                                    : "cursor-default opacity-50"
+                                "cursor-pointer hover:scale-110 hover:drop-shadow-sm"
                             )}
                         />
                     </div>
