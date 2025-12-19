@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trophy, Calendar, Users, Smartphone } from "lucide-react";
+import { Trophy, Calendar, Users, Smartphone, Settings } from "lucide-react";
 
 export const LandingPage = () => {
     const { user, loading } = useAuth();
@@ -99,9 +99,9 @@ export const LandingPage = () => {
                         KANPAI Features
                     </h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+                    <div className="flex flex-wrap justify-center gap-6 w-full max-w-7xl">
                         {/* Card 1 */}
-                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                             <div className="relative z-10">
                                 <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
@@ -109,13 +109,13 @@ export const LandingPage = () => {
                                 </div>
                                 <h3 className="text-xl font-bold mb-2">Points & Leaderboard</h3>
                                 <p className="text-muted-foreground text-sm leading-relaxed">
-                                    Track every point, penalty & vote realtime. Season Leaderboards + Hall of Fame glory.
+                                    Realtime tracking. Season Leaderboards & Hall of Fame.
                                 </p>
                             </div>
                         </div>
 
                         {/* Card 2 */}
-                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                             <div className="relative z-10">
                                 <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
@@ -123,13 +123,13 @@ export const LandingPage = () => {
                                 </div>
                                 <h3 className="text-xl font-bold mb-2">Event Management</h3>
                                 <p className="text-muted-foreground text-sm leading-relaxed">
-                                    Set meetups with time/location. Next event dashboard + copy-to-maps button.
+                                    Easy scheduling. Smart dashboard & one-click maps.
                                 </p>
                             </div>
                         </div>
 
                         {/* Card 3 */}
-                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                             <div className="relative z-10">
                                 <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
@@ -137,13 +137,13 @@ export const LandingPage = () => {
                                 </div>
                                 <h3 className="text-xl font-bold mb-2">Member Management</h3>
                                 <p className="text-muted-foreground text-sm leading-relaxed">
-                                    Complete user profiles + avatars. Permissions + role-based access.
+                                    Full profiles. Smart permissions & role control.
                                 </p>
                             </div>
                         </div>
 
                         {/* Card 4 */}
-                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                             <div className="relative z-10">
                                 <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
@@ -151,13 +151,27 @@ export const LandingPage = () => {
                                 </div>
                                 <h3 className="text-xl font-bold mb-2">PWA Experience</h3>
                                 <p className="text-muted-foreground text-sm leading-relaxed">
-                                    Install as native app. Fullscreen, offline-ready. No browser chrome - pure app feel.
+                                    Native feel. Installable, fullscreen & offline-ready.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Card 5 - Customization */}
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <div className="relative z-10">
+                                <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
+                                    <Settings className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">For Everyone</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                    Your rules, your sport, your KANPAI. Fully customizable.
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <footer className="mt-16 text-sm text-muted-foreground opacity-60">
+                    <footer className="absolute bottom-6 text-sm text-muted-foreground opacity-60">
                         &copy; 2025 KANPAI App
                     </footer>
                 </div>
