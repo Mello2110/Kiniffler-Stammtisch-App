@@ -41,10 +41,8 @@ export default function CashPage() {
 
     const canManageFinance = useMemo(() => {
         if (!user || membersLoading) return false;
-        const currentMember = members.find(m => m.id === user.uid || (m.email && m.email === user.email));
-        if (!currentMember) return false;
-
-        return currentMember.isAdmin || currentMember.role?.toLowerCase() === "kassenwart";
+        // return currentMember.isAdmin || currentMember.role?.toLowerCase() === "kassenwart";
+        return true; // GLOBAL ACCESS UNLOCKED FOR EVENT
     }, [user, members, membersLoading]);
 
     return (

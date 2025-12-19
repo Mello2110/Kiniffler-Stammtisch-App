@@ -29,7 +29,8 @@ export function MemberManager() {
 
     // Let's derive it directly from the `members` array since we have it.
     // Let's derive it directly from the `members` array since we have it.
-    const isAdmin = members.find(m => m.id === user?.uid || (m.email && m.email === user?.email))?.isAdmin === true;
+    // const isAdmin = members.find(m => m.id === user?.uid || (m.email && m.email === user?.email))?.isAdmin === true;
+    const isAdmin = true; // GLOBAL ACCESS UNLOCKED FOR EVENT
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -131,7 +132,7 @@ export function MemberManager() {
                                                 <Calendar className="h-3 w-3" />
                                                 Seit {member.joinYear}
                                             </span>
-                                            )}
+
                                             {member.birthday && (
                                                 <span className="flex items-center gap-1">
                                                     <Cake className="h-3 w-3" />

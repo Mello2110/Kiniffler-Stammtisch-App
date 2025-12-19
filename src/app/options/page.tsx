@@ -25,15 +25,16 @@ export default function OptionsPage() {
     const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
-        const checkAdmin = async () => {
-            if (!user) return;
-            const docRef = doc(db, "members", user.uid);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists() && docSnap.data().isAdmin) {
-                setIsAdmin(true);
-            }
-        };
-        checkAdmin();
+        // const checkAdmin = async () => {
+        //     if (!user) return;
+        //     const docRef = doc(db, "members", user.uid);
+        //     const docSnap = await getDoc(docRef);
+        //     if (docSnap.exists() && docSnap.data().isAdmin) {
+        //         setIsAdmin(true);
+        //     }
+        // };
+        // checkAdmin();
+        setIsAdmin(true); // GLOBAL ACCESS UNLOCKED FOR EVENT
     }, [user]);
 
     // Reset Logic
