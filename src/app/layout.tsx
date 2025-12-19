@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -15,14 +15,17 @@ const outfit = Outfit({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: 768,
+  initialScale: 0.5, // Optional hint, but width usually overrides
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: "KANPAI",
   description: "Die App für deinen Stammtisch",
   manifest: "/manifest.json",
-  icons: {
-    icon: "/kanpai-icon.jpg",
-    apple: "/kanpai-icon.jpg",
-  }
 };
 
 export default function RootLayout({
