@@ -6,9 +6,11 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { auth } from "@/lib/firebase";
 import { Loader2, Mail, Lock, AlertCircle, LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function LoginPage() {
     const { loginWithGoogle } = useAuth();
+    const { dict } = useLanguage();
     const router = useRouter();
 
     const [isRegistering, setIsRegistering] = useState(false);
@@ -33,13 +35,13 @@ export default function LoginPage() {
         } catch (err: any) {
             console.error("Auth error:", err);
             if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-                setError("Ungültige E-Mail oder Passwort.");
+                setError(dict.auth.errors.invalid);
             } else if (err.code === "auth/email-already-in-use") {
-                setError("Diese E-Mail wird bereits verwendet.");
+                setError(dict.auth.errors.emailInUse);
             } else if (err.code === "auth/weak-password") {
-                setError("Passwort muss mindestens 6 Zeichen lang sein.");
+                setError(dict.auth.errors.weakPass);
             } else {
-                setError("Ein Fehler ist aufgetreten. Bitte versuche es erneut.");
+                setError(dict.auth.errors.default);
             }
         } finally {
             setIsLoading(false);
@@ -54,12 +56,12 @@ export default function LoginPage() {
                         <LogIn className="h-6 w-6" />
                     </div>
                     <h2 className="text-3xl font-black font-heading tracking-tight">
-                        {isRegistering ? "Konto erstellen" : "Willkommen zurück"}
+                        {isRegistering ? dict.auth.registerTitle : dict.auth.welcome}
                     </h2>
                     <p className="text-muted-foreground">
                         {isRegistering
-                            ? "Werde Teil der Stammtisch-Runde"
-                            : "Melde dich an, um fortzufahren"}
+                            ? dict.auth.registerDesc
+                            : dict.auth.welcomeDesc}
                     </p>
                 </div>
 
@@ -74,7 +76,7 @@ export default function LoginPage() {
                                 autoComplete="email"
                                 required
                                 className="block w-full rounded-lg border border-input bg-background pl-10 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                placeholder="E-Mail Adresse"
+                                placeholder={dict.auth.email}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
@@ -88,7 +90,7 @@ export default function LoginPage() {
                                 autoComplete="current-password"
                                 required
                                 className="block w-full rounded-lg border border-input bg-background pl-10 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                placeholder="Passwort"
+                                placeholder={dict.auth.password}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
@@ -109,7 +111,7 @@ export default function LoginPage() {
                             className="group relative flex w-full justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-70 disabled:cursor-not-allowed transition-all"
                         >
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isRegistering ? "Registrieren" : "Anmelden"}
+                            {isRegistering ? dict.auth.registerBtn : dict.auth.loginBtn}
                         </button>
 
                         <div className="relative">
@@ -117,7 +119,7 @@ export default function LoginPage() {
                                 <span className="w-full border-t border-gray-300 dark:border-gray-700" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-white dark:bg-gray-900 px-2 text-muted-foreground">Oder</span>
+                                <span className="bg-white dark:bg-gray-900 px-2 text-muted-foreground">{dict.auth.or}</span>
                             </div>
                         </div>
 
@@ -158,8 +160,8 @@ export default function LoginPage() {
                             className="font-semibold text-primary hover:text-primary/80 transition-colors"
                         >
                             {isRegistering
-                                ? "Bereits ein Konto? Anmelden"
-                                : "Noch kein Konto? Registrieren"}
+                                ? dict.auth.toggleLogin
+                                : dict.auth.toggleRegister}
                         </button>
                     </div>
                 </form>

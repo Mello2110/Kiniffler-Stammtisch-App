@@ -8,6 +8,8 @@ import { collection, addDoc, doc, setDoc, serverTimestamp, deleteDoc, query, whe
 import { db, auth } from "@/lib/firebase"; // Ensure firebase is initialized
 import { signInAnonymously } from "firebase/auth"; // Temp auth for now if not logged in
 import type { StammtischVote } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { enUS, de, pl } from "date-fns/locale";
 
 interface DateInteractionModalProps {
     date: Date;
@@ -18,6 +20,9 @@ interface DateInteractionModalProps {
 }
 
 export function DateInteractionModal({ date, onClose, currentUserId, existingVotes = [], members = [] }: DateInteractionModalProps) {
+    const { dict, language } = useLanguage();
+    const locales: any = { en: enUS, de: de, pl: pl };
+
     const [mode, setMode] = useState<"select" | "add-event">("select");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,7 +34,7 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
     const [hostId, setHostId] = useState("neutral");
 
     const dateStr = format(date, "yyyy-MM-dd");
-    const displayDate = format(date, "EEEE, MMMM do");
+    const displayDate = format(date, dict.events.modal.titleFormat, { locale: locales[language] });
 
     // Check if user has voted
     const userVote = existingVotes.find(v => v.userId === currentUserId);
@@ -136,8 +141,8 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                 </button>
 
                 <div className="mb-6">
-                    <h2 className="text-xl font-bold">{displayDate}</h2>
-                    <p className="text-sm text-muted-foreground">What would you like to do regarding this date?</p>
+                    <h2 className="text-xl font-bold capitalize">{displayDate}</h2>
+                    <p className="text-sm text-muted-foreground">{dict.events.modal.subtitle}</p>
                 </div>
 
                 {mode === "select" ? (
@@ -152,8 +157,8 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                                     {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <ThumbsDown className="h-6 w-6" />}
                                 </div>
                                 <div className="text-left">
-                                    <div className="font-semibold text-destructive">Unvote</div>
-                                    <div className="text-xs text-muted-foreground">Remove your vote for this date</div>
+                                    <div className="font-semibold text-destructive">{dict.events.modal.unvote.title}</div>
+                                    <div className="text-xs text-muted-foreground">{dict.events.modal.unvote.desc}</div>
                                 </div>
                             </button>
                         ) : (
@@ -166,8 +171,8 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                                     {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <ThumbsUp className="h-6 w-6" />}
                                 </div>
                                 <div className="text-left">
-                                    <div className="font-semibold">Vote for Stammtisch</div>
-                                    <div className="text-xs text-muted-foreground">Vote for this date to be the next meetup</div>
+                                    <div className="font-semibold">{dict.events.modal.vote.title}</div>
+                                    <div className="text-xs text-muted-foreground">{dict.events.modal.vote.desc}</div>
                                 </div>
                             </button>
                         )}
@@ -180,33 +185,33 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                                 <CalendarPlus className="h-6 w-6" />
                             </div>
                             <div className="text-left">
-                                <div className="font-semibold">Add Set Event</div>
-                                <div className="text-xs text-muted-foreground">Add a birthday, holiday, or other manual event</div>
+                                <div className="font-semibold">{dict.events.modal.addEvent.title}</div>
+                                <div className="text-xs text-muted-foreground">{dict.events.modal.addEvent.desc}</div>
                             </div>
                         </button>
                     </div>
                 ) : (
                     <form onSubmit={handleAddEvent} className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Event Title</label>
+                            <label className="text-sm font-medium">{dict.events.modal.form.title}</label>
                             <input
                                 type="text"
                                 value={eventTitle}
                                 onChange={(e) => setEventTitle(e.target.value)}
-                                placeholder="e.g., Marcel's Birthday"
+                                placeholder={dict.events.modal.form.placeholder}
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 autoFocus
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Host</label>
+                            <label className="text-sm font-medium">{dict.events.modal.form.host}</label>
                             <select
                                 value={hostId}
                                 onChange={(e) => setHostId(e.target.value)}
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                                <option value="neutral">Neutral (No specific host)</option>
+                                <option value="neutral">{dict.events.modal.form.neutral}</option>
                                 {members.map(member => (
                                     <option key={member.id} value={member.id}>
                                         {member.name}
@@ -217,7 +222,7 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Time</label>
+                                <label className="text-sm font-medium">{dict.events.modal.form.time}</label>
                                 <div className="relative">
                                     <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <input
@@ -229,14 +234,14 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Location</label>
+                                <label className="text-sm font-medium">{dict.events.modal.form.location}</label>
                                 <div className="relative">
                                     <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <input
                                         type="text"
                                         value={eventLocation}
                                         onChange={(e) => setEventLocation(e.target.value)}
-                                        placeholder="Venue..."
+                                        placeholder={dict.events.modal.form.venuePlaceholder}
                                         className="w-full rounded-md border border-input bg-background pl-9 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     />
                                 </div>
@@ -244,11 +249,11 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Description (Optional)</label>
+                            <label className="text-sm font-medium">{dict.events.modal.form.desc}</label>
                             <textarea
                                 value={eventDesc}
                                 onChange={(e) => setEventDesc(e.target.value)}
-                                placeholder="Details..."
+                                placeholder={dict.events.modal.form.descPlaceholder}
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px]"
                             />
                         </div>
@@ -259,14 +264,14 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                                 onClick={() => setMode("select")}
                                 className="flex-1 rounded-md border border-input bg-background py-2 text-sm font-medium hover:bg-muted"
                             >
-                                Back
+                                {dict.events.modal.form.back}
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting || !eventTitle.trim()}
                                 className="flex-1 rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                             >
-                                {isSubmitting ? "Saving..." : "Create Event"}
+                                {isSubmitting ? dict.events.modal.form.saving : dict.events.modal.form.create}
                             </button>
                         </div>
                     </form>
