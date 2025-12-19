@@ -45,19 +45,21 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                 </div>
             </div>
 
-            {/* Calendar Grid */}
-            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden select-none">
+            {/* Calendar Grid - Tiled Look */}
+            <div className="rounded-xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl shadow-2xl overflow-hidden select-none ring-1 ring-white/5">
                 {/* Week Days */}
-                <div className="grid grid-cols-7 border-b border-border bg-muted/30">
-                    {weekDays.map(day => (
-                        <div key={day} className="py-3 text-center text-sm font-semibold text-muted-foreground">
+                <div className="grid grid-cols-7 border-b border-white/20 bg-primary/10">
+                    {weekDays.map((day, idx) => (
+                        <div key={day} className={cn(
+                            "py-3 text-center text-sm font-bold text-primary tracking-wide border-r border-white/20 last:border-r-0"
+                        )}>
                             {day}
                         </div>
                     ))}
                 </div>
 
                 {/* Days */}
-                <div className="grid grid-cols-7 auto-rows-[minmax(100px,auto)] text-sm">
+                <div className="grid grid-cols-7 auto-rows-[minmax(100px,auto)] text-sm bg-transparent">
                     {days.map((day, dayIdx) => {
                         const dateStr = format(day, "yyyy-MM-dd");
 
@@ -68,14 +70,17 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                         const isCurrentMonth = isSameMonth(day, firstDayOfMonth);
                         const isToday = isSameDay(day, new Date());
 
+                        // Check if it's the last in a row (mod 7) for border handling
+                        const isLastInRow = (dayIdx + 1) % 7 === 0;
+
                         return (
                             <div
                                 key={day.toString()}
                                 onClick={() => onDateClick(day)}
                                 className={cn(
-                                    "min-h-[100px] border-b border-r border-border p-2 transition-all hover:bg-muted/20 flex flex-col gap-1 cursor-pointer relative",
-                                    !isCurrentMonth && "bg-muted/10 text-muted-foreground opacity-50",
-                                    (dayIdx + 1) % 7 === 0 && "border-r-0"
+                                    "min-h-[100px] border-b border-r border-white/20 p-2 transition-all hover:bg-white/10 flex flex-col gap-1 cursor-pointer relative",
+                                    !isCurrentMonth && "bg-black/20 text-muted-foreground opacity-50",
+                                    isLastInRow && "border-r-0"
                                 )}
                             >
                                 <div className="flex justify-between items-start">

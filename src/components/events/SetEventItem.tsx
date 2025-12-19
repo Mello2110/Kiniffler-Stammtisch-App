@@ -47,7 +47,7 @@ export function SetEventItem({ event, currentUserId, totalMembers, onEdit, onDel
     };
 
     return (
-        <div className="group flex flex-col gap-3 rounded-lg border border-border p-3 hover:bg-muted/50 transition-colors">
+        <div className="group flex flex-col gap-3 rounded-lg border border-primary/20 p-3 hover:bg-primary/10 transition-colors bg-black/10">
             <div className="flex gap-4 items-center">
                 <div className="flex h-12 w-12 flex-col items-center justify-center rounded bg-primary/10 text-primary shrink-0">
                     <span className="text-[10px] font-bold uppercase">{format(parseISO(event.date), "MMM")}</span>

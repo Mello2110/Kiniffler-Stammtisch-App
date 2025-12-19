@@ -101,8 +101,8 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                 </div>
             </div>
 
-            {/* Set Events List */}
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm h-fit">
+            {/* Set Events List - Transparent Purple */}
+            <div className="rounded-xl border border-primary/20 bg-primary/20 backdrop-blur-md p-6 shadow-xl h-fit">
                 <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
                     <CalendarIcon className="h-5 w-5 text-primary" />
                     Set Events
