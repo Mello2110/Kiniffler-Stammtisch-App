@@ -85,8 +85,8 @@ export function Sidebar({ className }: { className?: string }) {
     ];
 
     return (
-        <div className={cn("flex h-full w-64 flex-col border-r border-border bg-card text-card-foreground", className)}>
-            <div className="flex h-16 items-center border-b border-border px-6">
+        <div className={cn("flex h-full w-64 flex-col border-r border-secondary/20 bg-secondary/30 backdrop-blur-md text-card-foreground", className)}>
+            <div className="flex h-16 items-center border-b border-secondary/20 px-6">
                 {isEditing ? (
                     <input
                         value={editValue}
@@ -94,7 +94,7 @@ export function Sidebar({ className }: { className?: string }) {
                         onBlur={handleSave}
                         onKeyDown={handleKeyDown}
                         autoFocus
-                        className="w-full bg-background text-2xl font-bold font-heading border border-primary rounded px-2 py-1 outline-none text-foreground"
+                        className="w-full bg-background/50 text-2xl font-bold font-heading border border-primary rounded px-2 py-1 outline-none text-foreground"
                     />
                 ) : (
                     <div className="flex items-center w-full group">
@@ -120,13 +120,13 @@ export function Sidebar({ className }: { className?: string }) {
                                 key={index}
                                 href={item.href}
                                 className={cn(
-                                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:text-primary",
+                                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300 relative overflow-hidden group/item",
                                     isActive
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-muted-foreground hover:bg-muted"
+                                        ? "text-primary shadow-[0_0_20px_rgba(124,58,237,0.15)] bg-gradient-to-r from-primary/10 to-transparent border-l-2 border-primary"
+                                        : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
                                 )}
                             >
-                                <item.icon className="h-4 w-4" />
+                                <item.icon className={cn("h-4 w-4 transition-transform duration-300", isActive && "scale-110")} />
                                 {item.label}
                             </Link>
                         );
