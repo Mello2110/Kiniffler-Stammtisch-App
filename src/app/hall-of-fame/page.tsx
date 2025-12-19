@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Crown, Medal, Banknote, Calendar, Coins } from "lucide-react";
+import { Crown, Medal, Banknote, Calendar, Coins, Sparkles } from "lucide-react";
 import type { Member, Donation, Penalty, SetEvent } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -166,13 +166,36 @@ export default function HallOfFamePage() {
 
     return (
         <div className="space-y-8 pb-10">
-            <div>
-                <h1 className="text-3xl font-bold font-heading tracking-tight" style={{ color: '#1A5C2E' }}>
-                    Hall of Fame
-                </h1>
-                <p className="text-muted-foreground mt-2">
-                    Honoring the top contributors, payers, and hosts of our community.
-                </p>
+            {/* Header Section */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-4 max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
+                            <Sparkles className="h-3 w-3" />
+                            Legends
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
+                            Hall of <span className="text-primary italic">Fame</span>
+                        </h1>
+                        <p className="text-muted-foreground text-lg leading-relaxed">
+                            Ehre, wem Ehre gebührt. Hier feiern wir die wahren Legenden unseres Stammtischs.
+                            Die Top-Performer, die großzügigsten Spender und die besten Gastgeber.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-muted-foreground">
+                        <div className="flex flex-col items-end">
+                            <span className="text-2xl font-black text-foreground outfit">3</span>
+                            <span className="text-xs uppercase font-bold tracking-widest">Kategorien</span>
+                        </div>
+                        <div className="h-10 w-px bg-border" />
+                        <Crown className="h-8 w-8 opacity-20" />
+                    </div>
+                </div>
+
+                {/* Decorative background elements */}
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
