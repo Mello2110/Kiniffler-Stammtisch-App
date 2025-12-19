@@ -12,7 +12,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!loading) {
-            if (!user && pathname !== "/login") {
+            // Allow "/" to be public
+            const isPublicPath = pathname === "/login" || pathname === "/";
+
+            if (!user && !isPublicPath) {
                 router.push("/login");
             } else if (user && pathname === "/login") {
                 router.push("/");
