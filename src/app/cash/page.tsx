@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Member, Penalty } from "@/types";
 import { CashBalance } from "@/components/cash/CashBalance";
@@ -35,8 +35,8 @@ export default function CashPage() {
             setIsLoadingMembers(false);
         });
 
-        // Fetch penalties
-        const qPenalties = query(collection(db, "penalties"), orderBy("createdAt", "desc"));
+        // Fetch penalties (Recent 50)
+        const qPenalties = query(collection(db, "penalties"), orderBy("createdAt", "desc"), limit(50));
         const unsubPenalties = onSnapshot(qPenalties, (snapshot) => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Penalty));
             setPenalties(data);

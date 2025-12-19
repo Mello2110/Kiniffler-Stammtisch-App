@@ -32,7 +32,7 @@ export default function Home() {
   const [contributionsTotal, setContributionsTotal] = useState(0);
   const [expensesTotal, setExpensesTotal] = useState(0);
   const [startingBalance, setStartingBalance] = useState(0);
-  const [seasonLeader, setSeasonLeader] = useState<{ name: string; points: number } | null>(null);
+  const [seasonLeader, setSeasonLeader] = useState<{ id: string; points: number } | null>(null);
   const [hostedCount, setHostedCount] = useState(0);
 
   useEffect(() => {
@@ -45,6 +45,7 @@ export default function Home() {
       // Note: Leader calculation is now handled by a separate Points listener
     });
 
+    // 1.5 Fetch Points for Season Leader (Single Source of Truth)
     // 1.5 Fetch Points for Season Leader (Single Source of Truth)
     // 1.5 Fetch Points for Season Leader (Single Source of Truth)
     const qPoints = query(collection(db, "points"), where("year", "==", currentYear));
@@ -68,37 +69,41 @@ export default function Home() {
         }
       });
 
-      if (leaderId && members.length > 0) {
-        const leaderMember = members.find(m => m.id === leaderId);
-        if (leaderMember) {
-          setSeasonLeader({ name: leaderMember.name, points: maxPoints });
-        }
+      if (leaderId) {
+        setSeasonLeader({ id: leaderId, points: maxPoints });
       } else {
         setSeasonLeader(null);
       }
     });
 
-    // 2. Fetch Events
+    // 2. Fetch Events (Current Year Only)
     const startOfYear = `${currentYear}-01-01`;
     const endOfYear = `${currentYear}-12-31`;
 
-    const qEvents = query(collection(db, "set_events"), orderBy("date", "asc"));
+    const qEvents = query(
+      collection(db, "set_events"),
+      where("date", ">=", startOfYear),
+      where("date", "<=", endOfYear),
+      orderBy("date", "asc")
+    );
+
     const unsubEvents = onSnapshot(qEvents, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SetEvent));
       setEvents(data);
-
-      // Calculate "Events Hosted" (in current year)
-      // Note: In real app, might want to filter by date >= startOfYear <= endOfYear
-      // For now, assuming all set events are relevant or simple filter
-      const hosted = data.filter(e => e.date >= startOfYear && e.date <= endOfYear).length;
-      setHostedCount(hosted);
+      setHostedCount(data.length); // All fetched are in current year now
     });
 
-    // 3. Fetch Penalties
-    const unsubPenalties = onSnapshot(collection(db, "penalties"), (snap) => {
+    // 3. Fetch Penalties (Recent/Unpaid) - Optimization: Limit to recent 50 or just unpaid?
+    // Dashboard usually shows "My Open Penalties" (handled separately) and "Penalty Pot" (needs all unpaid)
+    // To calculate pot correctly, we need ALL UNPAID penalties.
+    const qPenalties = query(collection(db, "penalties"), where("isPaid", "==", false));
+    // Optimization: Don't fetch paid history here just for the pot sum
+    const unsubPenalties = onSnapshot(qPenalties, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Penalty));
-      setPenalties(data);
-      const total = data.reduce((sum, p) => sum + (p.isPaid ? (p.amount || 0) : 0), 0);
+      setPenalties(data); // Note: This state now only contains UNPAID penalties. 
+      // If other UI components need history, they might break. 
+      // Checking usage: setPenaltyPot uses it. 
+      const total = data.reduce((sum, p) => sum + (p.amount || 0), 0);
       setPenaltyPot(total);
     });
 
@@ -157,7 +162,7 @@ export default function Home() {
       unsubVotes();
       unsubMyPenalties();
     };
-  }, [user, members]); // Added members to dependency to re-calc leader if needed
+  }, [user]);
 
   // Determine Next Event
   useEffect(() => {
@@ -258,15 +263,13 @@ export default function Home() {
             />
           </Link>
 
-          <Link href="/stats">
-            <StatCard
-              title="Season Leader"
-              value={seasonLeader ? seasonLeader.name : "-"}
-              icon={Trophy}
-              description={seasonLeader ? `${seasonLeader.points} Points` : "No points yet"}
-              className="border-yellow-500/20 hover:border-yellow-500/50 transition-colors h-full cursor-pointer"
-            />
-          </Link>
+          <StatCard
+            title="Season Leader"
+            value={seasonLeader ? (members.find(m => m.id === seasonLeader.id)?.name || "Unknown") : "-"}
+            icon={Trophy}
+            description={seasonLeader ? `${seasonLeader.points} Points` : "No points yet"}
+            className="border-yellow-500/20 hover:border-yellow-500/50 transition-colors h-full cursor-pointer"
+          />
 
           <Link href="/hall-of-fame">
             <StatCard
