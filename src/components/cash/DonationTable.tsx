@@ -11,11 +11,12 @@ interface DonationTableProps {
     members: Member[];
     currentYear: number;
     currentUserId: string;
+    canManage: boolean;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function DonationTable({ members, currentYear, currentUserId }: DonationTableProps) {
+export function DonationTable({ members, currentYear, currentUserId, canManage }: DonationTableProps) {
     const [donations, setDonations] = useState<Donation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -32,10 +33,7 @@ export function DonationTable({ members, currentYear, currentUserId }: DonationT
     }, [currentYear]);
 
     const handleDonationChange = async (memberId: string, monthIndex: number, newValue: string) => {
-        // Only allow if it's the current user or strict mode?
-        // Requirement: "Admin editable, user-specific based on currentUser.uid"
-        // We stick to: Only editable if memberId === currentUserId (unless future admin role)
-        if (memberId !== currentUserId) return;
+        if (!canManage) return;
 
         const compositeId = `${memberId}_${currentYear}_${monthIndex}`;
         const amount = parseInt(newValue);
@@ -107,15 +105,15 @@ export function DonationTable({ members, currentYear, currentUserId }: DonationT
                                                 type="number"
                                                 min="0"
                                                 step="1"
-                                                disabled={!canEdit || isUpdating}
+                                                disabled={!canManage || isUpdating}
                                                 className={cn(
                                                     "w-full h-10 text-center bg-transparent focus:bg-primary/5 outline-none transition-colors scroll-none appearance-none",
                                                     // Hide spin buttons
                                                     "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                                                     donation?.amount ? "font-bold text-primary" : "text-muted-foreground",
-                                                    !canEdit && "opacity-50 cursor-default bg-muted/10"
+                                                    !canManage && "opacity-50 cursor-default bg-muted/10"
                                                 )}
-                                                placeholder={canEdit ? "-" : ""}
+                                                placeholder={canManage ? "-" : ""}
                                                 value={donation?.amount || ""}
                                                 onChange={(e) => handleDonationChange(member.id, monthIndex, e.target.value)}
                                             />

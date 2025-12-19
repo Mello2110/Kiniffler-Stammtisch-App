@@ -11,9 +11,10 @@ import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationM
 
 interface ExpensesTableProps {
     onEdit?: (expense: Expense) => void;
+    canManage: boolean;
 }
 
-export function ExpensesTable({ onEdit }: ExpensesTableProps) {
+export function ExpensesTable({ onEdit, canManage }: ExpensesTableProps) {
     const [isAdding, setIsAdding] = useState(false);
 
     // Add Form State
@@ -71,12 +72,14 @@ export function ExpensesTable({ onEdit }: ExpensesTableProps) {
         <div className="space-y-4">
             <div className="flex justify-between items-center h-[34px]"> {/* Fixed height to match Penalties header */}
                 <h2 className="text-xl font-semibold">Expenses</h2>
-                <button
-                    onClick={() => setIsAdding(!isAdding)}
-                    className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
-                >
-                    {isAdding ? "Cancel" : <><Plus className="h-3 w-3" /> Add Expense</>}
-                </button>
+                {canManage && (
+                    <button
+                        onClick={() => setIsAdding(!isAdding)}
+                        className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
+                    >
+                        {isAdding ? "Cancel" : <><Plus className="h-3 w-3" /> Add Expense</>}
+                    </button>
+                )}
             </div>
 
             {/* Search Bar - Identical to PenaltyTable */}
@@ -149,22 +152,24 @@ export function ExpensesTable({ onEdit }: ExpensesTableProps) {
                                     <td className="p-4 align-middle font-medium">{expense.description}</td>
                                     <td className="p-4 align-middle text-right font-bold">€{expense.amount.toFixed(2)}</td>
                                     <td className="p-4 align-middle text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button
-                                                onClick={() => onEdit?.(expense)}
-                                                className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                                title="Edit"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => setDeletingId(expense.id)}
-                                                className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
+                                        {canManage && (
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => onEdit?.(expense)}
+                                                    className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                                                    title="Edit"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeletingId(expense.id)}
+                                                    className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))

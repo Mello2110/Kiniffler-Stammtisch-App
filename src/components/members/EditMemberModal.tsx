@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { X, Loader2, Award, Calendar } from "lucide-react";
+import { X, Loader2, Award, Calendar, Cake } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Member } from "@/types";
+import { manageBirthdayEvents } from "@/lib/eventUtils";
 
 interface EditMemberModalProps {
     member: Member;
@@ -18,6 +19,7 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
     const [name, setName] = useState(member.name);
     const [role, setRole] = useState(member.role || "");
     const [joinYear, setJoinYear] = useState(member.joinYear?.toString() || new Date().getFullYear().toString());
+    const [birthday, setBirthday] = useState(member.birthday || "");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,8 +30,13 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
             await updateDoc(ref, {
                 name: name.trim(),
                 role: role.trim(),
-                joinYear: parseInt(joinYear)
+                joinYear: parseInt(joinYear),
+                birthday: birthday
             });
+
+            // Sync calendar events
+            await manageBirthdayEvents(member.id, name.trim(), birthday);
+
             onClose();
         } catch (error) {
             console.error("Error updating member:", error);
@@ -100,6 +107,22 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
                                 max={new Date().getFullYear()}
                                 className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                                 required
+                            />
+                        </div>
+                    </div>
+
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                            Geburtstag
+                        </label>
+                        <div className="relative">
+                            <Cake className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <input
+                                type="date"
+                                value={birthday}
+                                onChange={(e) => setBirthday(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                             />
                         </div>
                     </div>

@@ -13,12 +13,13 @@ interface PenaltyTableProps {
     penalties: Penalty[];
     members: Member[];
     onEdit?: (penalty: Penalty) => void;
+    canManage: boolean;
 }
 
 type SortField = "date" | "amount" | "isPaid";
 type SortOrder = "asc" | "desc";
 
-export function PenaltyTable({ penalties, members, onEdit }: PenaltyTableProps) {
+export function PenaltyTable({ penalties, members, onEdit, canManage }: PenaltyTableProps) {
     const [sortField, setSortField] = useState<SortField>("date");
     const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
     const [filter, setFilter] = useState("");
@@ -34,6 +35,7 @@ export function PenaltyTable({ penalties, members, onEdit }: PenaltyTableProps) 
     };
 
     const togglePaidStatus = async (penaltyId: string, currentStatus: boolean) => {
+        if (!canManage) return;
         try {
             const ref = doc(db, "penalties", penaltyId);
             await updateDoc(ref, { isPaid: !currentStatus });
@@ -149,7 +151,8 @@ export function PenaltyTable({ penalties, members, onEdit }: PenaltyTableProps) 
                                                         "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors",
                                                         penalty.isPaid
                                                             ? "bg-green-500/15 text-green-700 dark:text-green-400 hover:bg-green-500/25"
-                                                            : "bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/25"
+                                                            : "bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/25",
+                                                        !canManage && "opacity-80 cursor-default hover:bg-transparent"
                                                     )}
                                                 >
                                                     {penalty.isPaid ? (
@@ -164,22 +167,24 @@ export function PenaltyTable({ penalties, members, onEdit }: PenaltyTableProps) 
                                                 </button>
                                             </td>
                                             <td className="p-4 align-middle text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <button
-                                                        onClick={() => onEdit?.(penalty)}
-                                                        className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeletingId(penalty.id)}
-                                                        className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
+                                                {canManage && (
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={() => onEdit?.(penalty)}
+                                                            className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeletingId(penalty.id)}
+                                                            className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     );

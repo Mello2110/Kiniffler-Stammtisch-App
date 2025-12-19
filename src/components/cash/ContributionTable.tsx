@@ -11,11 +11,12 @@ interface ContributionTableProps {
     members: Member[];
     currentYear: number;
     currentUserId: string;
+    canManage: boolean;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function ContributionTable({ members, currentYear, currentUserId }: ContributionTableProps) {
+export function ContributionTable({ members, currentYear, currentUserId, canManage }: ContributionTableProps) {
     const [contributions, setContributions] = useState<Contribution[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -100,14 +101,14 @@ export function ContributionTable({ members, currentYear, currentUserId }: Contr
                                     <td key={monthIndex} className="p-0 text-center border-r border-b first:border-l"> {/* Added borders */}
                                         <button
                                             onClick={() => toggleContribution(member.id, monthIndex)}
-                                            disabled={isToggling || member.id !== currentUserId}
-                                            title={member.id !== currentUserId ? "Nur eigene Beiträge verwalten" : undefined}
+                                            disabled={isToggling || !canManage}
+                                            title={!canManage ? "Nur für Admins/Kassenwart" : undefined}
                                             className={cn(
                                                 "w-full h-full min-h-[40px] flex items-center justify-center transition-all",
                                                 isPaid
                                                     ? "text-primary bg-primary/5"
                                                     : "hover:bg-muted/50",
-                                                (isToggling || member.id !== currentUserId) && "opacity-50 cursor-not-allowed"
+                                                (isToggling || !canManage) && "opacity-50 cursor-not-allowed"
                                             )}
                                         >
                                             {isToggling ? (

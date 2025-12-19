@@ -17,6 +17,7 @@ export interface Member {
     avatarUrl?: string;
     points: number;
     isAdmin?: boolean;
+    birthday?: string; // YYYY-MM-DD
 }
 
 export interface StammtischVote {

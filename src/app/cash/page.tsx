@@ -39,6 +39,14 @@ export default function CashPage() {
         }
     }, [membersLoading]);
 
+    const canManageFinance = useMemo(() => {
+        if (!user || membersLoading) return false;
+        const currentMember = members.find(m => m.id === user.uid);
+        if (!currentMember) return false;
+
+        return currentMember.isAdmin || currentMember.role?.toLowerCase() === "kassenwart";
+    }, [user, members, membersLoading]);
+
     return (
         <div className="space-y-8 pb-10">
             {/* Header */}
@@ -83,7 +91,12 @@ export default function CashPage() {
                     {isLoadingMembers ? (
                         <div className="p-4 text-center text-muted-foreground">Lade Mitglieder...</div>
                     ) : (
-                        <ContributionTable members={members} currentYear={currentYear} currentUserId={user?.uid || ""} />
+                        <ContributionTable
+                            members={members}
+                            currentYear={currentYear}
+                            currentUserId={user?.uid || ""}
+                            canManage={canManageFinance}
+                        />
                     )}
                 </section>
 
@@ -93,7 +106,12 @@ export default function CashPage() {
                     {isLoadingMembers ? (
                         <div className="p-4 text-center text-muted-foreground">Lade...</div>
                     ) : (
-                        <DonationTable members={members} currentYear={currentYear} currentUserId={user?.uid || ""} />
+                        <DonationTable
+                            members={members}
+                            currentYear={currentYear}
+                            currentUserId={user?.uid || ""}
+                            canManage={canManageFinance}
+                        />
                     )}
                 </section>
 
@@ -102,36 +120,42 @@ export default function CashPage() {
                     <section className="space-y-4">
                         <div className="flex items-center justify-between h-[34px]">
                             <h2 className="text-xl font-semibold">Penalties</h2>
-                            <button
-                                onClick={() => setIsPenaltyModalOpen(true)}
-                                className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
-                            >
-                                <Plus className="h-3 w-3" /> Add Penalty
-                            </button>
+                            {canManageFinance && (
+                                <button
+                                    onClick={() => setIsPenaltyModalOpen(true)}
+                                    className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
+                                >
+                                    <Plus className="h-3 w-3" /> Add Penalty
+                                </button>
+                            )}
                         </div>
                         <PenaltyTable
                             penalties={penalties}
                             members={members}
                             onEdit={(p) => setEditingPenalty(p)}
+                            canManage={canManageFinance}
                         />
                     </section>
 
                     {/* Section 3: Expenses (New) */}
                     <section className="space-y-4">
                         {/* Header handled inside ExpensesTable for state access */}
-                        <ExpensesTable onEdit={(e) => setEditingExpense(e)} />
+                        <ExpensesTable
+                            onEdit={(e) => setEditingExpense(e)}
+                            canManage={canManageFinance}
+                        />
                     </section>
                 </div>
             </div>
 
-            {isPenaltyModalOpen && (
+            {isPenaltyModalOpen && canManageFinance && (
                 <AddPenaltyModal
                     onClose={() => setIsPenaltyModalOpen(false)}
                     members={members}
                 />
             )}
 
-            {editingPenalty && (
+            {editingPenalty && canManageFinance && (
                 <EditPenaltyModal
                     penalty={editingPenalty}
                     members={members}
@@ -139,7 +163,7 @@ export default function CashPage() {
                 />
             )}
 
-            {editingExpense && (
+            {editingExpense && canManageFinance && (
                 <EditExpenseModal
                     expense={editingExpense}
                     onClose={() => setEditingExpense(null)}
