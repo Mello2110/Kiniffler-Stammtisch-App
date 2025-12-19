@@ -17,6 +17,7 @@ export interface Member {
     avatarUrl?: string;
     points: number;
     isAdmin?: boolean;
+    email?: string; // Added for linking Auth User to Member
     birthday?: string; // YYYY-MM-DD
 }
 

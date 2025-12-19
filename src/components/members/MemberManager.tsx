@@ -28,7 +28,8 @@ export function MemberManager() {
     // However, safest to check specifically or derive it.
 
     // Let's derive it directly from the `members` array since we have it.
-    const isAdmin = members.find(m => m.id === user?.uid)?.isAdmin === true;
+    // Let's derive it directly from the `members` array since we have it.
+    const isAdmin = members.find(m => m.id === user?.uid || (m.email && m.email === user?.email))?.isAdmin === true;
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();

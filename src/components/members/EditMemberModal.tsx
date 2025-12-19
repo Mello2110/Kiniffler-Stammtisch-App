@@ -20,6 +20,7 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
     const [role, setRole] = useState(member.role || "");
     const [joinYear, setJoinYear] = useState(member.joinYear?.toString() || new Date().getFullYear().toString());
     const [birthday, setBirthday] = useState(member.birthday || "");
+    const [email, setEmail] = useState(member.email || "");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,7 +32,8 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
                 name: name.trim(),
                 role: role.trim(),
                 joinYear: parseInt(joinYear),
-                birthday: birthday
+                birthday: birthday,
+                email: email.trim()
             });
 
             // Sync calendar events
@@ -139,6 +141,21 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
                                 value={birthday}
                                 onChange={(e) => setBirthday(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                            Verknüpfte E-Mail (für Admin-Rechte)
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="user@exmaple.com"
+                                className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                             />
                         </div>
                     </div>
