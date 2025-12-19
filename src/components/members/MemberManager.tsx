@@ -16,9 +16,19 @@ export function MemberManager() {
     const [isAdding, setIsAdding] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [deletingMember, setDeletingMember] = useState<Member | null>(null);
+    const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false);
 
     const q = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
     const { data: members, loading: isLoading } = useFirestoreQuery<Member>(q);
+
+    // Check if current user is admin
+    const currentMember = members.find(m => m.id === user?.uid);
+    // Alternatively, rely on the useEffect below if we trust members list is loaded. 
+    // Actually, `useFirestoreQuery` returns `members`. If the user is in that list, we can just check it.
+    // However, safest to check specifically or derive it.
+
+    // Let's derive it directly from the `members` array since we have it.
+    const isAdmin = members.find(m => m.id === user?.uid)?.isAdmin === true;
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -135,13 +145,15 @@ export function MemberManager() {
                                             <Pencil className="h-4 w-4" />
                                         </button>
                                     )}
-                                    <button
-                                        onClick={() => setDeletingMember(member)}
-                                        className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    {isAdmin && (
+                                        <button
+                                            onClick={() => setDeletingMember(member)}
+                                            className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))

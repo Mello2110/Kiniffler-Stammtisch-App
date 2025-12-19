@@ -37,26 +37,30 @@ export function Sidebar({ className }: { className?: string }) {
     const [memberName, setMemberName] = useState<string>("");
     const [showEmail, setShowEmail] = useState(true);
 
+    const [isAdmin, setIsAdmin] = useState(false);
+
     // Sync editValue when title changes externally (though rare) or when entering edit mode
     useEffect(() => {
         setEditValue(title);
     }, [title]);
 
     useEffect(() => {
-        const fetchMemberName = async () => {
+        const fetchMemberData = async () => {
             if (user?.uid) {
                 try {
                     const docRef = doc(db, "members", user.uid);
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
-                        setMemberName(docSnap.data().name || "Member");
+                        const data = docSnap.data();
+                        setMemberName(data.name || "Member");
+                        setIsAdmin(!!data.isAdmin);
                     }
                 } catch (error) {
-                    console.error("Error fetching member name:", error);
+                    console.error("Error fetching member data:", error);
                 }
             }
         };
-        fetchMemberName();
+        fetchMemberData();
     }, [user]);
 
     const handleSave = () => {
@@ -105,8 +109,13 @@ export function Sidebar({ className }: { className?: string }) {
                             {title}
                         </h1>
                         <Beer
-                            onClick={() => setIsEditing(true)}
-                            className="ml-2 h-6 w-6 text-primary cursor-pointer transition-transform hover:scale-110 hover:drop-shadow-sm shrink-0"
+                            onClick={() => isAdmin && setIsEditing(true)}
+                            className={cn(
+                                "ml-2 h-6 w-6 text-primary shrink-0 transition-transform",
+                                isAdmin
+                                    ? "cursor-pointer hover:scale-110 hover:drop-shadow-sm"
+                                    : "cursor-default opacity-50"
+                            )}
                         />
                     </div>
                 )}

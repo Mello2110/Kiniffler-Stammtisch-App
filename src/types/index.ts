@@ -16,6 +16,7 @@ export interface Member {
     joinYear?: number; // Added joinYear
     avatarUrl?: string;
     points: number;
+    isAdmin?: boolean;
 }
 
 export interface StammtischVote {
