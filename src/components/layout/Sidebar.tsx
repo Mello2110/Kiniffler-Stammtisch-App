@@ -23,20 +23,24 @@ import {
 
 import { useLanguage } from "@/contexts/LanguageContext";
 
+import { useTitle } from "@/contexts/TitleContext";
+
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const { logout, user } = useAuth();
     const { dict } = useLanguage();
+    const { title, setTitle } = useTitle();
 
-    const [title, setTitle] = useState("Stammtisch");
+    // Local state for editing value before save
+    const [editValue, setEditValue] = useState(title);
     const [isEditing, setIsEditing] = useState(false);
     const [memberName, setMemberName] = useState<string>("");
     const [showEmail, setShowEmail] = useState(true);
 
+    // Sync editValue when title changes externally (though rare) or when entering edit mode
     useEffect(() => {
-        const stored = localStorage.getItem("sidebarTitle");
-        if (stored) setTitle(stored);
-    }, []);
+        setEditValue(title);
+    }, [title]);
 
     useEffect(() => {
         const fetchMemberName = async () => {
@@ -56,16 +60,15 @@ export function Sidebar({ className }: { className?: string }) {
     }, [user]);
 
     const handleSave = () => {
-        if (!title.trim()) setTitle("Stammtisch"); // Fallback
-        localStorage.setItem("sidebarTitle", title.trim() || "Stammtisch");
+        const newTitle = editValue.trim() || "Stammtisch";
+        setTitle(newTitle);
         setIsEditing(false);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") handleSave();
         if (e.key === "Escape") {
-            const stored = localStorage.getItem("sidebarTitle") || "Stammtisch";
-            setTitle(stored);
+            setEditValue(title);
             setIsEditing(false);
         }
     };
@@ -86,8 +89,8 @@ export function Sidebar({ className }: { className?: string }) {
             <div className="flex h-16 items-center border-b border-border px-6">
                 {isEditing ? (
                     <input
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
                         onBlur={handleSave}
                         onKeyDown={handleKeyDown}
                         autoFocus
