@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, Beer, Calendar, ChartBar, Image as ImageIcon, Shield, LayoutDashboard, CheckCircle2, TrendingUp, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import Image from "next/image";
 
 export function LandingPage() {
     const { user } = useAuth();
@@ -19,8 +20,16 @@ export function LandingPage() {
             <nav className="w-full border-b border-white/5 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
                 <div className="container mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        {/* Logo Text */}
-                        <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+                        {/* Logo Icon */}
+                        <div className="relative h-8 w-8 overflow-hidden rounded-lg">
+                            <Image
+                                src="/kanpai-logo.png"
+                                alt="Kanpai Logo"
+                                fill
+                                className="object-cover"
+                            />
+                        </div>
+                        <span className="text-xl font-black tracking-tighter text-white">
                             KANPAI
                         </span>
                     </div>
@@ -58,27 +67,34 @@ export function LandingPage() {
             <section className="relative pt-24 pb-32 sm:pt-32 sm:pb-40 overflow-hidden">
                 <div className="container mx-auto px-6 relative z-10">
                     <div className="flex flex-col items-center text-center max-w-4xl mx-auto mb-20">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-purple-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-                            </span>
-                            The #1 App for your Stammtisch
+                        {/* Powered by Kanpai Branding - Centered & Prominent */}
+                        <div className="flex flex-col items-center justify-center mb-10 opacity-90 hover:opacity-100 transition-opacity transform hover:scale-105 duration-500 cursor-default">
+                            <div className="relative h-24 w-24 mb-4 drop-shadow-[0_0_15px_rgba(139,92,246,0.5)]">
+                                <Image
+                                    src="/kanpai-logo.png"
+                                    alt="Kanpai Logo"
+                                    fill
+                                    className="object-contain"
+                                    priority
+                                />
+                            </div>
+                            <span className="text-sm uppercase tracking-[0.2em] font-medium text-white/50 mb-1">powered by</span>
+                            <span className="text-5xl md:text-6xl font-black tracking-tighter text-[#8B5CF6] leading-none drop-shadow-lg">KANPAI</span>
                         </div>
 
-                        <h1 className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tight mb-8 leading-[0.9] outfit animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-                            Make every <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-purple-400 to-blue-400">
-                                Meetup count.
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-8 text-white/90">
+                            The ultimate <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                                Stammtisch Experience
                             </span>
                         </h1>
 
-                        <p className="text-xl sm:text-2xl text-white/60 max-w-2xl leading-relaxed mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-                            Organize appointments, track stats, manage the cash box, and crown the season champion. All in one beautiful, private space.
+                        <p className="text-lg sm:text-xl text-white/60 max-w-2xl leading-relaxed mb-10">
+                            Organize appointments, track stats, manage the cash box, and crown the season champion.
                         </p>
 
                         {!user && (
-                            <div className="flex flex-col sm:flex-row gap-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+                            <div className="flex flex-col sm:flex-row gap-4">
                                 <Link
                                     href="/login"
                                     className="inline-flex items-center justify-center h-14 rounded-full bg-white text-black px-10 text-lg font-bold hover:bg-gray-100 transition-all hover:scale-105 shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]"
@@ -91,17 +107,16 @@ export function LandingPage() {
                     </div>
 
                     {/* App Showcase / Mockup */}
-                    <div className="relative mx-auto max-w-5xl perspective-1000 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500 group">
+                    <div className="relative mx-auto max-w-5xl group perspective-1000">
                         {/* Glow behind mockup */}
                         <div className="absolute inset-0 bg-gradient-to-t from-purple-500/20 via-transparent to-transparent blur-[80px] -z-10" />
 
                         <div className="relative rounded-2xl border border-white/10 bg-[#0F172A]/80 backdrop-blur-2xl shadow-2xl overflow-hidden transform group-hover:scale-[1.01] transition-transform duration-500">
                             {/* Mockup Header */}
-                            <div className="h-12 border-b border-white/5 flex items-center px-4 space-x-2">
+                            <div className="h-12 border-b border-white/5 flex items-center px-4 space-x-2 bg-white/5">
                                 <div className="h-3 w-3 rounded-full bg-red-500/50" />
                                 <div className="h-3 w-3 rounded-full bg-yellow-500/50" />
                                 <div className="h-3 w-3 rounded-full bg-green-500/50" />
-                                <div className="ml-4 h-6 w-64 rounded-md bg-white/5" />
                             </div>
 
                             {/* Mockup Content Grid */}
@@ -198,28 +213,13 @@ export function LandingPage() {
                 </div>
             </section>
 
-            {/* CTA Section */}
-            <section className="py-32 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#8B5CF6]/20"></div>
-                <div className="container mx-auto px-6 text-center relative z-10">
-                    <h2 className="text-4xl sm:text-6xl font-black mb-8">Ready for the next round?</h2>
-
-                    {!user && (
-                        <Link
-                            href="/login"
-                            className="inline-flex items-center justify-center h-16 rounded-full bg-white text-black px-12 text-xl font-bold hover:bg-gray-100 transition-all hover:scale-105 shadow-xl"
-                        >
-                            Join Kanpai Free
-                            <ArrowRight className="ml-2 h-6 w-6" />
-                        </Link>
-                    )}
-                </div>
-            </section>
-
             {/* Footer */}
             <footer className="py-12 border-t border-white/10 text-center text-white/40">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                    <span className="text-lg font-black tracking-tighter text-white/50">KANPAI</span>
+                <div className="flex items-center justify-center gap-2 mb-4 opacity-50">
+                    <div className="relative h-6 w-6">
+                        <Image src="/kanpai-logo.png" alt="Kanpai Logo" fill className="object-contain" />
+                    </div>
+                    <span className="text-lg font-black tracking-tighter">KANPAI</span>
                 </div>
                 <p className="text-sm">
                     © {new Date().getFullYear()} Kanpai Stammtisch App.
