@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 import {
     LayoutDashboard,
     Calendar,
@@ -14,7 +15,8 @@ import {
     Settings,
     DollarSign,
     UserCircle,
-    Crown
+    Crown,
+    Beer
 } from "lucide-react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -23,6 +25,32 @@ export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const { logout, user } = useAuth();
     const { dict } = useLanguage();
+
+    const [title, setTitle] = useState("Stammtisch");
+    const [isEditing, setIsEditing] = useState(false);
+
+    useEffect(() => {
+        const stored = localStorage.getItem("sidebarTitle");
+        if (stored) setTitle(stored);
+    }, []);
+
+    const handleSave = () => {
+        if (!title.trim()) setTitle("Stammtisch"); // Fallback
+        localStorage.setItem("sidebarTitle", title.trim() || "Stammtisch");
+        setIsEditing(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") handleSave();
+        if (e.key === "Escape") {
+            // Revert to saved or keep current? Usually cancel reverts.
+            // But if I didn't verify "cancel reverts" requirement, I'll essentially just close or reload storage.
+            // Requirement says "ESC -> Abbrechen". So revert.
+            const stored = localStorage.getItem("sidebarTitle") || "Stammtisch";
+            setTitle(stored);
+            setIsEditing(false);
+        }
+    };
 
     const navItems = [
         { icon: LayoutDashboard, label: dict.sidebar.dashboard, href: "/" },
@@ -38,9 +66,29 @@ export function Sidebar({ className }: { className?: string }) {
     return (
         <div className={cn("flex h-full w-64 flex-col border-r border-border bg-card text-card-foreground", className)}>
             <div className="flex h-16 items-center border-b border-border px-6">
-                <h1 className="text-2xl font-bold font-heading bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-                    Stammtisch
-                </h1>
+                {isEditing ? (
+                    <input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        onBlur={handleSave}
+                        onKeyDown={handleKeyDown}
+                        autoFocus
+                        className="w-full bg-background text-2xl font-bold font-heading border border-primary rounded px-2 py-1 outline-none text-foreground"
+                    />
+                ) : (
+                    <div className="flex items-center w-full group">
+                        <h1
+                            className="text-2xl font-bold font-heading bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent truncate max-w-[170px]"
+                            title={title}
+                        >
+                            {title}
+                        </h1>
+                        <Beer
+                            onClick={() => setIsEditing(true)}
+                            className="ml-2 h-6 w-6 text-primary cursor-pointer transition-transform hover:scale-110 hover:drop-shadow-sm shrink-0"
+                        />
+                    </div>
+                )}
             </div>
             <div className="flex-1 overflow-y-auto py-4">
                 <nav className="grid gap-1 px-2">
