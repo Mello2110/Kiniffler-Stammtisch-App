@@ -74,7 +74,7 @@ export function Sidebar({ className }: { className?: string }) {
     };
 
     const navItems = [
-        { icon: LayoutDashboard, label: dict.sidebar.dashboard, href: "/" },
+        { icon: LayoutDashboard, label: dict.sidebar.dashboard, href: "/dashboard" },
         { icon: Calendar, label: dict.sidebar.events, href: "/events" },
         { icon: Trophy, label: dict.sidebar.stats, href: "/stats" },
         { icon: DollarSign, label: dict.sidebar.finances, href: "/cash" },

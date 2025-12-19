@@ -31,7 +31,7 @@ export default function LoginPage() {
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
             }
-            router.push("/");
+            router.push("/dashboard");
         } catch (err: any) {
             console.error("Auth error:", err);
             if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
