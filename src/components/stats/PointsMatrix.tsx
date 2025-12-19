@@ -61,21 +61,21 @@ export function PointsMatrix({ members, points, currentYear }: PointsMatrixProps
     }).sort((a, b) => b.totalPoints - a.totalPoints);
 
     return (
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden overflow-x-auto">
+        <div className="rounded-xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl shadow-2xl overflow-hidden overflow-x-auto ring-1 ring-white/5">
             <table className="w-full text-sm">
                 <thead>
-                    <tr className="border-b bg-muted/50">
-                        <th className="h-10 px-4 text-left font-medium sticky left-0 bg-background/95 backdrop-blur z-10">Member</th>
+                    <tr>
+                        <th className="h-10 px-4 text-left font-medium sticky left-0 bg-secondary/95 backdrop-blur z-10 border-r border-white/20">Member</th>
                         {MONTHS.map(m => (
                             <th key={m} className="h-10 px-2 text-center font-medium w-12">{m}</th>
                         ))}
-                        <th className="h-10 px-4 text-center font-bold bg-muted/20">Total</th>
+                        <th className="h-10 px-4 text-center font-bold">Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     {memberTotals.map(member => (
-                        <tr key={member.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                            <td className="p-4 font-medium sticky left-0 bg-background/95 backdrop-blur z-10 border-r md:border-r-0">
+                        <tr key={member.id} className="group">
+                            <td className="p-4 font-medium sticky left-0 bg-secondary/95 backdrop-blur z-10 border-r border-white/20">
                                 {member.name}
                             </td>
                             {MONTHS.map((_, monthIndex) => {
@@ -84,7 +84,7 @@ export function PointsMatrix({ members, points, currentYear }: PointsMatrixProps
                                 const isEditing = editingCell === `${member.id}_${monthIndex}`;
 
                                 return (
-                                    <td key={monthIndex} className="p-1 text-center border-l border-dashed border-border/50 first:border-l-0">
+                                    <td key={monthIndex} className="p-1 text-center">
                                         {isEditing ? (
                                             <input
                                                 type="number"
@@ -99,7 +99,7 @@ export function PointsMatrix({ members, points, currentYear }: PointsMatrixProps
                                             <div
                                                 onClick={() => handleCellClick(member.id, monthIndex, currentPoints)}
                                                 className={cn(
-                                                    "cursor-pointer hover:bg-muted rounded py-1 transition-colors min-h-[24px] flex items-center justify-center",
+                                                    "cursor-pointer hover:bg-white/10 rounded py-1 transition-colors min-h-[24px] flex items-center justify-center",
                                                     currentPoints > 0 ? "font-bold text-primary" : "text-muted-foreground/30"
                                                 )}
                                             >
@@ -109,7 +109,7 @@ export function PointsMatrix({ members, points, currentYear }: PointsMatrixProps
                                     </td>
                                 );
                             })}
-                            <td className="p-4 text-center font-bold bg-muted/5 border-l">
+                            <td className="p-4 text-center font-bold">
                                 {member.totalPoints}
                             </td>
                         </tr>
