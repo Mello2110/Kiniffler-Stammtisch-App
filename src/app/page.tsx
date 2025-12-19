@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, onSnapshot, orderBy, where, doc } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, where, doc, getCountFromServer } from "firebase/firestore";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -102,10 +102,17 @@ export default function Home() {
       setPenaltyPot(total);
     });
 
-    // 4. Fetch Contributions
-    const unsubContributions = onSnapshot(collection(db, "contributions"), (snap) => {
-      setContributionsTotal(snap.size * 15);
-    });
+    // 4. Fetch Contributions (Count Only) - Optimized
+    const fetchContributionCount = async () => {
+      try {
+        const countSnap = await getCountFromServer(collection(db, "contributions"));
+        setContributionsTotal(countSnap.data().count * 15);
+      } catch (e) {
+        console.error("Error fetching contributions count", e);
+      }
+    };
+    fetchContributionCount();
+    // Re-fetch on focus or interval if needed, but for now just on mount is fine for optimization
 
     // 5. Fetch Expenses
     const unsubExpenses = onSnapshot(collection(db, "expenses"), (snap) => {
@@ -120,7 +127,7 @@ export default function Home() {
       }
     });
 
-    // 4. Fetch Votes (for potential next event)
+    // 7. Fetch Votes and Events for Logic
     const unsubVotes = onSnapshot(collection(db, "stammtisch_votes"), (snap) => {
       const data = snap.docs.map(doc => doc.data() as StammtischVote);
       setVotes(data);
@@ -142,9 +149,9 @@ export default function Home() {
 
     return () => {
       unsubMembers();
+      unsubPoints();
       unsubEvents();
       unsubPenalties();
-      unsubContributions();
       unsubExpenses();
       unsubConfig();
       unsubVotes();

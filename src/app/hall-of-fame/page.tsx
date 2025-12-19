@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, onSnapshot } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Crown, Medal, Banknote, Calendar, Coins } from "lucide-react";
 import type { Member, Donation, Penalty, SetEvent } from "@/types";
@@ -23,21 +23,19 @@ export default function HallOfFamePage() {
     useEffect(() => {
         const fetchAll = async () => {
             try {
-                // 1. Members
-                const memSnap = await getDocs(collection(db, "members"));
+                // Parallel Fetching for maximum speed
+                const [memSnap, donSnap, penSnap, evSnap] = await Promise.all([
+                    getDocs(collection(db, "members")),
+                    getDocs(collection(db, "donations")),
+                    getDocs(collection(db, "penalties")),
+                    getDocs(collection(db, "set_events"))
+                ]);
+
                 const members = memSnap.docs.map(d => ({ id: d.id, ...d.data() } as Member));
                 const memberMap = new Map(members.map(m => [m.id, m]));
 
-                // 2. Donations
-                const donSnap = await getDocs(collection(db, "donations"));
                 const donations = donSnap.docs.map(d => d.data() as Donation);
-
-                // 3. Penalties
-                const penSnap = await getDocs(collection(db, "penalties"));
                 const penalties = penSnap.docs.map(d => d.data() as Penalty);
-
-                // 4. Events
-                const evSnap = await getDocs(collection(db, "set_events"));
                 const events = evSnap.docs.map(d => d.data() as SetEvent);
 
                 // --- PROCESS RANKINGS ---
@@ -84,15 +82,7 @@ export default function HallOfFamePage() {
             }
         };
 
-        const unsubDonations = onSnapshot(collection(db, "donations"), () => fetchAll());
-        const unsubPenalties = onSnapshot(collection(db, "penalties"), () => fetchAll());
-        const unsubEvents = onSnapshot(collection(db, "set_events"), () => fetchAll());
-
-        return () => {
-            unsubDonations();
-            unsubPenalties();
-            unsubEvents();
-        };
+        fetchAll();
     }, []);
 
     const RankCard = ({ title, icon: Icon, data, unit, colorHex, accentColor }: any) => (
