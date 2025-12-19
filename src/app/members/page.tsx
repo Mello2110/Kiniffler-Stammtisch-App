@@ -2,8 +2,16 @@
 
 import { MemberManager } from "@/components/members/MemberManager";
 import { Users, ShieldCheck } from "lucide-react";
+import { useMemo } from "react";
+import { collection, query } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import type { Member } from "@/types";
 
 export default function MembersPage() {
+    const qMembers = useMemo(() => query(collection(db, "members")), []);
+    const { data: members } = useFirestoreQuery<Member>(qMembers);
+
     return (
         <div className="max-w-4xl mx-auto space-y-10 pb-20">
             {/* Header Section */}
@@ -25,7 +33,7 @@ export default function MembersPage() {
 
                     <div className="flex items-center gap-4 text-muted-foreground">
                         <div className="flex flex-col items-end">
-                            <span className="text-2xl font-black text-foreground outfit">1337</span>
+                            <span className="text-2xl font-black text-foreground outfit">{members.length}</span>
                             <span className="text-xs uppercase font-bold tracking-widest">Members</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
