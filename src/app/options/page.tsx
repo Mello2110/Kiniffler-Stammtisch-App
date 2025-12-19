@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { collection, getDocs, deleteDoc, doc, writeBatch } from "firebase/firestore";
+import { useState, useEffect } from "react";
+import { collection, getDocs, deleteDoc, doc, writeBatch, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Trash2, AlertTriangle, Settings, Languages, Database } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const COLLECTIONS_TO_RESET = [
@@ -20,6 +21,20 @@ const COLLECTIONS_TO_RESET = [
 
 export default function OptionsPage() {
     const { dict, language, setLanguage } = useLanguage();
+    const { user } = useAuth();
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useEffect(() => {
+        const checkAdmin = async () => {
+            if (!user) return;
+            const docRef = doc(db, "members", user.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists() && docSnap.data().isAdmin) {
+                setIsAdmin(true);
+            }
+        };
+        checkAdmin();
+    }, [user]);
 
     // Reset Logic
     const [status, setStatus] = useState<string>("");
@@ -168,7 +183,8 @@ export default function OptionsPage() {
                         <div className="space-y-4 mt-auto">
                             <button
                                 onClick={handleReset}
-                                disabled={isResetting}
+                                disabled={isResetting || !isAdmin}
+                                title={!isAdmin ? "Nur für Admins verfügbar" : undefined}
                                 className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-red-900/20"
                             >
                                 <Trash2 className="w-5 h-5" />
