@@ -1,39 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { collection, query, onSnapshot, where, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import type { Member, PointEntry } from "@/types";
 import { PointsLeaderboard } from "@/components/stats/PointsLeaderboard";
 import { PointsMatrix } from "@/components/stats/PointsMatrix";
 
 export default function StatsPage() {
-    const [members, setMembers] = useState<Member[]>([]);
-    const [points, setPoints] = useState<PointEntry[]>([]);
     const [isLoadingMembers, setIsLoadingMembers] = useState(true);
     const currentYear = new Date().getFullYear();
 
+    // Fetch members
+    const qMembers = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
+    const { data: members, loading: membersLoading } = useFirestoreQuery<Member>(qMembers);
+
+    // Fetch points
+    const qPoints = useMemo(() => query(collection(db, "points"), where("year", "==", currentYear)), [currentYear]);
+    const { data: points } = useFirestoreQuery<PointEntry>(qPoints);
+
     useEffect(() => {
-        // Fetch members
-        const qMembers = query(collection(db, "members"), orderBy("name", "asc"));
-        const unsubMembers = onSnapshot(qMembers, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
-            setMembers(data);
+        if (!membersLoading) {
             setIsLoadingMembers(false);
-        });
-
-        // Fetch points
-        const qPoints = query(collection(db, "points"), where("year", "==", currentYear));
-        const unsubPoints = onSnapshot(qPoints, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PointEntry));
-            setPoints(data);
-        });
-
-        return () => {
-            unsubMembers();
-            unsubPoints();
-        };
-    }, [currentYear]);
+        }
+    }, [membersLoading]);
 
     return (
         <div className="space-y-8 pb-10">

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { collection, query, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import type { Member, Penalty } from "@/types";
 import { CashBalance } from "@/components/cash/CashBalance";
 import { ContributionTable } from "@/components/cash/ContributionTable";
@@ -18,35 +19,25 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function CashPage() {
     const { user } = useAuth();
-    const [members, setMembers] = useState<Member[]>([]);
-    const [penalties, setPenalties] = useState<Penalty[]>([]);
     const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
     const [editingPenalty, setEditingPenalty] = useState<Penalty | null>(null);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [isLoadingMembers, setIsLoadingMembers] = useState(true);
     const currentYear = new Date().getFullYear();
 
+    // Fetch real members
+    const qMembers = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
+    const { data: members, loading: membersLoading } = useFirestoreQuery<Member>(qMembers);
+
+    // Fetch penalties (Recent 50)
+    const qPenalties = useMemo(() => query(collection(db, "penalties"), orderBy("createdAt", "desc"), limit(50)), []);
+    const { data: penalties } = useFirestoreQuery<Penalty>(qPenalties);
+
     useEffect(() => {
-        // Fetch real members
-        const qMembers = query(collection(db, "members"), orderBy("name", "asc"));
-        const unsubMembers = onSnapshot(qMembers, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
-            setMembers(data);
+        if (!membersLoading) {
             setIsLoadingMembers(false);
-        });
-
-        // Fetch penalties (Recent 50)
-        const qPenalties = query(collection(db, "penalties"), orderBy("createdAt", "desc"), limit(50));
-        const unsubPenalties = onSnapshot(qPenalties, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Penalty));
-            setPenalties(data);
-        });
-
-        return () => {
-            unsubMembers();
-            unsubPenalties();
-        };
-    }, []);
+        }
+    }, [membersLoading]);
 
     return (
         <div className="space-y-8 pb-10">

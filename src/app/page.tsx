@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { collection, query, onSnapshot, orderBy, where, doc, getCountFromServer } from "firebase/firestore";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { NextEventWidget } from "@/components/dashboard/NextEventWidget";
 import { QuickActions } from "@/components/dashboard/QuickActions";
@@ -13,10 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
   const { user } = useAuth();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [events, setEvents] = useState<SetEvent[]>([]);
-  const [penalties, setPenalties] = useState<Penalty[]>([]);
-  const [votes, setVotes] = useState<StammtischVote[]>([]);
+
+  // States not handled by hook directly or derived
   const [myOpenPenalties, setMyOpenPenalties] = useState(0);
 
   // Stats
@@ -35,79 +34,114 @@ export default function Home() {
   const [seasonLeader, setSeasonLeader] = useState<{ id: string; points: number } | null>(null);
   const [hostedCount, setHostedCount] = useState(0);
 
-  useEffect(() => {
-    const currentYear = new Date().getFullYear();
+  // Queries (Memoized to prevent infinite loops in hook)
+  const qMembers = useMemo(() => query(collection(db, "members")), []);
+  const { data: members } = useFirestoreQuery<Member>(qMembers);
 
-    // 1. Fetch Members
-    const unsubMembers = onSnapshot(collection(db, "members"), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
-      setMembers(data);
-      // Note: Leader calculation is now handled by a separate Points listener
+  // 1.5 Fetch Points for Season Leader (Single Source of Truth)
+  const currentYear = new Date().getFullYear();
+  const qPoints = useMemo(() => query(collection(db, "points"), where("year", "==", currentYear)), [currentYear]);
+  const { data: pointsData } = useFirestoreQuery<PointEntry>(qPoints);
+
+  // 2. Fetch Events (Current Year Only)
+  const startOfYear = `${currentYear}-01-01`;
+  const endOfYear = `${currentYear}-12-31`;
+  const qEvents = useMemo(() => query(
+    collection(db, "set_events"),
+    where("date", ">=", startOfYear),
+    where("date", "<=", endOfYear),
+    orderBy("date", "asc")
+  ), [startOfYear, endOfYear]);
+  const { data: events } = useFirestoreQuery<SetEvent>(qEvents);
+
+  // 3. Fetch Penalties (Unpaid only for pot)
+  const qPenalties = useMemo(() => query(collection(db, "penalties"), where("isPaid", "==", false)), []);
+  const { data: penalties } = useFirestoreQuery<Penalty>(qPenalties);
+
+  // 5. Fetch Expenses
+  const qExpenses = useMemo(() => query(collection(db, "expenses")), []);
+  const { data: expensesData } = useFirestoreQuery<{ amount: number }>(qExpenses);
+
+  // 6. Fetch Config
+  useEffect(() => {
+    // Keep manual for single doc for now or create useFirestoreDoc later. 
+    // For simplicity and safety against leaks, manual with strict cleanup is fine for single doc.
+    const unsubConfig = onSnapshot(doc(db, "config", "cash"), (docSnap) => {
+      if (docSnap.exists()) {
+        setStartingBalance(docSnap.data().startingBalance || 0);
+      }
+    });
+    return () => unsubConfig();
+  }, []);
+
+  // 7. Fetch Votes
+  const qVotes = useMemo(() => query(collection(db, "stammtisch_votes")), []);
+  const { data: votes } = useFirestoreQuery<StammtischVote>(qVotes);
+
+  // 8. Fetch My Open Penalties
+  const qMyPenalties = useMemo(() => {
+    if (!user) return null;
+    return query(
+      collection(db, "penalties"),
+      where("userId", "==", user.uid),
+      where("isPaid", "==", false)
+    );
+  }, [user]);
+  const { data: myOpenPenaltiesData } = useFirestoreQuery<Penalty>(qMyPenalties);
+
+  // --- Derived State Calculations ---
+
+  // Season Leader Calculation
+  useEffect(() => {
+    // Aggregate points per user
+    const stats: Record<string, number> = {};
+    pointsData.forEach(p => {
+      stats[p.userId] = (stats[p.userId] || 0) + p.points;
     });
 
-    // 1.5 Fetch Points for Season Leader (Single Source of Truth)
-    // 1.5 Fetch Points for Season Leader (Single Source of Truth)
-    // 1.5 Fetch Points for Season Leader (Single Source of Truth)
-    const qPoints = query(collection(db, "points"), where("year", "==", currentYear));
-    const unsubPoints = onSnapshot(qPoints, (snap) => {
-      const pointsData = snap.docs.map(doc => doc.data() as PointEntry);
+    // Find leader
+    let maxPoints = -1;
+    let leaderId = "";
 
-      // Aggregate points per user
-      const stats: Record<string, number> = {};
-      pointsData.forEach(p => {
-        stats[p.userId] = (stats[p.userId] || 0) + p.points;
-      });
-
-      // Find leader
-      let maxPoints = -1;
-      let leaderId = "";
-
-      Object.entries(stats).forEach(([uid, total]) => {
-        if (total > maxPoints) {
-          maxPoints = total;
-          leaderId = uid;
-        }
-      });
-
-      if (leaderId) {
-        setSeasonLeader({ id: leaderId, points: maxPoints });
-      } else {
-        setSeasonLeader(null);
+    Object.entries(stats).forEach(([uid, total]) => {
+      if (total > maxPoints) {
+        maxPoints = total;
+        leaderId = uid;
       }
     });
 
-    // 2. Fetch Events (Current Year Only)
-    const startOfYear = `${currentYear}-01-01`;
-    const endOfYear = `${currentYear}-12-31`;
+    if (leaderId) {
+      setSeasonLeader({ id: leaderId, points: maxPoints });
+    } else {
+      setSeasonLeader(null);
+    }
+  }, [pointsData]);
 
-    const qEvents = query(
-      collection(db, "set_events"),
-      where("date", ">=", startOfYear),
-      where("date", "<=", endOfYear),
-      orderBy("date", "asc")
-    );
+  // Hosted Count Calculation
+  useEffect(() => {
+    setHostedCount(events.length);
+  }, [events]);
 
-    const unsubEvents = onSnapshot(qEvents, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SetEvent));
-      setEvents(data);
-      setHostedCount(data.length); // All fetched are in current year now
-    });
+  // Penalty Pot Calculation
+  useEffect(() => {
+    const total = penalties.reduce((sum, p) => sum + (p.amount || 0), 0);
+    setPenaltyPot(total);
+  }, [penalties]);
 
-    // 3. Fetch Penalties (Recent/Unpaid) - Optimization: Limit to recent 50 or just unpaid?
-    // Dashboard usually shows "My Open Penalties" (handled separately) and "Penalty Pot" (needs all unpaid)
-    // To calculate pot correctly, we need ALL UNPAID penalties.
-    const qPenalties = query(collection(db, "penalties"), where("isPaid", "==", false));
-    // Optimization: Don't fetch paid history here just for the pot sum
-    const unsubPenalties = onSnapshot(qPenalties, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Penalty));
-      setPenalties(data); // Note: This state now only contains UNPAID penalties. 
-      // If other UI components need history, they might break. 
-      // Checking usage: setPenaltyPot uses it. 
-      const total = data.reduce((sum, p) => sum + (p.amount || 0), 0);
-      setPenaltyPot(total);
-    });
+  // Expenses Total Calculation
+  useEffect(() => {
+    const total = expensesData.reduce((acc, doc) => acc + (doc.amount || 0), 0);
+    setExpensesTotal(total);
+  }, [expensesData]);
 
-    // 4. Fetch Contributions (Count Only) - Optimized
+  // My Open Penalties Calculation
+  useEffect(() => {
+    const total = myOpenPenaltiesData.reduce((sum, doc) => sum + (doc.amount || 0), 0);
+    setMyOpenPenalties(total);
+  }, [myOpenPenaltiesData]);
+
+  // 4. Fetch Contributions (Count Only) - Optimized
+  useEffect(() => {
     const fetchContributionCount = async () => {
       try {
         const countSnap = await getCountFromServer(collection(db, "contributions"));
@@ -117,52 +151,7 @@ export default function Home() {
       }
     };
     fetchContributionCount();
-    // Re-fetch on focus or interval if needed, but for now just on mount is fine for optimization
-
-    // 5. Fetch Expenses
-    const unsubExpenses = onSnapshot(collection(db, "expenses"), (snap) => {
-      const total = snap.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
-      setExpensesTotal(total);
-    });
-
-    // 6. Fetch Config
-    const unsubConfig = onSnapshot(doc(db, "config", "cash"), (docSnap) => {
-      if (docSnap.exists()) {
-        setStartingBalance(docSnap.data().startingBalance || 0);
-      }
-    });
-
-    // 7. Fetch Votes and Events for Logic
-    const unsubVotes = onSnapshot(collection(db, "stammtisch_votes"), (snap) => {
-      const data = snap.docs.map(doc => doc.data() as StammtischVote);
-      setVotes(data);
-    });
-
-    // 8. Fetch My Open Penalties
-    let unsubMyPenalties = () => { };
-    if (user) {
-      const qMyPenalties = query(
-        collection(db, "penalties"),
-        where("userId", "==", user.uid),
-        where("isPaid", "==", false)
-      );
-      unsubMyPenalties = onSnapshot(qMyPenalties, (snap) => {
-        const total = snap.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0);
-        setMyOpenPenalties(total);
-      });
-    }
-
-    return () => {
-      unsubMembers();
-      unsubPoints();
-      unsubEvents();
-      unsubPenalties();
-      unsubExpenses();
-      unsubConfig();
-      unsubVotes();
-      unsubMyPenalties();
-    };
-  }, [user]);
+  }, []);
 
   // Determine Next Event
   useEffect(() => {

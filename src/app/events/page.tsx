@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { collection, query, onSnapshot, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { CalendarView } from "@/components/events/CalendarView";
 import { MonthSummary } from "@/components/events/MonthSummary";
 import { DateInteractionModal } from "@/components/events/DateInteractionModal";
@@ -15,39 +16,23 @@ export default function EventsPage() {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-    const [votes, setVotes] = useState<StammtischVote[]>([]);
-    const [setEvents, setSetEvents] = useState<SetEvent[]>([]);
-    const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Fetch Data
+    const qVotes = useMemo(() => query(collection(db, "stammtisch_votes")), []);
+    const { data: votes } = useFirestoreQuery<StammtischVote>(qVotes);
+
+    const qEvents = useMemo(() => query(collection(db, "set_events")), []);
+    const { data: setEvents } = useFirestoreQuery<SetEvent>(qEvents);
+
+    const qMembers = useMemo(() => query(collection(db, "members")), []);
+    const { data: members, loading: loadingMembers } = useFirestoreQuery<Member>(qMembers);
+
     useEffect(() => {
-        // Listen for Votes
-        const votesUnsub = onSnapshot(collection(db, "stammtisch_votes"), (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StammtischVote));
-            setVotes(data);
-        });
-
-        // Listen for Set Events
-        const eventsUnsub = onSnapshot(collection(db, "set_events"), (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SetEvent));
-            setSetEvents(data);
-        });
-
-        // Fetch Members for count
-        const membersUnsub = onSnapshot(collection(db, "members"), (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
-            setMembers(data);
-        });
-
-        setLoading(false);
-
-        return () => {
-            votesUnsub();
-            eventsUnsub();
-            membersUnsub();
-        };
-    }, []);
+        if (!loadingMembers) {
+            setLoading(false);
+        }
+    }, [loadingMembers]);
 
     // Filter for current month view
     const currentMonthVotes = votes.filter(v =>
