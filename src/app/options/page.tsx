@@ -101,93 +101,99 @@ export default function OptionsPage() {
                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="grid gap-8 lg:grid-cols-2 items-stretch">
                 {/* Language Settings */}
-                <section className="space-y-4">
+                <section className="flex flex-col space-y-4">
                     <div className="flex items-center gap-2 text-xl font-bold">
                         <Languages className="w-6 h-6 text-primary" />
                         {dict.options.language}
                     </div>
-                    <p className="text-muted-foreground">{dict.options.languageDesc}</p>
+                    <p className="text-muted-foreground min-h-[3rem] hidden md:block">{dict.options.languageDesc}</p>
 
-                    <div className="grid grid-cols-3 gap-4">
-                        <button
-                            onClick={() => setLanguage('de')}
-                            className={cn(
-                                "p-4 rounded-2xl border transition-all hover:border-primary/50 flex flex-col items-center gap-2",
-                                language === 'de' ? "border-primary bg-primary/10" : "bg-card"
-                            )}
-                        >
-                            <span className="text-2xl">🇩🇪</span>
-                            <span className="font-bold">Deutsch</span>
-                        </button>
-                        <button
-                            onClick={() => setLanguage('en')}
-                            className={cn(
-                                "p-4 rounded-2xl border transition-all hover:border-primary/50 flex flex-col items-center gap-2",
-                                language === 'en' ? "border-primary bg-primary/10" : "bg-card"
-                            )}
-                        >
-                            <span className="text-2xl">🇺🇸</span>
-                            <span className="font-bold">English</span>
-                        </button>
-                        <button
-                            onClick={() => setLanguage('pl')}
-                            className={cn(
-                                "p-4 rounded-2xl border transition-all hover:border-primary/50 flex flex-col items-center gap-2",
-                                language === 'pl' ? "border-primary bg-primary/10" : "bg-card"
-                            )}
-                        >
-                            <span className="text-2xl">🇵🇱</span>
-                            <span className="font-bold">Polski</span>
-                        </button>
+                    <div className="flex-1 border border-border bg-card/30 p-8 rounded-3xl flex flex-col justify-center gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                            <button
+                                onClick={() => setLanguage('de')}
+                                className={cn(
+                                    "aspect-square p-4 rounded-2xl border-2 transition-all hover:border-primary/50 flex flex-col items-center justify-center gap-3",
+                                    language === 'de' ? "border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/10" : "border-border bg-card hover:bg-muted/50"
+                                )}
+                            >
+                                <span className="text-4xl">🇩🇪</span>
+                                <span className="font-bold">Deutsch</span>
+                            </button>
+                            <button
+                                onClick={() => setLanguage('en')}
+                                className={cn(
+                                    "aspect-square p-4 rounded-2xl border-2 transition-all hover:border-primary/50 flex flex-col items-center justify-center gap-3",
+                                    language === 'en' ? "border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/10" : "border-border bg-card hover:bg-muted/50"
+                                )}
+                            >
+                                <span className="text-4xl">🇺🇸</span>
+                                <span className="font-bold">English</span>
+                            </button>
+                            <button
+                                onClick={() => setLanguage('pl')}
+                                className={cn(
+                                    "aspect-square p-4 rounded-2xl border-2 transition-all hover:border-primary/50 flex flex-col items-center justify-center gap-3",
+                                    language === 'pl' ? "border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/10" : "border-border bg-card hover:bg-muted/50"
+                                )}
+                            >
+                                <span className="text-4xl">🇵🇱</span>
+                                <span className="font-bold">Polski</span>
+                            </button>
+                        </div>
                     </div>
                 </section>
 
                 {/* Data Management */}
-                <section className="space-y-4">
+                <section className="flex flex-col space-y-4">
                     <div className="flex items-center gap-2 text-xl font-bold">
                         <Database className="w-6 h-6 text-red-500" />
                         {dict.options.data}
                     </div>
-                    <p className="text-muted-foreground">{dict.options.dataDesc}</p>
+                    <p className="text-muted-foreground min-h-[3rem] hidden md:block">{dict.options.dataDesc}</p>
 
-                    <div className="border border-red-500/50 bg-red-500/5 p-6 rounded-3xl space-y-4">
-                        <h3 className="font-bold text-red-500 flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5" />
-                            {dict.options.resetTitle}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                            {dict.options.resetDesc}
-                        </p>
+                    <div className="flex-1 border border-red-500/50 bg-red-500/5 p-8 rounded-3xl flex flex-col justify-between space-y-6">
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-red-500 flex items-center gap-2 text-lg">
+                                <AlertTriangle className="w-6 h-6" />
+                                {dict.options.resetTitle}
+                            </h3>
+                            <p className="text-muted-foreground leading-relaxed">
+                                {dict.options.resetDesc}
+                            </p>
+                        </div>
 
-                        <button
-                            onClick={handleReset}
-                            disabled={isResetting}
-                            className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            {isResetting ? dict.options.resetProcessing : dict.options.resetBtn}
-                        </button>
+                        <div className="space-y-4 mt-auto">
+                            <button
+                                onClick={handleReset}
+                                disabled={isResetting}
+                                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-red-900/20"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                                {isResetting ? dict.options.resetProcessing : dict.options.resetBtn}
+                            </button>
 
-                        {/* Mini Logs */}
-                        {logs.length > 0 && (
-                            <div className="bg-black/40 p-3 rounded-lg border font-mono text-xs h-32 overflow-y-auto">
-                                {logs.map((log, i) => (
-                                    <div key={i} className="py-0.5">
-                                        {log.startsWith("✅") ? <span className="text-green-400">{log}</span> :
-                                            log.startsWith("❌") ? <span className="text-red-400">{log}</span> :
-                                                <span className="text-muted-foreground">{log}</span>}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                            {/* Mini Logs */}
+                            {logs.length > 0 && (
+                                <div className="bg-black/40 p-3 rounded-lg border font-mono text-xs h-32 overflow-y-auto">
+                                    {logs.map((log, i) => (
+                                        <div key={i} className="py-0.5">
+                                            {log.startsWith("✅") ? <span className="text-green-400">{log}</span> :
+                                                log.startsWith("❌") ? <span className="text-red-400">{log}</span> :
+                                                    <span className="text-muted-foreground">{log}</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
-                        {status && (
-                            <div className={`text-center font-bold text-sm ${status.includes("Error") ? "text-red-500" : "text-green-500"}`}>
-                                {status}
-                            </div>
-                        )}
+                            {status && (
+                                <div className={`text-center font-bold text-sm ${status.includes("Error") ? "text-red-500" : "text-green-500"}`}>
+                                    {status}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
             </div>
