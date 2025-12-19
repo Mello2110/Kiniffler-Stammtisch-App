@@ -2,13 +2,17 @@
 
 :root {
   /* HSL Color Palette - Dark Mode First */
-  --background: 224 71% 4%; /* #020617 (Slate 950) */
-  --foreground: 210 40% 98%; /* User requested minimal dark theme */
-  
-  --primary: 262 83% 58%; /* A vibrant purple/violet for primary actions */
+  --background: 224 71% 4%;
+  /* #020617 (Slate 950) */
+  --foreground: 210 40% 98%;
+  /* User requested minimal dark theme */
+
+  --primary: 262 83% 58%;
+  /* A vibrant purple/violet for primary actions */
   --primary-foreground: 210 40% 98%;
 
-  --secondary: 217 33% 17%; /* Slate 900 for cards/sections */
+  --secondary: 217 33% 17%;
+  /* Slate 900 for cards/sections */
   --secondary-foreground: 210 40% 98%;
 
   --muted: 217 33% 17%;
@@ -33,17 +37,43 @@
   --color-muted-foreground: hsl(var(--muted-foreground));
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
-  
+
   --font-sans: var(--font-inter);
   --font-heading: var(--font-outfit);
 }
 
-body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Global Input Style - Glassmorphism like Landing Page */
+  input,
+  textarea,
+  select {
+    @apply bg-secondary/20 border border-secondary/50 backdrop-blur-sm rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-300;
+  }
+
+  /* Global Button Hover Effects for specific classes */
+  /* We can't safely target ALL buttons without breaking layout, but we can set defaults for common interactive elements if they lack specific overrides */
 }
 
-h1, h2, h3, h4, h5, h6 {
+@layer components {
+
+  /* Enforce "Card" look globally if they use common card classes or just div with specific bg */
+  .card,
+  .glass-panel {
+    @apply bg-secondary/30 backdrop-blur-md border border-secondary/50 rounded-2xl shadow-xl;
+  }
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
+  @apply tracking-tight;
 }
