@@ -108,13 +108,17 @@ export function Sidebar({ className }: { className?: string }) {
                         >
                             {title}
                         </h1>
-                        <Beer
+                        <button
                             onClick={() => setIsEditing(true)}
-                            className={cn(
-                                "ml-2 h-6 w-6 text-primary shrink-0 transition-transform",
-                                "cursor-pointer hover:scale-110 hover:drop-shadow-sm"
-                            )}
-                        />
+                            className="ml-2 p-1 rounded-md hover:bg-primary/20 transition-colors group/edit"
+                            aria-label="Edit Title"
+                        >
+                            <Beer
+                                className={cn(
+                                    "h-6 w-6 text-primary shrink-0 transition-transform group-hover/edit:scale-110",
+                                )}
+                            />
+                        </button>
                     </div>
                 )}
             </div>
