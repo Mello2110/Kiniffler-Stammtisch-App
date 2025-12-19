@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
     LayoutDashboard,
     Calendar,
@@ -28,11 +30,30 @@ export function Sidebar({ className }: { className?: string }) {
 
     const [title, setTitle] = useState("Stammtisch");
     const [isEditing, setIsEditing] = useState(false);
+    const [memberName, setMemberName] = useState<string>("");
+    const [showEmail, setShowEmail] = useState(true);
 
     useEffect(() => {
         const stored = localStorage.getItem("sidebarTitle");
         if (stored) setTitle(stored);
     }, []);
+
+    useEffect(() => {
+        const fetchMemberName = async () => {
+            if (user?.uid) {
+                try {
+                    const docRef = doc(db, "members", user.uid);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        setMemberName(docSnap.data().name || "Member");
+                    }
+                } catch (error) {
+                    console.error("Error fetching member name:", error);
+                }
+            }
+        };
+        fetchMemberName();
+    }, [user]);
 
     const handleSave = () => {
         if (!title.trim()) setTitle("Stammtisch"); // Fallback
@@ -43,9 +64,6 @@ export function Sidebar({ className }: { className?: string }) {
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") handleSave();
         if (e.key === "Escape") {
-            // Revert to saved or keep current? Usually cancel reverts.
-            // But if I didn't verify "cancel reverts" requirement, I'll essentially just close or reload storage.
-            // Requirement says "ESC -> Abbrechen". So revert.
             const stored = localStorage.getItem("sidebarTitle") || "Stammtisch";
             setTitle(stored);
             setIsEditing(false);
@@ -114,9 +132,14 @@ export function Sidebar({ className }: { className?: string }) {
             </div>
             <div className="border-t border-border p-4">
                 {user && (
-                    <div className="mb-3 flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground bg-muted/50 rounded-lg overflow-hidden">
+                    <div
+                        onClick={() => setShowEmail(!showEmail)}
+                        className="mb-3 flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground bg-muted/50 rounded-lg overflow-hidden cursor-pointer hover:bg-muted/80 transition-colors select-none"
+                    >
                         <UserCircle className="h-4 w-4 shrink-0" />
-                        <span className="truncate" title={user.email || ""}>{user.email}</span>
+                        <span className="truncate">
+                            {showEmail ? (user.email || "") : (memberName || "Member")}
+                        </span>
                     </div>
                 )}
 
