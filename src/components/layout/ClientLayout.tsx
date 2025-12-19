@@ -13,12 +13,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();
 
     // Pages that should have the full dashboard layout
-    // If user is logged in, "/" becomes dashboard. If not, it's landing page (simple layout)
     const isLoginPage = pathname === "/login";
-    const isLandingPage = pathname === "/" && !user;
+    // Landing page is always simple layout, regardless of auth
+    const isLandingPage = pathname === "/";
 
-    // Combine conditions for simple layout (Login or Landing)
-    const showSimpleLayout = isLoginPage || (isLandingPage && !loading);
+    // Combine conditions for simple layout
+    const showSimpleLayout = isLoginPage || isLandingPage;
 
     return (
         <AuthGuard>
