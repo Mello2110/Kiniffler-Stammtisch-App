@@ -13,8 +13,8 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
     // Default to German if strictly requested, but English is safer default. User asked for German/English/Polish.
-    // Using 'de' as default since existing text was German mix.
-    const [language, setLanguageState] = useState<Language>('de');
+    // Using 'en' as default since existing text was German mix.
+    const [language, setLanguageState] = useState<Language>('en');
 
     useEffect(() => {
         const stored = localStorage.getItem('stammtisch-lang') as Language;
