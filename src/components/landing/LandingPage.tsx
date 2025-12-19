@@ -75,69 +75,93 @@ export const LandingPage = () => {
                 </div>
 
                 <footer className="absolute bottom-6 text-sm text-muted-foreground opacity-60">
-                    &copy; {new Date().getFullYear()} KANPAI App
+                    {/* Moved to bottom section */}
                 </footer>
             </section>
 
 
             {/* --- SECTION 2: FEATURES --- */}
             <section className="h-screen w-full snap-start flex flex-col items-center justify-center relative overflow-hidden bg-background px-4 md:px-6">
-                {/* Background Decor */}
-                <div className="absolute bottom-0 right-1/2 translate-x-1/2 w-[800px] h-[500px] bg-accent/10 blur-[120px] rounded-full pointer-events-none opacity-40" />
+                {/* Background Decor - Deeper/More Detailed */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
 
-                <div className="z-10 w-full max-w-6xl">
-                    <h2 className="text-3xl md:text-5xl font-heading font-bold mb-12 text-center tracking-tight text-foreground">
-                        ✨ KANPAI Features
+                <div className="z-10 w-full max-w-6xl flex flex-col items-center">
+                    <h2 className="text-3xl md:text-5xl font-heading font-bold mb-12 text-center tracking-tight text-foreground flex items-center gap-4">
+                        <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden shadow-lg border-2 border-primary/20">
+                            <Image
+                                src="/landing-icon.jpg"
+                                alt="KANPAI Logo"
+                                fill
+                                className="object-cover"
+                            />
+                        </div>
+                        KANPAI Features
                     </h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
                         {/* Card 1 */}
-                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/20 backdrop-blur-sm hover:bg-secondary/30 transition-all duration-300 hover:scale-105 hover:shadow-xl group">
-                            <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                                <Trophy className="w-6 h-6" />
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <div className="relative z-10">
+                                <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
+                                    <Trophy className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">Points & Leaderboard</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                    Track every point, penalty & vote realtime. Season Leaderboards + Hall of Fame glory.
+                                </p>
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Points & Leaderboard</h3>
-                            <p className="text-muted-foreground text-sm leading-relaxed">
-                                Track every point, penalty & vote realtime. Season Leaderboards + Hall of Fame glory.
-                            </p>
                         </div>
 
                         {/* Card 2 */}
-                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/20 backdrop-blur-sm hover:bg-secondary/30 transition-all duration-300 hover:scale-105 hover:shadow-xl group">
-                            <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                                <Calendar className="w-6 h-6" />
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <div className="relative z-10">
+                                <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
+                                    <Calendar className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">Event Management</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                    Set meetups with time/location. Next event dashboard + copy-to-maps button.
+                                </p>
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Event Management</h3>
-                            <p className="text-muted-foreground text-sm leading-relaxed">
-                                Set meetups with time/location. Next event dashboard + copy-to-maps button.
-                            </p>
                         </div>
 
                         {/* Card 3 */}
-                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/20 backdrop-blur-sm hover:bg-secondary/30 transition-all duration-300 hover:scale-105 hover:shadow-xl group">
-                            <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                                <Users className="w-6 h-6" />
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <div className="relative z-10">
+                                <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
+                                    <Users className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">Member Management</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                    Complete user profiles + avatars. Permissions + role-based access.
+                                </p>
                             </div>
-                            <h3 className="text-xl font-bold mb-2">Member Management</h3>
-                            <p className="text-muted-foreground text-sm leading-relaxed">
-                                Complete user profiles + avatars. Permissions + role-based access.
-                            </p>
                         </div>
 
                         {/* Card 4 */}
-                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/20 backdrop-blur-sm hover:bg-secondary/30 transition-all duration-300 hover:scale-105 hover:shadow-xl group">
-                            <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                                <Smartphone className="w-6 h-6" />
+                        <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <div className="relative z-10">
+                                <div className="mb-4 text-primary bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors shadow-inner">
+                                    <Smartphone className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">PWA Experience</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                    Install as native app. Fullscreen, offline-ready. No browser chrome - pure app feel.
+                                </p>
                             </div>
-                            <h3 className="text-xl font-bold mb-2">PWA Experience</h3>
-                            <p className="text-muted-foreground text-sm leading-relaxed">
-                                Install as native app. Fullscreen, offline-ready. No browser chrome - pure app feel.
-                            </p>
                         </div>
                     </div>
+
+                    <footer className="mt-16 text-sm text-muted-foreground opacity-60">
+                        &copy; 2025 KANPAI App
+                    </footer>
                 </div>
             </section>
-
         </div>
     );
 };
