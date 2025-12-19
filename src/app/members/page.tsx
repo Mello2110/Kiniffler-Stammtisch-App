@@ -6,9 +6,11 @@ import { useMemo } from "react";
 import { collection, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { Member } from "@/types";
 
 export default function MembersPage() {
+    const { dict } = useLanguage();
     const qMembers = useMemo(() => query(collection(db, "members")), []);
     const { data: members } = useFirestoreQuery<Member>(qMembers);
 
@@ -20,21 +22,20 @@ export default function MembersPage() {
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
                             <ShieldCheck className="h-3 w-3" />
-                            Community
+                            {dict.headers.members.badge}
                         </div>
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
-                            Stammtisch <span className="text-primary italic">Crew</span>
+                            {dict.headers.members.title} <span className="text-primary italic">{dict.headers.members.highlight}</span>
                         </h1>
                         <p className="text-muted-foreground text-lg leading-relaxed max-w-xl">
-                            Hier kannst du die Köpfe hinter dem Tisch verwalten.
-                            Nur echte Originale sind erlaubt!
+                            {dict.headers.members.subtext}
                         </p>
                     </div>
 
                     <div className="flex items-center gap-4 text-muted-foreground">
                         <div className="flex flex-col items-end">
                             <span className="text-2xl font-black text-foreground outfit">{members.length}</span>
-                            <span className="text-xs uppercase font-bold tracking-widest">Members</span>
+                            <span className="text-xs uppercase font-bold tracking-widest">{dict.members.countLabel}</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
                         <Users className="h-8 w-8 opacity-20" />

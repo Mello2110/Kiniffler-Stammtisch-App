@@ -11,6 +11,7 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Users, Calendar, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity } from "lucide-react";
 import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Home() {
   const { user } = useAuth();
@@ -145,31 +146,32 @@ export default function Home() {
 
   }, [events, votes, todayStr]);
 
+  const { dict } = useLanguage();
+
   const currentCashBalance = startingBalance + contributionsTotal + penaltyPot - expensesTotal;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header Section */}
       {/* Header Section */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
         <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-4 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
               <LayoutDashboard className="h-3 w-3" />
-              Overview
+              {dict.headers.dashboard.badge}
             </div>
             <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
-              Stammtisch <span className="text-primary italic">Dashboard</span>
+              {dict.headers.dashboard.title} <span className="text-primary italic">{dict.headers.dashboard.highlight}</span>
             </h1>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Willkommen zurück! Hier ist dein Überblick über anstehende Events, Finanzen und aktuelle News.
+              {dict.headers.dashboard.subtext}
             </p>
           </div>
 
           <div className="flex items-center gap-4 text-muted-foreground">
             <div className="flex flex-col items-end">
               <span className="text-2xl font-black text-foreground outfit">{new Date().getFullYear()}</span>
-              <span className="text-xs uppercase font-bold tracking-widest">Season</span>
+              <span className="text-xs uppercase font-bold tracking-widest">{dict.dashboard.season}</span>
             </div>
             <div className="h-10 w-px bg-border" />
             <Activity className="h-8 w-8 opacity-20" />
@@ -190,48 +192,48 @@ export default function Home() {
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link href="/members">
             <StatCard
-              title="Total Members"
+              title={dict.dashboard.widgets.members.title}
               value={members.length}
               icon={Users}
-              description="Active regular members"
+              description={dict.dashboard.widgets.members.desc}
               className="hover:border-primary/50 transition-colors h-full cursor-pointer"
             />
           </Link>
 
           <Link href="/cash">
             <StatCard
-              title="My Open Penalties"
+              title={dict.dashboard.widgets.penalties.title}
               value={`€${myOpenPenalties.toFixed(2)}`}
               icon={AlertCircle}
-              description="Unpaid fines"
+              description={dict.dashboard.widgets.penalties.desc}
               className={`transition-colors h-full cursor-pointer ${myOpenPenalties > 0 ? "border-orange-500/50 hover:bg-orange-500/10" : "hover:border-primary/50"}`}
             />
           </Link>
 
           <Link href="/cash">
             <StatCard
-              title="Current Cash Balance"
+              title={dict.dashboard.widgets.cash.title}
               value={`€${currentCashBalance.toFixed(2)}`}
               icon={Beer}
-              description="Available funds"
+              description={dict.dashboard.widgets.cash.desc}
               className="border-red-500/20 hover:border-red-500/50 transition-colors h-full cursor-pointer"
             />
           </Link>
 
           <StatCard
-            title="Season Leader"
+            title={dict.dashboard.widgets.seasonLeader.title}
             value={seasonLeader ? (members.find(m => m.id === seasonLeader.id)?.name || "Unknown") : "-"}
             icon={Trophy}
-            description={seasonLeader ? `${seasonLeader.points} Points` : "No points yet"}
+            description={seasonLeader ? `${seasonLeader.points} ${dict.dashboard.widgets.seasonLeader.desc}` : dict.dashboard.widgets.seasonLeader.noPoints}
             className="border-yellow-500/20 hover:border-yellow-500/50 transition-colors h-full cursor-pointer"
           />
 
           <Link href="/hall-of-fame">
             <StatCard
-              title="Hall of Fame"
-              value="Legends"
+              title={dict.dashboard.widgets.hof.title}
+              value={dict.dashboard.widgets.hof.value}
               icon={Crown}
-              description="Top Donors & Hosts"
+              description={dict.dashboard.widgets.hof.desc}
               className="border-purple-500/20 hover:border-purple-500/50 transition-colors h-full cursor-pointer"
             />
           </Link>
@@ -240,7 +242,7 @@ export default function Home() {
 
       {/* Quick Actions */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+        <h2 className="text-xl font-semibold mb-4">{dict.dashboard.quickActions}</h2>
         <QuickActions />
       </div>
     </div>

@@ -10,10 +10,12 @@ import { DateInteractionModal } from "@/components/events/DateInteractionModal";
 import type { StammtischVote, SetEvent, Member } from "@/types";
 import { startOfMonth, endOfMonth, min, max, format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Calendar, PartyPopper } from "lucide-react";
 
 export default function EventsPage() {
     const { user } = useAuth();
+    const { dict } = useLanguage();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -52,21 +54,20 @@ export default function EventsPage() {
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
                             <Calendar className="h-3 w-3" />
-                            Planning
+                            {dict.headers.events.badge}
                         </div>
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
-                            Upcoming <span className="text-primary italic">Meetups</span>
+                            {dict.headers.events.title} <span className="text-primary italic">{dict.headers.events.highlight}</span>
                         </h1>
                         <p className="text-muted-foreground text-lg leading-relaxed">
-                            Verpasse keine Runde. Stimme für Termine ab und plane das nächste Treffen.
-                            Gemeinsam statt einsam!
+                            {dict.headers.events.subtext}
                         </p>
                     </div>
 
                     <div className="flex items-center gap-4 text-muted-foreground">
                         <div className="flex flex-col items-end">
                             <span className="text-2xl font-black text-foreground outfit">{setEvents.length}</span>
-                            <span className="text-xs uppercase font-bold tracking-widest">Events</span>
+                            <span className="text-xs uppercase font-bold tracking-widest">{dict.sidebar.events}</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
                         <PartyPopper className="h-8 w-8 opacity-20" />

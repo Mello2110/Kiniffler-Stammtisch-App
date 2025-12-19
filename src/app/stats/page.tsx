@@ -8,8 +8,10 @@ import type { Member, PointEntry } from "@/types";
 import { PointsLeaderboard } from "@/components/stats/PointsLeaderboard";
 import { PointsMatrix } from "@/components/stats/PointsMatrix";
 import { Trophy, BarChart3 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function StatsPage() {
+    const { dict } = useLanguage();
     const [isLoadingMembers, setIsLoadingMembers] = useState(true);
     const currentYear = new Date().getFullYear();
 
@@ -36,21 +38,20 @@ export default function StatsPage() {
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
                             <Trophy className="h-3 w-3" />
-                            Leaderboard
+                            {dict.headers.stats.badge}
                         </div>
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
-                            Season <span className="text-primary italic">Stats</span>
+                            {dict.headers.stats.title} <span className="text-primary italic">{dict.headers.stats.highlight}</span>
                         </h1>
                         <p className="text-muted-foreground text-lg leading-relaxed">
-                            Die nackten Zahlen. Wer führt, wer zahlt, wer trinkt?
-                            Hier gibt es keine Ausreden, nur Fakten.
+                            {dict.headers.stats.subtext}
                         </p>
                     </div>
 
                     <div className="flex items-center gap-4 text-muted-foreground">
                         <div className="flex flex-col items-end">
                             <span className="text-2xl font-black text-foreground outfit">{currentYear}</span>
-                            <span className="text-xs uppercase font-bold tracking-widest">Season</span>
+                            <span className="text-xs uppercase font-bold tracking-widest">{dict.stats.season}</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
                         <BarChart3 className="h-8 w-8 opacity-20" />
@@ -63,16 +64,16 @@ export default function StatsPage() {
 
             {/* Leaderboard */}
             {isLoadingMembers ? (
-                <div className="p-8 text-center text-muted-foreground">Lade Bestenliste...</div>
+                <div className="p-8 text-center text-muted-foreground">{dict.stats.loading}</div>
             ) : (
                 <PointsLeaderboard points={points} members={members} />
             )}
 
             {/* Matrix Table */}
             <section>
-                <h2 className="text-xl font-semibold mb-4">Points Matrix ({currentYear})</h2>
+                <h2 className="text-xl font-semibold mb-4">{dict.stats.matrixTitle} ({currentYear})</h2>
                 {isLoadingMembers ? (
-                    <div className="p-8 text-center text-muted-foreground">Lade Matrix...</div>
+                    <div className="p-8 text-center text-muted-foreground">{dict.stats.matrixLoading}</div>
                 ) : (
                     <PointsMatrix members={members} points={points} currentYear={currentYear} />
                 )}

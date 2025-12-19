@@ -21,6 +21,61 @@ export const dictionaries = {
             hof: { title: "Hall of", highlight: "Fame", badge: "Legends", subtext: "Honoring the top contributors, payers, and hosts of our community." },
             options: { title: "App", highlight: "Options", badge: "Settings", subtext: "Customize your experience and manage data." }
         },
+        dashboard: {
+            season: "Season",
+            quickActions: "Quick Actions",
+            widgets: {
+                members: { title: "Total Members", desc: "Active regular members" },
+                penalties: { title: "My Open Penalties", desc: "Unpaid fines" },
+                cash: { title: "Current Cash Balance", desc: "Available funds" },
+                seasonLeader: { title: "Season Leader", desc: "Points", noPoints: "No points yet" },
+                hof: { title: "Hall of Fame", value: "Legends", desc: "Top Donors & Hosts" }
+            }
+        },
+        events: {
+            modal: {
+                titleFormat: "EEEE, MMMM do",
+                subtitle: "What would you like to do?",
+                vote: { title: "Vote for Stammtisch", desc: "Vote for this date" },
+                unvote: { title: "Unvote", desc: "Remove your vote" },
+                addEvent: { title: "Add Set Event", desc: "Add a birthday or manual event" },
+                form: {
+                    title: "Event Title", placeholder: "e.g., Birthday",
+                    host: "Host", neutral: "Neutral",
+                    time: "Time", location: "Location", venuePlaceholder: "Venue...",
+                    desc: "Description", descPlaceholder: "Details...",
+                    back: "Back", create: "Create Event", saving: "Saving..."
+                }
+            }
+        },
+        auth: {
+            welcome: "Welcome back",
+            registerTitle: "Create Account",
+            welcomeDesc: "Sign in to continue",
+            registerDesc: "Join the Stammtisch crew",
+            email: "Email Address",
+            password: "Password",
+            loginBtn: "Sign In",
+            registerBtn: "Register",
+            or: "Or",
+            toggleLogin: "Already have an account? Sign In",
+            toggleRegister: "No account? Register",
+            errors: {
+                invalid: "Invalid email or password.",
+                emailInUse: "Email already in use.",
+                weakPass: "Password must be at least 6 characters.",
+                default: "An error occurred."
+            }
+        },
+        stats: {
+            season: "Season",
+            loading: "Loading Leaderboard...",
+            matrixTitle: "Points Matrix",
+            matrixLoading: "Loading Matrix..."
+        },
+        members: {
+            countLabel: "Members"
+        },
         options: {
             language: "Language",
             languageDesc: "Choose your preferred interface language.",
@@ -57,6 +112,61 @@ export const dictionaries = {
             hof: { title: "Hall of", highlight: "Fame", badge: "Legenden", subtext: "Ehre, wem Ehre gebührt. Hier feiern wir die Top-Performer." },
             options: { title: "App", highlight: "Optionen", badge: "Einstellungen", subtext: "Passe deine Erfahrung an und verwalte Daten." }
         },
+        dashboard: {
+            season: "Saison",
+            quickActions: "Schnellzugriff",
+            widgets: {
+                members: { title: "Mitglieder Gesamt", desc: "Aktive Stammgäste" },
+                penalties: { title: "Meine offenen Strafen", desc: "Unbezahlte Bußen" },
+                cash: { title: "Aktueller Kassenstand", desc: "Verfügbares Guthaben" },
+                seasonLeader: { title: "Saison-Spitze", desc: "Punkte", noPoints: "Noch keine Punkte" },
+                hof: { title: "Ruhmeshalle", value: "Legenden", desc: "Top Spender & Gastgeber" }
+            }
+        },
+        events: {
+            modal: {
+                titleFormat: "EEEE, d. MMMM",
+                subtitle: "Was möchtest du tun?",
+                vote: { title: "Für Termin stimmen", desc: "Stimme für diesen Tag ab" },
+                unvote: { title: "Stimme entfernen", desc: "Deine Stimme zurückziehen" },
+                addEvent: { title: "Event hinzufügen", desc: "Geburtstag oder manuelles Event" },
+                form: {
+                    title: "Event Titel", placeholder: "z.B. Geburtstag",
+                    host: "Gastgeber", neutral: "Neutral",
+                    time: "Uhrzeit", location: "Ort", venuePlaceholder: "Lokal...",
+                    desc: "Beschreibung", descPlaceholder: "Details...",
+                    back: "Zurück", create: "Event erstellen", saving: "Speichere..."
+                }
+            }
+        },
+        auth: {
+            welcome: "Willkommen zurück",
+            registerTitle: "Konto erstellen",
+            welcomeDesc: "Melde dich an, um fortzufahren",
+            registerDesc: "Werde Teil der Stammtisch-Runde",
+            email: "E-Mail Adresse",
+            password: "Passwort",
+            loginBtn: "Anmelden",
+            registerBtn: "Registrieren",
+            or: "Oder",
+            toggleLogin: "Bereits ein Konto? Anmelden",
+            toggleRegister: "Noch kein Konto? Registrieren",
+            errors: {
+                invalid: "Ungültige E-Mail oder Passwort.",
+                emailInUse: "Diese E-Mail wird bereits verwendet.",
+                weakPass: "Passwort muss mindestens 6 Zeichen lang sein.",
+                default: "Ein Fehler ist aufgetreten."
+            }
+        },
+        stats: {
+            season: "Saison",
+            loading: "Lade Bestenliste...",
+            matrixTitle: "Punktematrix",
+            matrixLoading: "Lade Matrix..."
+        },
+        members: {
+            countLabel: "Mitglieder"
+        },
         options: {
             language: "Sprache",
             languageDesc: "Wähle deine bevorzugte Sprache.",
@@ -92,6 +202,61 @@ export const dictionaries = {
             members: { title: "Ekipa", highlight: "Stammtisch", badge: "Społeczność", subtext: "Zarządzaj głowami przy stole. Tylko prawdziwe oryginały!" },
             hof: { title: "Aleja", highlight: "Sław", badge: "Legendy", subtext: "Honorujemy najlepszych darczyńców, płatników i gospodarzy." },
             options: { title: "Opcje", highlight: "Aplikacji", badge: "Ustawienia", subtext: "Dostosuj swoje doświadczenie i zarządzaj danymi." }
+        },
+        dashboard: {
+            season: "Sezon",
+            quickActions: "Szybkie Akcje",
+            widgets: {
+                members: { title: "Łącznie Członków", desc: "Aktywni bywalcy" },
+                penalties: { title: "Moje Kary", desc: "Niezapłacone grzywny" },
+                cash: { title: "Stan Kasy", desc: "Dostępne środki" },
+                seasonLeader: { title: "Lider Sezonu", desc: "Punkty", noPoints: "Brak punktów" },
+                hof: { title: "Aleja Sław", value: "Legendy", desc: "Top Darczyńcy" }
+            }
+        },
+        events: {
+            modal: {
+                titleFormat: "EEEE, d MMMM",
+                subtitle: "Co chciałbyś zrobić?",
+                vote: { title: "Głosuj na termin", desc: "Oddaj głos na tę datę" },
+                unvote: { title: "Cofnij głos", desc: "Usuń swój głos" },
+                addEvent: { title: "Dodaj Wydarzenie", desc: "Dodaj urodziny lub inne wydarzenie" },
+                form: {
+                    title: "Tytuł Wydarzenia", placeholder: "np. Urodziny",
+                    host: "Gospodarz", neutral: "Neutralny",
+                    time: "Godzina", location: "Lokalizacja", venuePlaceholder: "Miejsce...",
+                    desc: "Opis", descPlaceholder: "Szczegóły...",
+                    back: "Wstecz", create: "Utwórz Wydarzenie", saving: "Zapisywanie..."
+                }
+            }
+        },
+        auth: {
+            welcome: "Witaj ponownie",
+            registerTitle: "Utwórz konto",
+            welcomeDesc: "Zaloguj się, aby kontynuować",
+            registerDesc: "Dołącz do ekipy Stammtisch",
+            email: "Adres E-mail",
+            password: "Hasło",
+            loginBtn: "Zaloguj się",
+            registerBtn: "Zarejestruj się",
+            or: "Lub",
+            toggleLogin: "Masz już konto? Zaloguj się",
+            toggleRegister: "Nie masz konta? Zarejestruj się",
+            errors: {
+                invalid: "Nieprawidłowy e-mail lub hasło.",
+                emailInUse: "Ten e-mail jest już zajęty.",
+                weakPass: "Hasło musi mieć min. 6 znaków.",
+                default: "Wystąpił błąd."
+            }
+        },
+        stats: {
+            season: "Sezon",
+            loading: "Ładowanie Rankingu...",
+            matrixTitle: "Macierz Punktów",
+            matrixLoading: "Ładowanie Macierzy..."
+        },
+        members: {
+            countLabel: "Członkowie"
         },
         options: {
             language: "Język",
