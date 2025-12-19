@@ -5,7 +5,7 @@ import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } f
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase";
-import { UserPlus, Trash2, Loader2, Users, Pencil, Award, Calendar } from "lucide-react";
+import { UserPlus, Trash2, Loader2, Users, Pencil, Award, Calendar, Cake } from "lucide-react";
 import type { Member } from "@/types";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { EditMemberModal } from "./EditMemberModal";
@@ -126,17 +126,22 @@ export function MemberManager() {
                                                 <Award className="h-3 w-3" />
                                                 {member.role || "Mitglied"}
                                             </span>
-                                            {member.joinYear && (
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                Seit {member.joinYear}
+                                            </span>
+                                            )}
+                                            {member.birthday && (
                                                 <span className="flex items-center gap-1">
-                                                    <Calendar className="h-3 w-3" />
-                                                    Seit {member.joinYear}
+                                                    <Cake className="h-3 w-3" />
+                                                    {new Date(member.birthday).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                                                 </span>
                                             )}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                    {user?.uid === member.id && (
+                                    {(user?.uid === member.id || isAdmin) && (
                                         <button
                                             onClick={() => setEditingMember(member)}
                                             className="p-2 text-muted-foreground hover:text-primary transition-colors"
