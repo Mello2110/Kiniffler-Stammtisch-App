@@ -81,31 +81,30 @@
     @apply bg-secondary/20 border border-secondary/50 backdrop-blur-sm rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-300;
   }
 
-  /* --- GLOBAL TABLE STYLES (KANPAI Aesthetic) --- */
-  /* Ensures all tables match the premium glass/grid look */
+  /* --- GLOBAL TABLE STYLES (Enforced Tiled Grid) --- */
 
   table {
     @apply w-full caption-bottom text-sm border-collapse;
   }
 
-  /* Header Styling: Primary Tint, Bold, Visible Borders */
+  /* Header: Stronger Separators */
   thead tr {
-    @apply border-b border-white/10 bg-primary/10;
+    @apply border-b border-white/20 bg-primary/20;
   }
 
   th {
-    @apply h-12 px-4 text-left align-middle font-bold text-primary tracking-wide border-r border-white/10 last:border-0;
+    @apply h-12 px-4 text-left align-middle font-bold text-primary tracking-wide border-r border-white/20 last:border-0;
     font-family: var(--font-heading);
   }
 
-  /* Row Styling: Hover Effects & Borders */
+  /* Rows: Explicit Bottom Borders */
   tbody tr {
-    @apply border-b border-white/5 transition-colors duration-200 hover:bg-white/5;
+    @apply border-b border-white/20 transition-colors duration-200 hover:bg-white/10;
   }
 
-  /* Cell Styling: Grid Lines & Padding */
+  /* Cells: Explicit Vertical Lines (Tiled Look) */
   td {
-    @apply p-4 align-middle border-r border-white/5 last:border-0;
+    @apply p-4 align-middle border-r border-white/20 last:border-0;
   }
 
   /* Caption */
