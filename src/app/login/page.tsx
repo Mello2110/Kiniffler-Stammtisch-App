@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { Loader2, Mail, Lock, AlertCircle, LogIn } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Loader2, Mail, Lock, AlertCircle, ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function LoginPage() {
@@ -14,6 +15,7 @@ export default function LoginPage() {
     const router = useRouter();
 
     const [isRegistering, setIsRegistering] = useState(false);
+    const [showEmailForm, setShowEmailForm] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -27,21 +29,21 @@ export default function LoginPage() {
         try {
             if (isRegistering) {
                 await createUserWithEmailAndPassword(auth, email, password);
-                // Registration successful, maybe update profile name later
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
             }
             router.push("/dashboard");
         } catch (err: any) {
             console.error("Auth error:", err);
+            // Simple mapping for common errors
             if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-                setError(dict.auth.errors.invalid);
+                setError(dict?.auth?.errors?.invalid || "Invalid credentials");
             } else if (err.code === "auth/email-already-in-use") {
-                setError(dict.auth.errors.emailInUse);
+                setError(dict?.auth?.errors?.emailInUse || "Email already in use");
             } else if (err.code === "auth/weak-password") {
-                setError(dict.auth.errors.weakPass);
+                setError(dict?.auth?.errors?.weakPass || "Password too weak");
             } else {
-                setError(dict.auth.errors.default);
+                setError(dict?.auth?.errors?.default || "An error occurred");
             }
         } finally {
             setIsLoading(false);
@@ -49,84 +51,55 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
-            <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800">
-                <div className="text-center space-y-2">
-                    <div className="mx-auto h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                        <LogIn className="h-6 w-6" />
+        <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-background text-foreground">
+            {/* --- VISUALS COPIED FROM LANDING PAGE --- */}
+            {/* Background Decor */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none opacity-50" />
+
+            <div className="z-10 flex flex-col items-center text-center px-4 md:px-6 w-full max-w-md animate-in fade-in zoom-in duration-700">
+
+                {/* Icon */}
+                <div className="relative mb-8 group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                    <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-secondary/50 shadow-2xl">
+                        <Image
+                            src="/landing-icon.jpg"
+                            alt="KANPAI App Icon"
+                            fill
+                            className="object-cover"
+                            priority
+                        />
                     </div>
-                    <h2 className="text-3xl font-black font-heading tracking-tight">
-                        {isRegistering ? dict.auth.registerTitle : dict.auth.welcome}
-                    </h2>
-                    <p className="text-muted-foreground">
-                        {isRegistering
-                            ? dict.auth.registerDesc
-                            : dict.auth.welcomeDesc}
-                    </p>
                 </div>
 
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                    <div className="space-y-4 rounded-md shadow-sm">
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                            <input
-                                id="email-address"
-                                name="email"
-                                type="email"
-                                autoComplete="email"
-                                required
-                                className="block w-full rounded-lg border border-input bg-background pl-10 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                placeholder={dict.auth.email}
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                autoComplete="current-password"
-                                required
-                                className="block w-full rounded-lg border border-input bg-background pl-10 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                placeholder={dict.auth.password}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </div>
-                    </div>
+                {/* Title */}
+                <h1 className="text-4xl md:text-5xl font-heading font-bold mb-3 tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
+                    KANPAI
+                </h1>
 
-                    {error && (
-                        <div className="flex items-center gap-2 p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-lg animate-in fade-in slide-in-from-top-1">
-                            <AlertCircle className="h-4 w-4" />
-                            {error}
-                        </div>
-                    )}
+                {/* Slogan */}
+                <p className="text-lg md:text-xl font-sans text-muted-foreground mb-8">
+                    {showEmailForm ? (isRegistering ? "Create Account" : "Welcome Back") : "Login to continue"}
+                </p>
 
-                    <div className="space-y-3">
+                {/* --- LOGIN CONTENT --- */}
+
+                {!showEmailForm ? (
+                    /* INITIAL STATE: 2 BIG BUTTONS */
+                    <div className="flex flex-col gap-4 w-full">
+                        {/* Button 1: Email */}
                         <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="group relative flex w-full justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                            onClick={() => setShowEmailForm(true)}
+                            className="w-full px-8 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 flex items-center justify-center gap-2"
                         >
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isRegistering ? dict.auth.registerBtn : dict.auth.loginBtn}
+                            <Mail className="w-5 h-5" />
+                            Mit E-Mail anmelden
                         </button>
 
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-gray-300 dark:border-gray-700" />
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-white dark:bg-gray-900 px-2 text-muted-foreground">{dict.auth.or}</span>
-                            </div>
-                        </div>
-
+                        {/* Button 2: Google */}
                         <button
-                            type="button"
                             onClick={loginWithGoogle}
-                            className="flex w-full justify-center items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all"
+                            className="w-full px-8 py-4 rounded-xl bg-white text-gray-800 hover:bg-gray-100 font-semibold text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
                         >
                             <svg className="h-5 w-5" viewBox="0 0 24 24">
                                 <path
@@ -146,26 +119,81 @@ export default function LoginPage() {
                                     fill="#EA4335"
                                 />
                             </svg>
-                            Google
+                            Mit Google anmelden
                         </button>
                     </div>
+                ) : (
+                    /* EXPANDED EMAIL FORM */
+                    <form onSubmit={handleSubmit} className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Email Input */}
+                        <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="E-Mail Adresse"
+                                className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-secondary/50 bg-secondary/20 backdrop-blur-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                            />
+                        </div>
 
-                    <div className="text-center text-sm">
+                        {/* Password Input */}
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <input
+                                type="password"
+                                required
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Passwort"
+                                className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-secondary/50 bg-secondary/20 backdrop-blur-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                            />
+                        </div>
+
+                        {/* Error Message */}
+                        {error && (
+                            <div className="flex items-center gap-2 p-3 text-sm text-red-400 bg-red-950/20 border border-red-900/50 rounded-lg">
+                                <AlertCircle className="h-4 w-4" />
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Submit Button */}
                         <button
-                            type="button"
-                            onClick={() => {
-                                setIsRegistering(!isRegistering);
-                                setError("");
-                            }}
-                            className="font-semibold text-primary hover:text-primary/80 transition-colors"
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full px-8 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 flex items-center justify-center"
                         >
-                            {isRegistering
-                                ? dict.auth.toggleLogin
-                                : dict.auth.toggleRegister}
+                            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRegistering ? "Registrieren" : "Anmelden")}
                         </button>
-                    </div>
-                </form>
+
+                        {/* Bottom Links */}
+                        <div className="flex flex-col gap-3 mt-4 text-sm font-medium">
+                            <button
+                                type="button"
+                                onClick={() => setIsRegistering(!isRegistering)}
+                                className="text-primary hover:text-primary/80 transition-colors"
+                            >
+                                {isRegistering ? "Bereits einen Account? Anmelden" : "Keinen Account? Registrieren"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setShowEmailForm(false)}
+                                className="text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors"
+                            >
+                                <ArrowLeft className="w-3 h-3" /> Zurück
+                            </button>
+                        </div>
+                    </form>
+                )}
+
             </div>
+
+            <footer className="absolute bottom-6 text-sm text-muted-foreground opacity-60">
+                &copy; 2025 KANPAI App
+            </footer>
         </div>
     );
 }
