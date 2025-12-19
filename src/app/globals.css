@@ -81,8 +81,37 @@
     @apply bg-secondary/20 border border-secondary/50 backdrop-blur-sm rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-300;
   }
 
-  /* Global Button Hover Effects for specific classes */
-  /* We can't safely target ALL buttons without breaking layout, but we can set defaults for common interactive elements if they lack specific overrides */
+  /* --- GLOBAL TABLE STYLES (KANPAI Aesthetic) --- */
+  /* Ensures all tables match the premium glass/grid look */
+
+  table {
+    @apply w-full caption-bottom text-sm border-collapse;
+  }
+
+  /* Header Styling: Primary Tint, Bold, Visible Borders */
+  thead tr {
+    @apply border-b border-white/10 bg-primary/10;
+  }
+
+  th {
+    @apply h-12 px-4 text-left align-middle font-bold text-primary tracking-wide border-r border-white/10 last:border-0;
+    font-family: var(--font-heading);
+  }
+
+  /* Row Styling: Hover Effects & Borders */
+  tbody tr {
+    @apply border-b border-white/5 transition-colors duration-200 hover:bg-white/5;
+  }
+
+  /* Cell Styling: Grid Lines & Padding */
+  td {
+    @apply p-4 align-middle border-r border-white/5 last:border-0;
+  }
+
+  /* Caption */
+  caption {
+    @apply mt-4 text-sm text-muted-foreground;
+  }
 }
 
 @layer components {
