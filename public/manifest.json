@@ -8,14 +8,14 @@
     "theme_color": "#8B5CF6",
     "icons": [
         {
-            "src": "/kanpai-logo.png",
+            "src": "/kanpai-icon.jpg",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/jpeg"
         },
         {
-            "src": "/kanpai-logo.png",
+            "src": "/kanpai-icon.jpg",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/jpeg"
         }
     ]
 }

@@ -20,8 +20,8 @@ export const metadata: Metadata = {
   description: "Die App für deinen Stammtisch",
   manifest: "/manifest.json",
   icons: {
-    icon: "/kanpai-logo.png",
-    apple: "/kanpai-logo.png",
+    icon: "/kanpai-icon.jpg",
+    apple: "/kanpai-icon.jpg",
   }
 };
 
