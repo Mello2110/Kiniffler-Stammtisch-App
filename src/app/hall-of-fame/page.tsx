@@ -85,60 +85,79 @@ export default function HallOfFamePage() {
         fetchAll();
     }, []);
 
-    const RankCard = ({ title, icon: Icon, data, unit, colorHex, accentColor }: any) => (
-        <div className="bg-card border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow relative">
-            {/* Header Background */}
-            <div
-                className="h-24 relative flex items-center px-6"
-                style={{ backgroundColor: `${colorHex}15` }} // 15 = low opacity
-            >
-                <div className="absolute top-4 right-4 opacity-10">
-                    <Icon className="w-16 h-16" style={{ color: colorHex }} />
-                </div>
-                <div className="relative z-10 flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-background/80 backdrop-blur-sm shadow-sm">
-                        <Icon className="w-6 h-6" style={{ color: colorHex }} />
+    const RankCard = ({ title, icon: Icon, data, unit, colorHex }: any) => (
+        <div className="relative group overflow-hidden bg-card border rounded-[2.5rem] hover:border-primary/50 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-primary/20 p-8 flex flex-col gap-6">
+
+            {/* Header */}
+            <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl flex items-center justify-center bg-muted/50 text-muted-foreground group-hover:scale-110 transition-transform duration-500" style={{ color: colorHex, backgroundColor: `${colorHex}15` }}>
+                        <Icon className="h-6 w-6" />
                     </div>
-                    <h2 className="text-xl font-bold font-heading">{title}</h2>
+                    <div>
+                        <h2 className="text-xl font-bold font-heading leading-none">{title}</h2>
+                        <p className="text-xs text-muted-foreground font-bold tracking-wider uppercase mt-1">Top 3 Legends</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="p-6 space-y-4">
+            {/* List */}
+            <div className="space-y-3">
                 {data.length > 0 ? (
                     data.map((item: RankedMember, index: number) => {
-                        let rankIcon = <span className="font-bold text-muted-foreground w-6 text-center text-sm">#{index + 1}</span>;
-                        let rowBg = "hover:bg-muted/50";
+                        let rankColor = "bg-muted text-muted-foreground";
+                        let rankContent: React.ReactNode = <span className="font-bold text-xs">#{index + 1}</span>;
 
-                        // Premium styling for rank 1
+                        // Premium colors for ranks
                         if (index === 0) {
-                            rankIcon = <Crown className="w-5 h-5 fill-[#D4A017] text-[#D4A017]" />;
-                            rowBg = "bg-gradient-to-r from-[#D4A017]/10 to-transparent border-[#D4A017]/20";
+                            rankColor = "bg-[#D4A017] text-white shadow-[#D4A017]/50 shadow-lg";
+                            rankContent = <Crown className="h-3 w-3 fill-current" />;
                         }
-                        if (index === 1) rankIcon = <Medal className="w-5 h-5 text-gray-400" />;
-                        if (index === 2) rankIcon = <Medal className="w-5 h-5 text-amber-700" />;
+                        if (index === 1) rankColor = "bg-gray-400 text-white";
+                        if (index === 2) rankColor = "bg-amber-700 text-white";
 
                         return (
-                            <div key={item.id} className={cn(
-                                "flex items-center gap-4 p-3 rounded-lg border transition-all",
-                                rowBg
-                            )}>
-                                <div className="flex-shrink-0 flex items-center justify-center w-8">
-                                    {rankIcon}
+                            <div key={item.id} className="group/item flex items-center gap-4 p-3 rounded-2xl hover:bg-muted/50 transition-colors">
+                                {/* Rank Avatar */}
+                                <div className={cn("h-10 w-10 flex-shrink-0 rounded-full flex items-center justify-center shadow-sm transition-transform duration-300 group-hover/item:scale-110", rankColor)}>
+                                    {rankContent}
                                 </div>
-                                <div className="flex-grow font-medium text-sm sm:text-base">
-                                    {item.name}
+
+                                <div className="flex-grow min-w-0">
+                                    <p className="font-semibold truncate leading-tight select-all">{item.name}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <div className="h-1 w-8 rounded-full bg-border overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-1000"
+                                                style={{
+                                                    width: '100%',
+                                                    backgroundColor: colorHex,
+                                                    opacity: 1 - (index * 0.25)
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="font-bold font-mono">
-                                    {item.value} <span className="text-xs font-normal text-muted-foreground">{unit}</span>
+
+                                <div className="text-right">
+                                    <span className="block font-bold font-mono text-lg leading-none" style={{ color: index === 0 ? colorHex : 'inherit' }}>
+                                        {item.value}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-70">{unit}</span>
                                 </div>
                             </div>
                         );
                     })
                 ) : (
-                    <div className="py-8 text-center text-muted-foreground text-sm italic border border-dashed rounded-lg">
-                        No records yet
+                    <div className="py-10 text-center border-2 border-dashed rounded-2xl bg-muted/20">
+                        <p className="text-sm text-muted-foreground">Noch keine Daten</p>
                     </div>
                 )}
+            </div>
+
+            {/* Decorative Background Icon */}
+            <div className="absolute -bottom-6 -right-6 opacity-5 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none">
+                <Icon className="w-32 h-32" style={{ color: colorHex }} />
             </div>
         </div>
     );
