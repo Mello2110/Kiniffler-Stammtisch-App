@@ -168,13 +168,23 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex items-center gap-4 text-muted-foreground">
-            <div className="flex flex-col items-end">
-              <span className="text-2xl font-black text-foreground outfit">{new Date().getFullYear()}</span>
-              <span className="text-xs uppercase font-bold tracking-widest">{dict.dashboard.season}</span>
+          <div className="flex items-end gap-5 text-muted-foreground pb-0.5">
+            {/* Kanpai Branding (Text Only) */}
+            <div className="hidden sm:flex flex-col items-end leading-none opacity-90 hover:opacity-100 transition-opacity">
+              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground/60 mb-0.5">powered by</span>
+              <span className="text-xl font-black tracking-tighter text-[#8B5CF6] leading-none">KANPAI</span>
             </div>
-            <div className="h-10 w-px bg-border" />
-            <Activity className="h-8 w-8 opacity-20" />
+
+            <div className="h-12 w-px bg-border hidden sm:block mx-2" />
+
+            {/* Season Info */}
+            <div className="flex flex-col items-end leading-none">
+              <span className="text-3xl font-black text-foreground outfit leading-none">{new Date().getFullYear()}</span>
+              <span className="text-[10px] uppercase font-bold tracking-widest mt-1">{dict.dashboard.season}</span>
+            </div>
+
+            <div className="h-12 w-px bg-border mx-2" />
+            <Activity className="h-8 w-8 opacity-20 mb-1" />
           </div>
         </div>
 

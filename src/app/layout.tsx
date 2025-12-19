@@ -16,8 +16,13 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Stammtisch Dashboard",
-  description: "Modern dashboard for your regulars' table",
+  title: "KANPAI",
+  description: "Die App für deinen Stammtisch",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/kanpai-logo.png",
+    apple: "/kanpai-logo.png",
+  }
 };
 
 export default function RootLayout({
