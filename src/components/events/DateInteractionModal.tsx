@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { ThumbsUp, CalendarPlus, X, Loader2, ThumbsDown } from "lucide-react";
+import { ThumbsUp, CalendarPlus, X, Loader2, ThumbsDown, Clock, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { collection, addDoc, doc, setDoc, serverTimestamp, deleteDoc, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase"; // Ensure firebase is initialized
@@ -23,6 +23,8 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
 
     // Form State for Set Event
     const [eventTitle, setEventTitle] = useState("");
+    const [eventTime, setEventTime] = useState("19:00");
+    const [eventLocation, setEventLocation] = useState("");
     const [eventDesc, setEventDesc] = useState("");
     const [hostId, setHostId] = useState("neutral");
 
@@ -103,6 +105,8 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                 title: eventTitle,
                 description: eventDesc,
                 date: dateStr,
+                time: eventTime,
+                location: eventLocation,
                 month: date.getMonth(),
                 year: date.getFullYear(),
                 hostId,
@@ -209,6 +213,34 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                                     </option>
                                 ))}
                             </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Time</label>
+                                <div className="relative">
+                                    <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <input
+                                        type="time"
+                                        value={eventTime}
+                                        onChange={(e) => setEventTime(e.target.value)}
+                                        className="w-full rounded-md border border-input bg-background pl-9 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Location</label>
+                                <div className="relative">
+                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <input
+                                        type="text"
+                                        value={eventLocation}
+                                        onChange={(e) => setEventLocation(e.target.value)}
+                                        placeholder="Venue..."
+                                        className="w-full rounded-md border border-input bg-background pl-9 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div className="space-y-2">

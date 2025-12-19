@@ -34,7 +34,8 @@ export interface SetEvent {
     date: string; // ISO date string YYYY-MM-DD
     month: number;
     year: number;
-    location?: string;
+    time?: string;     // HH:MM
+    location?: string; // Venue name
     hostId?: string;
     createdAt: any;
 }

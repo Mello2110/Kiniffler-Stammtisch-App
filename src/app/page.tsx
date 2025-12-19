@@ -8,7 +8,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { NextEventWidget } from "@/components/dashboard/NextEventWidget";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Users, Calendar, Trophy, Beer, AlertCircle, Crown } from "lucide-react";
-import type { Member, Penalty, SetEvent, StammtischVote } from "@/types";
+import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
@@ -36,21 +36,49 @@ export default function Home() {
   const [hostedCount, setHostedCount] = useState(0);
 
   useEffect(() => {
+    const currentYear = new Date().getFullYear();
+
     // 1. Fetch Members
     const unsubMembers = onSnapshot(collection(db, "members"), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
       setMembers(data);
-      // Calculate Leader
-      if (data.length > 0) {
-        const leader = data.reduce((prev, current) =>
-          (prev.points || 0) > (current.points || 0) ? prev : current
-        );
-        setSeasonLeader({ name: leader.name, points: leader.points || 0 });
+      // Note: Leader calculation is now handled by a separate Points listener
+    });
+
+    // 1.5 Fetch Points for Season Leader (Single Source of Truth)
+    // 1.5 Fetch Points for Season Leader (Single Source of Truth)
+    const qPoints = query(collection(db, "points"), where("year", "==", currentYear));
+    const unsubPoints = onSnapshot(qPoints, (snap) => {
+      const pointsData = snap.docs.map(doc => doc.data() as PointEntry);
+
+      // Aggregate points per user
+      const stats: Record<string, number> = {};
+      pointsData.forEach(p => {
+        stats[p.userId] = (stats[p.userId] || 0) + p.points;
+      });
+
+      // Find leader
+      let maxPoints = -1;
+      let leaderId = "";
+
+      Object.entries(stats).forEach(([uid, total]) => {
+        if (total > maxPoints) {
+          maxPoints = total;
+          leaderId = uid;
+        }
+      });
+
+      if (leaderId && members.length > 0) {
+        const leaderMember = members.find(m => m.id === leaderId);
+        if (leaderMember) {
+          setSeasonLeader({ name: leaderMember.name, points: maxPoints });
+        }
+      } else {
+        setSeasonLeader(null);
       }
     });
 
     // 2. Fetch Events
-    const currentYear = new Date().getFullYear();
     const startOfYear = `${currentYear}-01-01`;
     const endOfYear = `${currentYear}-12-31`;
 
@@ -122,7 +150,7 @@ export default function Home() {
       unsubVotes();
       unsubMyPenalties();
     };
-  }, [user]);
+  }, [user, members]); // Added members to dependency to re-calc leader if needed
 
   // Determine Next Event
   useEffect(() => {
@@ -135,6 +163,7 @@ export default function Home() {
         title: upcomingSetEvent.title,
         date: upcomingSetEvent.date,
         location: upcomingSetEvent.location,
+        time: upcomingSetEvent.time,
         type: 'set'
       });
       return;
