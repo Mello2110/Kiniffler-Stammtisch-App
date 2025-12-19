@@ -90,7 +90,7 @@
   /* Enforce "Card" look globally if they use common card classes or just div with specific bg */
   .card,
   .glass-panel {
-    @apply bg-secondary/30 backdrop-blur-md border border-secondary/50 rounded-2xl shadow-xl;
+    @apply bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl ring-1 ring-white/5;
   }
 }
 
