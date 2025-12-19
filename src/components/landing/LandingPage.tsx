@@ -43,7 +43,7 @@ export const LandingPage = () => {
 
                 {/* Title */}
                 <h1 className="text-5xl md:text-7xl font-heading font-bold mb-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
-                    Stammtisch
+                    KANPAI
                 </h1>
 
                 {/* Slogan - Restored as requested */}
