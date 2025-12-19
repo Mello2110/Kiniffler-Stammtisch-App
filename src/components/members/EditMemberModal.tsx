@@ -15,6 +15,7 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form State
+    const [name, setName] = useState(member.name);
     const [role, setRole] = useState(member.role || "");
     const [joinYear, setJoinYear] = useState(member.joinYear?.toString() || new Date().getFullYear().toString());
 
@@ -25,6 +26,7 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
         try {
             const ref = doc(db, "members", member.id);
             await updateDoc(ref, {
+                name: name.trim(),
                 role: role.trim(),
                 joinYear: parseInt(joinYear)
             });
@@ -59,9 +61,13 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                             Name
                         </label>
-                        <div className="p-3 rounded-xl border bg-muted/30 font-semibold">
-                            {member.name}
-                        </div>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all font-semibold"
+                            required
+                        />
                     </div>
 
                     <div className="space-y-2">

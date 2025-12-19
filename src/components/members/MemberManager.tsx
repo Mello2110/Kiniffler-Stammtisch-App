@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase";
 import { UserPlus, Trash2, Loader2, Users, Pencil, Award, Calendar } from "lucide-react";
 import type { Member } from "@/types";
@@ -10,6 +11,7 @@ import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationM
 import { EditMemberModal } from "./EditMemberModal";
 
 export function MemberManager() {
+    const { user } = useAuth();
     const [newName, setNewName] = useState("");
     const [isAdding, setIsAdding] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -124,13 +126,15 @@ export function MemberManager() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                    <button
-                                        onClick={() => setEditingMember(member)}
-                                        className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                        title="Edit"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </button>
+                                    {user?.uid === member.id && (
+                                        <button
+                                            onClick={() => setEditingMember(member)}
+                                            className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                                            title="Edit"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => setDeletingMember(member)}
                                         className="p-2 text-muted-foreground hover:text-primary transition-colors"
