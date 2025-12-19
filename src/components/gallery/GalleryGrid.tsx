@@ -101,6 +101,10 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20 }: GalleryGridPr
         if (lastElementRef.current) {
             observer.current.observe(lastElementRef.current);
         }
+
+        return () => {
+            if (observer.current) observer.current.disconnect();
+        };
     }, [lastDoc, hasMore, isLoading]);
 
     if (isLoading) {
