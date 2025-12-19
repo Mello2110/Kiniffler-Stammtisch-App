@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { Trash2, Plus, Loader2, Search, Pencil } from "lucide-react";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { db } from "@/lib/firebase";
 import type { Expense } from "@/types";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
@@ -13,7 +14,6 @@ interface ExpensesTableProps {
 }
 
 export function ExpensesTable({ onEdit }: ExpensesTableProps) {
-    const [expenses, setExpenses] = useState<Expense[]>([]);
     const [isAdding, setIsAdding] = useState(false);
 
     // Add Form State
@@ -25,14 +25,8 @@ export function ExpensesTable({ onEdit }: ExpensesTableProps) {
     const [filter, setFilter] = useState("");
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        const q = query(collection(db, "expenses"), orderBy("date", "desc"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
-            setExpenses(data);
-        });
-        return () => unsubscribe();
-    }, []);
+    const q = useMemo(() => query(collection(db, "expenses"), orderBy("date", "desc")), []);
+    const { data: expenses } = useFirestoreQuery<Expense>(q);
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();

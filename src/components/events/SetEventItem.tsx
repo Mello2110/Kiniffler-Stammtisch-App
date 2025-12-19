@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { Pencil, Trash2, Check, X, Users } from "lucide-react";
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { db } from "@/lib/firebase";
 import type { SetEvent } from "@/types";
 import { cn } from "@/lib/utils";
@@ -15,26 +16,12 @@ interface SetEventItemProps {
 }
 
 export function SetEventItem({ event, currentUserId, totalMembers, onEdit, onDelete }: SetEventItemProps) {
-    const [rsvps, setRsvps] = useState<{ userId: string; attending: boolean }[]>([]);
-    const [attendingCount, setAttendingCount] = useState(0);
-    const [myStatus, setMyStatus] = useState<'yes' | 'no' | null>(null);
+    const q = useMemo(() => collection(db, "set_events", event.id, "rsvps"), [event.id]);
+    const { data: rsvps } = useFirestoreQuery<{ userId: string; attending: boolean }>(q, { idField: "userId" });
 
-    useEffect(() => {
-        const unsub = onSnapshot(collection(db, "set_events", event.id, "rsvps"), (snap) => {
-            const data = snap.docs.map(doc => ({ userId: doc.id, ...doc.data() } as { userId: string; attending: boolean }));
-            setRsvps(data);
-            setAttendingCount(data.filter(r => r.attending).length);
-
-            const myRsvp = data.find(r => r.userId === currentUserId);
-            if (myRsvp) {
-                setMyStatus(myRsvp.attending ? 'yes' : 'no');
-            } else {
-                setMyStatus(null);
-            }
-        });
-
-        return () => unsub();
-    }, [event.id, currentUserId]);
+    const attendingCount = rsvps.filter(r => r.attending).length;
+    const myRsvp = rsvps.find(r => r.userId === currentUserId);
+    const myStatus = myRsvp ? (myRsvp.attending ? 'yes' : 'no') : null;
 
     const handleRsvp = async (status: 'yes' | 'no') => {
         if (!currentUserId) return;

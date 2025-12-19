@@ -1,69 +1,37 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { collection, onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
+import { useMemo } from "react";
+import { collection, query, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { DollarSign, Wallet, TrendingUp, TrendingDown } from "lucide-react";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import { useFirestoreDocument } from "@/hooks/useFirestoreDocument";
+import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 
 export function CashBalance() {
-    const [penaltiesTotal, setPenaltiesTotal] = useState(0);
-    const [penaltiesPendingTotal, setPenaltiesPendingTotal] = useState(0);
-    const [contributionsTotal, setContributionsTotal] = useState(0);
-    const [expensesTotal, setExpensesTotal] = useState(0);
-    const [startingBalance, setStartingBalance] = useState(0);
+    // 1. Fetch Penalties
+    const qPenalties = useMemo(() => query(collection(db, "penalties")), []);
+    const { data: penalties } = useFirestoreQuery<{ amount: number; isPaid: boolean }>(qPenalties);
 
-    useEffect(() => {
-        // 1. Fetch Penalties Total
-        const unsubPenalties = onSnapshot(collection(db, "penalties"), (snap) => {
-            let paid = 0;
-            let pending = 0;
-            snap.docs.forEach(doc => {
-                const data = doc.data();
-                if (data.isPaid) {
-                    paid += (data.amount || 0);
-                } else {
-                    pending += (data.amount || 0);
-                }
-            });
-            setPenaltiesTotal(paid);
-            setPenaltiesPendingTotal(pending);
-        });
+    // 2. Fetch Contributions
+    const qContributions = useMemo(() => query(collection(db, "contributions")), []);
+    const { data: contributions } = useFirestoreQuery(qContributions);
 
-        // 2. Fetch Contributions Total
-        const unsubContributions = onSnapshot(collection(db, "contributions"), (snap) => {
-            // Each contribution document represents one paid month (isPaid=true usually)
-            // If we follow the delete-if-unpaid logic, count docs * 15
-            const count = snap.size;
-            setContributionsTotal(count * 15);
-        });
+    // 3. Fetch Expenses
+    const qExpenses = useMemo(() => query(collection(db, "expenses")), []);
+    const { data: expenses } = useFirestoreQuery<{ amount: number }>(qExpenses);
 
-        // 3. Fetch Expenses Total
-        const unsubExpenses = onSnapshot(collection(db, "expenses"), (snap) => {
-            const total = snap.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
-            setExpensesTotal(total);
-        });
+    // 4. Fetch Start Balance Config
+    const configRef = useMemo(() => doc(db, "config", "cash"), []);
+    const { data: configData } = useFirestoreDocument<{ startingBalance: number }>(configRef);
 
-        // 4. Fetch Config (Starting Balance)
-        // We'll use a specific doc 'config/cash'
-        const fetchConfig = async () => {
-            // Real-time listener for config too
-            const unsubConfig = onSnapshot(doc(db, "config", "cash"), (docSnap) => {
-                if (docSnap.exists()) {
-                    setStartingBalance(docSnap.data().startingBalance || 0);
-                }
-            });
-            return unsubConfig;
-        };
+    // Calculations
+    const startingBalance = configData?.startingBalance || 0;
+    const contributionsTotal = (contributions?.length || 0) * 15;
 
-        const configPromise = fetchConfig();
+    const penaltiesTotal = penalties?.reduce((acc, p) => acc + (p.isPaid ? (p.amount || 0) : 0), 0) || 0;
+    const penaltiesPendingTotal = penalties?.reduce((acc, p) => acc + (!p.isPaid ? (p.amount || 0) : 0), 0) || 0;
 
-        return () => {
-            unsubPenalties();
-            unsubContributions();
-            unsubExpenses();
-            configPromise.then(unsub => unsub());
-        };
-    }, []);
+    const expensesTotal = expenses?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0;
 
     const currentBalance = startingBalance + contributionsTotal + penaltiesTotal - expensesTotal;
 

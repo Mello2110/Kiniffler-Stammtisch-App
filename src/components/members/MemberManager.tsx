@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { useState, useMemo } from "react";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { db } from "@/lib/firebase";
 import { UserPlus, Trash2, Loader2, Users, Pencil, Award, Calendar } from "lucide-react";
 import type { Member } from "@/types";
@@ -9,22 +10,13 @@ import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationM
 import { EditMemberModal } from "./EditMemberModal";
 
 export function MemberManager() {
-    const [members, setMembers] = useState<Member[]>([]);
     const [newName, setNewName] = useState("");
-    const [isLoading, setIsLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [deletingMember, setDeletingMember] = useState<Member | null>(null);
 
-    useEffect(() => {
-        const q = query(collection(db, "members"), orderBy("name", "asc"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
-            setMembers(data);
-            setIsLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
+    const q = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
+    const { data: members, loading: isLoading } = useFirestoreQuery<Member>(q);
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
