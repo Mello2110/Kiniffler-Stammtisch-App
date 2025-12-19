@@ -10,6 +10,7 @@ import { DateInteractionModal } from "@/components/events/DateInteractionModal";
 import type { StammtischVote, SetEvent, Member } from "@/types";
 import { startOfMonth, endOfMonth, min, max, format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { Calendar, PartyPopper } from "lucide-react";
 
 export default function EventsPage() {
     const { user } = useAuth();
@@ -45,9 +46,35 @@ export default function EventsPage() {
 
     return (
         <div className="flex flex-col gap-8 pb-10">
-            <div>
-                <h1 className="text-3xl font-bold font-heading">Event Calendar</h1>
-                <p className="text-muted-foreground">Vote for the next Stammtisch or add confirmed events.</p>
+            {/* Header Section */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-4 max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
+                            <Calendar className="h-3 w-3" />
+                            Planning
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
+                            Upcoming <span className="text-primary italic">Meetups</span>
+                        </h1>
+                        <p className="text-muted-foreground text-lg leading-relaxed">
+                            Verpasse keine Runde. Stimme für Termine ab und plane das nächste Treffen.
+                            Gemeinsam statt einsam!
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-muted-foreground">
+                        <div className="flex flex-col items-end">
+                            <span className="text-2xl font-black text-foreground outfit">{setEvents.length}</span>
+                            <span className="text-xs uppercase font-bold tracking-widest">Events</span>
+                        </div>
+                        <div className="h-10 w-px bg-border" />
+                        <PartyPopper className="h-8 w-8 opacity-20" />
+                    </div>
+                </div>
+
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             </div>
 
             {/* Top Section: Month Summary */}

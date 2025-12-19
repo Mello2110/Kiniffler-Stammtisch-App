@@ -8,7 +8,7 @@ import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { NextEventWidget } from "@/components/dashboard/NextEventWidget";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { Users, Calendar, Trophy, Beer, AlertCircle, Crown } from "lucide-react";
+import { Users, Calendar, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity } from "lucide-react";
 import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -210,9 +210,35 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header Section */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here is what's happening smoothly.</p>
+      {/* Header Section */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-4 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
+              <LayoutDashboard className="h-3 w-3" />
+              Overview
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
+              Stammtisch <span className="text-primary italic">Dashboard</span>
+            </h1>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Willkommen zurück! Hier ist dein Überblick über anstehende Events, Finanzen und aktuelle News.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <div className="flex flex-col items-end">
+              <span className="text-2xl font-black text-foreground outfit">{new Date().getFullYear()}</span>
+              <span className="text-xs uppercase font-bold tracking-widest">Season</span>
+            </div>
+            <div className="h-10 w-px bg-border" />
+            <Activity className="h-8 w-8 opacity-20" />
+          </div>
+        </div>
+
+        {/* Decorative background elements */}
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
       </div>
 
       {/* Top Section: Next Event & Quick Stats */}

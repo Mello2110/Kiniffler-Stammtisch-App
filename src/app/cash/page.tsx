@@ -13,7 +13,7 @@ import { PenaltyTable } from "@/components/stats/PenaltyTable";
 import { AddPenaltyModal } from "@/components/stats/AddPenaltyModal";
 import { EditPenaltyModal } from "@/components/stats/EditPenaltyModal";
 import { EditExpenseModal } from "@/components/cash/EditExpenseModal";
-import { Plus } from "lucide-react";
+import { Plus, Wallet, PiggyBank } from "lucide-react";
 import type { Expense } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -42,9 +42,35 @@ export default function CashPage() {
     return (
         <div className="space-y-8 pb-10">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Cash Management</h1>
-                <p className="text-muted-foreground">Overview of funds, contributions, and expenses.</p>
+            {/* Header Section */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-4 max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
+                            <Wallet className="h-3 w-3" />
+                            Treasury
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
+                            Cash <span className="text-primary italic">Flow</span>
+                        </h1>
+                        <p className="text-muted-foreground text-lg leading-relaxed">
+                            Transparenz ist alles. Guthaben, Strafen und Ausgaben im Detail.
+                            Jeder Cent zählt (besonders für das nächste Bier).
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-muted-foreground">
+                        <div className="flex flex-col items-end">
+                            <span className="text-2xl font-black text-foreground outfit">€</span>
+                            <span className="text-xs uppercase font-bold tracking-widest">Euro</span>
+                        </div>
+                        <div className="h-10 w-px bg-border" />
+                        <PiggyBank className="h-8 w-8 opacity-20" />
+                    </div>
+                </div>
+
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             </div>
 
             {/* Top: Balance */}
