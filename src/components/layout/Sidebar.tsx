@@ -17,19 +17,23 @@ import {
     Crown
 } from "lucide-react";
 
-const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-    { icon: Calendar, label: "Events", href: "/events" },
-    { icon: Trophy, label: "Stats (Points)", href: "/stats" },
-    { icon: DollarSign, label: "Finances", href: "/cash" },
-    { icon: ImageIcon, label: "Gallery", href: "/gallery" },
-    { icon: Users, label: "Members", href: "/members" },
-    { icon: Crown, label: "Hall of Fame", href: "/hall-of-fame" },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const { logout, user } = useAuth();
+    const { dict } = useLanguage();
+
+    const navItems = [
+        { icon: LayoutDashboard, label: dict.sidebar.dashboard, href: "/" },
+        { icon: Calendar, label: dict.sidebar.events, href: "/events" },
+        { icon: Trophy, label: dict.sidebar.stats, href: "/stats" },
+        { icon: DollarSign, label: dict.sidebar.finances, href: "/cash" },
+        { icon: ImageIcon, label: dict.sidebar.gallery, href: "/gallery" },
+        { icon: Users, label: dict.sidebar.members, href: "/members" },
+        { icon: Crown, label: dict.sidebar.hof, href: "/hall-of-fame" },
+        { icon: Settings, label: dict.sidebar.options, href: "/options" },
+    ];
 
     return (
         <div className={cn("flex h-full w-64 flex-col border-r border-border bg-card text-card-foreground", className)}>
