@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
+import { ChevronDown, ChevronRight, CheckCircle2, ArrowUpDown } from "lucide-react";
 import { FeedbackItem, FeedbackItemProps } from "./FeedbackItem";
 import { cn } from "@/lib/utils";
 import { FeedbackData } from "./FeedbackForm";
@@ -14,18 +14,30 @@ interface FeedbackListProps {
     onToggleComplete: (id: string, currentStatus: boolean) => void;
     onDelete: (id: string) => void;
     onEdit: (id: string, data: FeedbackData) => void;
+    onVote: (id: string, type: "like" | "dislike") => void;
 }
 
-export function FeedbackList({ items, members, currentUserId, onToggleComplete, onDelete, onEdit }: FeedbackListProps) {
+export function FeedbackList({ items, members, currentUserId, onToggleComplete, onDelete, onEdit, onVote }: FeedbackListProps) {
     const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+    const [sortOption, setSortOption] = useState<"newest" | "likes">("newest");
 
     // Filter items
     const openItems = items.filter(i => !i.completed);
     const completedItems = items.filter(i => i.completed);
 
-    // Sort by createdAt desc
-    openItems.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-    completedItems.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    // Sort Logic
+    const sortFn = (a: any, b: any) => {
+        if (sortOption === "likes") {
+            const scoreA = (a.likes || 0) - (a.dislikes || 0);
+            const scoreB = (b.likes || 0) - (b.dislikes || 0);
+            if (scoreB !== scoreA) return scoreB - scoreA;
+        }
+        // Default / Secondary sort: Newest first
+        return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+    };
+
+    openItems.sort(sortFn);
+    completedItems.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)); // Keep completed sorted by date usually
 
     if (items.length === 0) {
         return (
@@ -38,15 +50,32 @@ export function FeedbackList({ items, members, currentUserId, onToggleComplete, 
 
     return (
         <div className="space-y-6 mt-8">
-            {/* Open Items */}
+            {/* Header with Sort & Count */}
             {openItems.length > 0 && (
-                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider pl-1">
+                <div className="flex items-center justify-between pl-1 pr-1">
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                         Offen ({openItems.length})
                     </h3>
+
+                    <div className="flex items-center gap-2">
+                        <select
+                            value={sortOption}
+                            onChange={(e) => setSortOption(e.target.value as "newest" | "likes")}
+                            className="bg-background text-xs font-medium border rounded-lg p-1.5 focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
+                        >
+                            <option value="newest">Neueste zuerst</option>
+                            <option value="likes">Meiste Likes</option>
+                        </select>
+                    </div>
+                </div>
+            )}
+
+            {/* Open Items List */}
+            {openItems.length > 0 && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     {openItems.map(item => (
                         <FeedbackItem
-                            key={item.id || Math.random().toString()} // Fallback if id missing momentarily
+                            key={item.id || Math.random().toString()}
                             id={item.id!}
                             data={item}
                             members={members}
@@ -54,6 +83,7 @@ export function FeedbackList({ items, members, currentUserId, onToggleComplete, 
                             onToggleComplete={onToggleComplete}
                             onDelete={onDelete}
                             onEdit={onEdit}
+                            onVote={onVote}
                         />
                     ))}
                 </div>
@@ -91,6 +121,7 @@ export function FeedbackList({ items, members, currentUserId, onToggleComplete, 
                                 onToggleComplete={onToggleComplete}
                                 onDelete={onDelete}
                                 onEdit={onEdit}
+                                onVote={onVote}
                             />
                         ))}
                     </div>

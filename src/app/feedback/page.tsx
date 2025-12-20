@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { FeedbackForm, FeedbackType, FeedbackData } from "@/components/feedback/FeedbackForm";
 import { FeedbackList } from "@/components/feedback/FeedbackList";
 import { EditFeedbackModal } from "@/components/feedback/EditFeedbackModal";
-import { addDoc, collection, serverTimestamp, doc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, deleteDoc, query, orderBy, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
@@ -46,7 +46,10 @@ export default function FeedbackPage() {
                 userEmail: user?.email || "anonymous",
                 completed: false,
                 status: "new",
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
+                likes: 0,
+                dislikes: 0,
+                votes: {}
             });
         } catch (error) {
             console.error("Error submitting feedback:", error);
@@ -61,6 +64,61 @@ export default function FeedbackPage() {
             });
         } catch (error) {
             console.error("Error toggling complete:", error);
+        }
+    };
+
+    const handleVote = async (id: string, type: "like" | "dislike") => {
+        if (!user) return; // Only logged in users can vote
+
+        try {
+            const docRef = doc(db, "feedback", id);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) return;
+
+            const data = docSnap.data();
+            const currentVotes = data.votes || {};
+            const previousVote = currentVotes[user.uid];
+
+            let likes = data.likes || 0;
+            let dislikes = data.dislikes || 0;
+            const newVotes = { ...currentVotes };
+
+            // Logic:
+            // If clicking same vote type -> remove vote (toggle off)
+            // If clicking different vote type -> switch vote
+            // If no previous vote -> add vote
+
+            if (previousVote === type) {
+                // Remove vote
+                delete newVotes[user.uid];
+                if (type === "like") likes--;
+                else dislikes--;
+            } else {
+                // Add new vote
+                newVotes[user.uid] = type;
+                if (type === "like") likes++;
+                else dislikes--;
+
+                // If switching, remove old vote effect (neutralize previous)
+                if (previousVote) {
+                    if (previousVote === "like") likes--;
+                    else dislikes--;
+                }
+            }
+
+            // Safety check for negative counts
+            if (likes < 0) likes = 0;
+            if (dislikes < 0) dislikes = 0;
+
+            await updateDoc(docRef, {
+                votes: newVotes,
+                likes,
+                dislikes
+            });
+
+        } catch (error) {
+            console.error("Error voting:", error);
         }
     };
 
@@ -131,9 +189,8 @@ export default function FeedbackPage() {
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
                                 "flex flex-col sm:flex-row items-center justify-center gap-2 p-3 rounded-xl transition-all duration-300 font-bold text-sm sm:text-base",
-                                isActive
-                                    ? "bg-background shadow-md text-foreground scale-[1.02]"
-                                    : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                                "text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                                isActive && "bg-background shadow-md text-foreground scale-[1.02]"
                             )}
                         >
                             <Icon className={cn("h-5 w-5", isActive ? tab.color : "opacity-70")} />
@@ -175,6 +232,7 @@ export default function FeedbackPage() {
                     onToggleComplete={handleToggleComplete}
                     onDelete={handleDelete}
                     onEdit={(id, data) => setEditingItem({ id, data })}
+                    onVote={handleVote}
                 />
             </div>
 

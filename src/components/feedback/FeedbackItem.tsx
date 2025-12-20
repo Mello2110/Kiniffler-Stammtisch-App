@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { format } from "date-fns";
-import { Check, Trash2, Pencil, Smartphone, Monitor, User as UserIcon } from "lucide-react";
+import { Check, Trash2, Pencil, Smartphone, Monitor, ThumbsUp, ThumbsDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Member } from "@/types";
 import { FeedbackData, Category, Platform } from "@/components/feedback/FeedbackForm";
@@ -13,12 +13,16 @@ export interface FeedbackItemProps {
         completed: boolean;
         userId: string;
         createdAt?: any;
+        likes?: number;
+        dislikes?: number;
+        votes?: Record<string, "like" | "dislike">;
     };
     members: Member[];
     currentUserId: string;
     onToggleComplete: (id: string, currentStatus: boolean) => void;
     onDelete: (id: string) => void;
     onEdit: (id: string, data: FeedbackData) => void;
+    onVote: (id: string, type: "like" | "dislike") => void;
 }
 
 export function FeedbackItem({
@@ -28,11 +32,17 @@ export function FeedbackItem({
     currentUserId,
     onToggleComplete,
     onDelete,
-    onEdit
+    onEdit,
+    onVote
 }: FeedbackItemProps) {
 
     const member = useMemo(() => members.find(m => m.id === data.userId), [members, data.userId]);
     const isOwner = currentUserId === data.userId; // Or isAdmin check if we had it here
+
+    // Vote Data
+    const likes = data.likes || 0;
+    const dislikes = data.dislikes || 0;
+    const userVote = data.votes?.[currentUserId];
 
     const categoryColors: Record<string, string> = {
         design: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
@@ -123,14 +133,49 @@ export function FeedbackItem({
                     {data.description}
                 </p>
 
-                {/* Footer / Meta */}
-                <div className="flex items-center justify-between pt-2">
-                    <div className="text-xs text-muted-foreground">
-                        {data.createdAt?.toDate ? format(data.createdAt.toDate(), "dd. MMM") : "Just now"}
+                {/* Footer / Meta & Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+
+                    {/* Votes & Date */}
+                    <div className="flex items-center gap-4">
+                        {/* Vote Buttons */}
+                        <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-lg">
+                            <button
+                                onClick={() => onVote(id, "like")}
+                                className={cn(
+                                    "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold transition-all hover:scale-105",
+                                    userVote === "like"
+                                        ? "bg-green-500 text-white shadow-sm"
+                                        : "text-muted-foreground hover:bg-background hover:text-green-600"
+                                )}
+                                title="Like"
+                            >
+                                <ThumbsUp className="h-3 w-3" />
+                                <span>{likes}</span>
+                            </button>
+                            <div className="w-[1px] h-4 bg-border/50" />
+                            <button
+                                onClick={() => onVote(id, "dislike")}
+                                className={cn(
+                                    "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold transition-all hover:scale-105",
+                                    userVote === "dislike"
+                                        ? "bg-red-500 text-white shadow-sm"
+                                        : "text-muted-foreground hover:bg-background hover:text-red-500"
+                                )}
+                                title="Dislike"
+                            >
+                                <ThumbsDown className="h-3 w-3" />
+                                <span>{dislikes}</span>
+                            </button>
+                        </div>
+
+                        <div className="text-xs text-muted-foreground">
+                            {data.createdAt?.toDate ? format(data.createdAt.toDate(), "dd. MMM") : "Just now"}
+                        </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1 transition-opacity">
+                    <div className="flex items-center gap-1 transition-opacity self-end sm:self-auto">
                         {!data.completed && (
                             <button
                                 onClick={() => onEdit(id, data)}
@@ -141,7 +186,7 @@ export function FeedbackItem({
                             </button>
                         )}
 
-                        {(isOwner || true) && ( // Allow delete for all (or restrict to admin later)
+                        {(isOwner || true) && ( // Allow delete for all
                             <button
                                 onClick={() => onDelete(id)}
                                 className="p-2 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 rounded-full transition-colors"
