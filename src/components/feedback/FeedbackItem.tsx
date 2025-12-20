@@ -90,7 +90,7 @@ export function FeedbackItem({
                     </span>
                 )}
                 {/* Date styled to match vote buttons */}
-                <div className="bg-secondary/30 px-2 py-1 rounded-md text-[10px] font-bold text-muted-foreground text-center">
+                <div className="bg-secondary/30 px-2 rounded-md text-xs font-bold text-muted-foreground text-center h-6 flex items-center justify-center w-full">
                     {data.createdAt?.toDate ? format(data.createdAt.toDate(), "dd.MM") : ""}
                 </div>
             </div>
