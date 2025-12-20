@@ -21,6 +21,7 @@ export function DashboardView() {
 
     // Stats
     const [nextEvent, setNextEvent] = useState<{
+        id?: string;
         title: string;
         date: string;
         location?: string;
@@ -143,6 +144,7 @@ export function DashboardView() {
         const upcomingSetEvent = events.find(e => e.date >= todayStr);
         if (upcomingSetEvent) {
             setNextEvent({
+                id: upcomingSetEvent.id,
                 title: upcomingSetEvent.title,
                 date: upcomingSetEvent.date,
                 location: upcomingSetEvent.location,
@@ -233,7 +235,11 @@ export function DashboardView() {
             {/* Top Section: Next Event & Quick Stats */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 {/* Next Event */}
-                <NextEventWidget event={nextEvent} />
+                <NextEventWidget
+                    event={nextEvent}
+                    members={members}
+                    currentUserId={user?.uid || ""}
+                />
 
                 {/* Stats Grid */}
                 <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
