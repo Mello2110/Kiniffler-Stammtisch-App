@@ -102,7 +102,7 @@ export function Sidebar({ className }: { className?: string }) {
                     />
                 ) : (
                     <div className="flex items-center w-full group">
-                        <Link href="/dashboard" className="truncate max-w-[170px] hover:opacity-80 transition-opacity">
+                        <Link href="/dashboard" className="block truncate max-w-[170px] hover:opacity-80 transition-opacity cursor-pointer">
                             <h1
                                 className="text-2xl font-bold font-heading bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent truncate"
                                 title={title}
