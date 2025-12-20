@@ -3,6 +3,8 @@ const URLS_TO_CACHE = [
     '/',
     '/manifest.json',
     '/kanpai-icon.jpg',
+    '/landing-icon.jpg',
+    '/kanpai-logo.png',
     '/login',
     '/dashboard'
 ];
