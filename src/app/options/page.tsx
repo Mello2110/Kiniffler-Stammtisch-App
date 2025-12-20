@@ -25,16 +25,20 @@ export default function OptionsPage() {
     const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
-        // const checkAdmin = async () => {
-        //     if (!user) return;
-        //     const docRef = doc(db, "members", user.uid);
-        //     const docSnap = await getDoc(docRef);
-        //     if (docSnap.exists() && docSnap.data().isAdmin) {
-        //         setIsAdmin(true);
-        //     }
-        // };
-        // checkAdmin();
-        setIsAdmin(true); // GLOBAL ACCESS UNLOCKED FOR EVENT
+        const checkAdmin = async () => {
+            if (!user) {
+                setIsAdmin(false);
+                return;
+            }
+            const docRef = doc(db, "members", user.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists() && docSnap.data().isAdmin) {
+                setIsAdmin(true);
+            } else {
+                setIsAdmin(false);
+            }
+        };
+        checkAdmin();
     }, [user]);
 
     // Reset Logic
@@ -185,8 +189,13 @@ export default function OptionsPage() {
                             <button
                                 onClick={handleReset}
                                 disabled={isResetting || !isAdmin}
-                                title={!isAdmin ? "Nur für Admins verfügbar" : undefined}
-                                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-red-900/20"
+                                title={!isAdmin ? "Only admins can perform this action" : undefined}
+                                className={cn(
+                                    "w-full py-4 font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg",
+                                    isAdmin
+                                        ? "bg-red-600 hover:bg-red-700 text-white shadow-red-900/20"
+                                        : "bg-muted text-muted-foreground cursor-not-allowed"
+                                )}
                             >
                                 <Trash2 className="w-5 h-5" />
                                 {isResetting ? dict.options.resetProcessing : dict.options.resetBtn}
