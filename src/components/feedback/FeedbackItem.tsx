@@ -89,6 +89,9 @@ export function FeedbackItem({
                         {member.name.split(" ")[0]}
                     </span>
                 )}
+                <span className="text-[10px] text-muted-foreground/60 text-center w-full block -mt-1">
+                    {data.createdAt?.toDate ? format(data.createdAt.toDate(), "dd.MM") : ""}
+                </span>
             </div>
 
             {/* Content Column */}
@@ -169,9 +172,7 @@ export function FeedbackItem({
                             </button>
                         </div>
 
-                        <div className="text-xs text-muted-foreground">
-                            {data.createdAt?.toDate ? format(data.createdAt.toDate(), "dd. MMM") : "Just now"}
-                        </div>
+
                     </div>
 
                     {/* Actions */}

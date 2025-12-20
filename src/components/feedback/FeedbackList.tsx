@@ -57,15 +57,16 @@ export function FeedbackList({ items, members, currentUserId, onToggleComplete, 
                         Offen ({openItems.length})
                     </h3>
 
-                    <div className="flex items-center gap-2">
+                    <div className="relative group">
                         <select
                             value={sortOption}
                             onChange={(e) => setSortOption(e.target.value as "newest" | "likes")}
-                            className="bg-background text-xs font-medium border rounded-lg p-1.5 focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
+                            className="appearance-none bg-background text-xs font-bold border border-border rounded-lg pl-3 pr-8 py-1.5 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 outline-none cursor-pointer transition-all hover:bg-secondary/20 hover:border-primary/30"
                         >
                             <option value="newest">Neueste zuerst</option>
                             <option value="likes">Meiste Likes</option>
                         </select>
+                        <ArrowUpDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none group-hover:text-primary transition-colors" />
                     </div>
                 </div>
             )}
