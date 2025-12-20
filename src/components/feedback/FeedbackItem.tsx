@@ -89,9 +89,10 @@ export function FeedbackItem({
                         {member.name.split(" ")[0]}
                     </span>
                 )}
-                <span className="text-[10px] text-muted-foreground/60 text-center w-full block -mt-1">
+                {/* Date styled to match vote buttons */}
+                <div className="bg-secondary/30 px-2 py-1 rounded-md text-[10px] font-bold text-muted-foreground text-center">
                     {data.createdAt?.toDate ? format(data.createdAt.toDate(), "dd.MM") : ""}
-                </span>
+                </div>
             </div>
 
             {/* Content Column */}
