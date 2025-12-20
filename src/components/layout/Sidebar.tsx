@@ -18,7 +18,8 @@ import {
     DollarSign,
     UserCircle,
     Crown,
-    Beer
+    Beer,
+    MessageSquarePlus
 } from "lucide-react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -85,6 +86,7 @@ export function Sidebar({ className }: { className?: string }) {
         { icon: ImageIcon, label: dict.sidebar.gallery, href: "/gallery" },
         { icon: Users, label: dict.sidebar.members, href: "/members" },
         { icon: Crown, label: dict.sidebar.hof, href: "/hall-of-fame" },
+        { icon: MessageSquarePlus, label: dict.sidebar.feedback, href: "/feedback" },
         { icon: Settings, label: dict.sidebar.options, href: "/options" },
     ];
 

@@ -10,6 +10,7 @@ export const dictionaries = {
             gallery: "Gallery",
             members: "Members",
             hof: "Hall of Fame",
+            feedback: "Problem & Suggestions",
             options: "Options"
         },
         headers: {
@@ -19,6 +20,7 @@ export const dictionaries = {
             cash: { title: "Cash", highlight: "Flow", badge: "Treasury", subtext: "Transparency is everything. Balance, penalties, and expenses in detail." },
             members: { title: "Stammtisch", highlight: "Crew", badge: "Community", subtext: "Manage the heads behind the table. Only true originals allowed!" },
             hof: { title: "Hall of", highlight: "Fame", badge: "Legends", subtext: "Honoring the top contributors, payers, and hosts of our community." },
+            feedback: { title: "Feedback", highlight: "Improvement", badge: "Support", subtext: "Report issues or suggest new features. Let's make it better!" },
             options: { title: "App", highlight: "Options", badge: "Settings", subtext: "Customize your experience and manage data." }
         },
         dashboard: {
@@ -46,6 +48,25 @@ export const dictionaries = {
                     desc: "Description", descPlaceholder: "Details...",
                     back: "Back", create: "Create Event", saving: "Saving..."
                 }
+            }
+        },
+        feedback: {
+            tabs: {
+                problem: "Report a Problem",
+                suggestion: "Make a Suggestion",
+                other: "Other Topics"
+            },
+            form: {
+                heading: "Title",
+                headingPlaceholder: "Short summary...",
+                description: "Description",
+                descriptionPlaceholder: "Describe in detail...",
+                category: "Category",
+                categories: { design: "Design", function: "Functionality", other: "Other" },
+                platform: "Platform",
+                submit: "Submit",
+                submitting: "Submitting...",
+                success: "Thank you! Your feedback has been sent."
             }
         },
         auth: {
@@ -101,6 +122,7 @@ export const dictionaries = {
             gallery: "Galerie",
             members: "Mitglieder",
             hof: "Ruhmeshalle",
+            feedback: "Problem & Vorschläge",
             options: "Optionen"
         },
         headers: {
@@ -110,6 +132,7 @@ export const dictionaries = {
             cash: { title: "Cash", highlight: "Flow", badge: "Kasse", subtext: "Transparenz ist alles. Guthaben, Strafen und Ausgaben im Detail." },
             members: { title: "Stammtisch", highlight: "Crew", badge: "Community", subtext: "Verwalte die Köpfe hinter dem Tisch. Nur echte Originale erlaubt!" },
             hof: { title: "Hall of", highlight: "Fame", badge: "Legenden", subtext: "Ehre, wem Ehre gebührt. Hier feiern wir die Top-Performer." },
+            feedback: { title: "Feedback", highlight: "Vorschläge", badge: "Support", subtext: "Melde Probleme oder schlage neue Features vor." },
             options: { title: "App", highlight: "Optionen", badge: "Einstellungen", subtext: "Passe deine Erfahrung an und verwalte Daten." }
         },
         dashboard: {
@@ -137,6 +160,25 @@ export const dictionaries = {
                     desc: "Beschreibung", descPlaceholder: "Details...",
                     back: "Zurück", create: "Event erstellen", saving: "Speichere..."
                 }
+            }
+        },
+        feedback: {
+            tabs: {
+                problem: "Problem melden",
+                suggestion: "Vorschlag machen",
+                other: "Sonstiges"
+            },
+            form: {
+                heading: "Titel",
+                headingPlaceholder: "Kurze Zusammenfassung...",
+                description: "Beschreibung",
+                descriptionPlaceholder: "Beschreibe dein Anliegen...",
+                category: "Kategorie",
+                categories: { design: "Design", function: "Funktionalität", other: "Sonstiges" },
+                platform: "Plattform",
+                submit: "Absenden",
+                submitting: "Sende...",
+                success: "Danke! Dein Feedback wurde gesendet."
             }
         },
         auth: {
@@ -192,6 +234,7 @@ export const dictionaries = {
             gallery: "Galeria",
             members: "Członkowie",
             hof: "Aleja Sław",
+            feedback: "Problem & Sugestie",
             options: "Opcje"
         },
         headers: {
@@ -201,6 +244,7 @@ export const dictionaries = {
             cash: { title: "Przepływ", highlight: "Gotówki", badge: "Skarbiec", subtext: "Przejrzystość to podstawa. Saldo, kary i wydatki w szczegółach." },
             members: { title: "Ekipa", highlight: "Stammtisch", badge: "Społeczność", subtext: "Zarządzaj głowami przy stole. Tylko prawdziwe oryginały!" },
             hof: { title: "Aleja", highlight: "Sław", badge: "Legendy", subtext: "Honorujemy najlepszych darczyńców, płatników i gospodarzy." },
+            feedback: { title: "Opinie", highlight: "Ulepszenia", badge: "Feedback", subtext: "Zgłoś błędy lub zasugeruj nowe funkcje. Bądźmy lepsi!" },
             options: { title: "Opcje", highlight: "Aplikacji", badge: "Ustawienia", subtext: "Dostosuj swoje doświadczenie i zarządzaj danymi." }
         },
         dashboard: {
@@ -228,6 +272,25 @@ export const dictionaries = {
                     desc: "Opis", descPlaceholder: "Szczegóły...",
                     back: "Wstecz", create: "Utwórz Wydarzenie", saving: "Zapisywanie..."
                 }
+            }
+        },
+        feedback: {
+            tabs: {
+                problem: "Zgłoś Problem",
+                suggestion: "Zasugeruj Zmianę",
+                other: "Inne Tematy"
+            },
+            form: {
+                heading: "Tytuł",
+                headingPlaceholder: "Krótkie podsumowanie...",
+                description: "Opis",
+                descriptionPlaceholder: "Opisz szczegółowo...",
+                category: "Kategoria",
+                categories: { design: "Wygląd (Design)", function: "Funkcjonalność", other: "Inne" },
+                platform: "Platforma",
+                submit: "Wyślij",
+                submitting: "Wysyłanie...",
+                success: "Dziękujemy! Twoja opinia została wysłana."
             }
         },
         auth: {
