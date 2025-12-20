@@ -10,7 +10,7 @@ export const dictionaries = {
             gallery: "Gallery",
             members: "Members",
             hof: "Hall of Fame",
-            feedback: "Problem & Suggestions",
+            feedback: "Feedback",
             options: "Options"
         },
         headers: {
@@ -122,7 +122,7 @@ export const dictionaries = {
             gallery: "Galerie",
             members: "Mitglieder",
             hof: "Ruhmeshalle",
-            feedback: "Problem & Vorschläge",
+            feedback: "Feedback",
             options: "Optionen"
         },
         headers: {
@@ -234,7 +234,7 @@ export const dictionaries = {
             gallery: "Galeria",
             members: "Członkowie",
             hof: "Aleja Sław",
-            feedback: "Problem & Sugestie",
+            feedback: "Feedback",
             options: "Opcje"
         },
         headers: {
