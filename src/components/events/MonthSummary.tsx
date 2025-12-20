@@ -119,6 +119,7 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                                 totalMembers={totalMembers}
                                 onEdit={(e) => setEditingEvent(e)}
                                 onDelete={(id) => setDeletingId(id)}
+                                members={members}
                             />
                         ))}
                     </div>

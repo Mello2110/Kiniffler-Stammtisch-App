@@ -11,11 +11,12 @@ interface SetEventItemProps {
     event: SetEvent;
     currentUserId: string;
     totalMembers: number;
+    members: import("@/types").Member[];
     onEdit: (event: SetEvent) => void;
     onDelete: (id: string) => void;
 }
 
-export function SetEventItem({ event, currentUserId, totalMembers, onEdit, onDelete }: SetEventItemProps) {
+export function SetEventItem({ event, currentUserId, totalMembers, members, onEdit, onDelete }: SetEventItemProps) {
     const q = useMemo(() => collection(db, "set_events", event.id, "rsvps"), [event.id]);
     const { data: rsvps } = useFirestoreQuery<{ userId: string; attending: boolean }>(q, { idField: "userId" });
 
@@ -23,14 +24,11 @@ export function SetEventItem({ event, currentUserId, totalMembers, onEdit, onDel
     const myRsvp = rsvps.find(r => r.userId === currentUserId);
     const myStatus = myRsvp ? (myRsvp.attending ? 'yes' : 'no') : null;
 
+    const attendees = rsvps.filter(r => r.attending).map(r => members.find(m => m.id === r.userId)).filter(Boolean);
+    const declined = rsvps.filter(r => !r.attending).map(r => members.find(m => m.id === r.userId)).filter(Boolean);
+
     const handleRsvp = async (status: 'yes' | 'no') => {
         if (!currentUserId) return;
-
-        // If clicking the active status, maybe toggle off? Or just keep it. 
-        // User said: "toggle their RSVP status". 
-        // If I click 'yes' and I'm already 'yes', maybe remove RSVP? 
-        // Or "toggle" means switch between yes/no.
-        // Let's implement definitive selection + toggle off if same clicked.
 
         const newStatus = status === 'yes';
 
@@ -78,9 +76,34 @@ export function SetEventItem({ event, currentUserId, totalMembers, onEdit, onDel
 
             {/* RSVP Section */}
             <div className="flex items-center justify-between border-t border-border pt-2 mt-1">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    <span>{attendingCount}/{totalMembers} Members</span>
+                {/* Avatars */}
+                <div className="flex items-center gap-2 overflow-hidden">
+                    {/* Attendees */}
+                    {attendees.length > 0 && (
+                        <div className="flex -space-x-2">
+                            {attendees.map(m => (
+                                <div key={m?.id} className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted" title={m?.name}>
+                                    <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Divider if both exist */}
+                    {attendees.length > 0 && declined.length > 0 && (
+                        <div className="h-4 w-[1px] bg-border mx-1" />
+                    )}
+
+                    {/* Decliners */}
+                    {declined.length > 0 && (
+                        <div className="flex -space-x-2 opacity-50 grayscale hover:grayscale-0 transition-all">
+                            {declined.map(m => (
+                                <div key={m?.id} className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted" title={m?.name + " (Declined)"}>
+                                    <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex gap-2">
