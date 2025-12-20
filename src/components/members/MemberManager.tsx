@@ -175,6 +175,7 @@ export function MemberManager() {
             {editingMember && (
                 <EditMemberModal
                     member={editingMember}
+                    members={members}
                     onClose={() => setEditingMember(null)}
                 />
             )}

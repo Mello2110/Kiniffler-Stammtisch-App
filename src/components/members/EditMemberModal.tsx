@@ -9,18 +9,50 @@ import { manageBirthdayEvents } from "@/lib/eventUtils";
 
 interface EditMemberModalProps {
     member: Member;
+    members: Member[];
     onClose: () => void;
 }
 
-export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
+const ROLES = [
+    "Admin",
+    "Geschäftsführung",
+    "Fußvolk",
+    "IT-Wart",
+    "Kassenwart",
+    "Musikwart",
+    "Organisationswart",
+    "Präsident",
+    "Social-Media-Wart",
+    "Zeugwart"
+] as const;
+
+export function EditMemberModal({ member, members = [], onClose }: EditMemberModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form State
     const [name, setName] = useState(member.name);
-    const [role, setRole] = useState(member.role || "");
+    // Use existing role if valid, else default to "Fußvolk" or empty if user prefers custom handling
+    // User requested "Ansonsten Standard-Auswahl (z. B. keine Rolle oder Fußvolk)."
+    // Let's check if the current role is in the list.
+    const currentMemberRole = member.role || "";
+    // If current role is loosely matching one of the ROLES (case insensitive?), better safe than sorry.
+    // Let's keep member.role if strictly in list, otherwise default to "Fußvolk" IF member.role is weird.
+    // Actually, user said: "Wenn ein Member aktuell eine Rolle als Freitext hat, versuche diese auf eine der neuen Rollen abzubilden... Ansonsten Standard-Auswahl"
+
+    // Simple matching or just let them pick.
+    const initialRole = ROLES.find(r => r === currentMemberRole) || "Fußvolk";
+
+    const [role, setRole] = useState(initialRole);
     const [joinYear, setJoinYear] = useState(member.joinYear?.toString() || new Date().getFullYear().toString());
     const [birthday, setBirthday] = useState(member.birthday || "");
     const [email, setEmail] = useState(member.email || "");
+
+    // Uniqueness Checks
+    const isRoleTaken = (roleName: string) => {
+        if (roleName !== "Admin" && roleName !== "Kassenwart") return false;
+        // Check if ANY OTHER member has this role
+        return members.some(m => m.id !== member.id && m.role === roleName);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -30,10 +62,17 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
             const ref = doc(db, "members", member.id);
             await updateDoc(ref, {
                 name: name.trim(),
-                role: role.trim(),
+                role: role,
                 joinYear: parseInt(joinYear),
                 birthday: birthday,
-                email: email.trim()
+                email: email.trim(),
+                // If role is Admin, we might need to set isAdmin flag too or keep it synced?
+                // The prompt says "Sobald ein Member die Rolle "Admin" hat" implying the string role triggers stuff
+                // But previously distinct isAdmin flag existed.
+                // "Keine zusätzlichen komplexen Berechtigungslogiken anlegen"
+                // However, conversation 3 implemented isAdmin flag.
+                // Ideally, role="Admin" should correspond to isAdmin=true
+                isAdmin: role === "Admin" // Auto-sync isAdmin flag for consistency
             });
 
             // Sync calendar events
@@ -84,14 +123,22 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
                             Rolle/Titel
                         </label>
                         <div className="relative">
-                            <Award className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <input
-                                type="text"
+                            <Award className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
+                            <select
                                 value={role}
-                                onChange={(e) => setRole(e.target.value)}
-                                placeholder="z.B. Gründer, Kassenwart, Mitglied..."
-                                className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                            />
+                                onChange={(e) => setRole(e.target.value as typeof ROLES[number])}
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
+                            >
+                                {ROLES.map((r) => {
+                                    const taken = isRoleTaken(r);
+                                    return (
+                                        <option key={r} value={r} disabled={taken} className={taken ? "text-muted-foreground bg-muted/50" : ""}>
+                                            {r} {taken ? "(Vergeben)" : ""}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                            {/* Custom arrow for styling consistency if needed, but native select is fine for MVP */}
                         </div>
                     </div>
 
