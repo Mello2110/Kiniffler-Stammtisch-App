@@ -6,14 +6,24 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
 export type FeedbackType = "problem" | "suggestion" | "other";
-export type Category = "design" | "function" | "other";
+export type Category =
+    | "design"
+    | "function"
+    | "other"
+    // New categories for Other Topics
+    | "Plattform/App"
+    | "Veranstaltungen"
+    | "Termine"
+    | "Ausflüge"
+    | "Sonstiges";
+
 export type Platform = "mobile" | "web" | "both";
 
 export interface FeedbackData {
     heading: string;
     description: string;
     category: Category;
-    platform: Platform;
+    platform?: Platform; // Made optional
 }
 
 interface FeedbackFormProps {
@@ -30,7 +40,8 @@ export function FeedbackForm({ type, onSubmit, className }: FeedbackFormProps) {
     // Form State
     const [heading, setHeading] = useState("");
     const [description, setDescription] = useState("");
-    const [category, setCategory] = useState<Category>("function");
+    // Default category depends on type
+    const [category, setCategory] = useState<Category>(type === "other" ? "Sonstiges" : "function");
     const [platform, setPlatform] = useState<Platform>("mobile");
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -39,18 +50,24 @@ export function FeedbackForm({ type, onSubmit, className }: FeedbackFormProps) {
 
         setIsSubmitting(true);
         try {
-            await onSubmit({
+            const submitData: FeedbackData = {
                 heading: heading.trim(),
                 description: description.trim(),
                 category,
-                platform
-            });
+            };
+
+            // Only include platform if NOT "other" type
+            if (type !== "other") {
+                submitData.platform = platform;
+            }
+
+            await onSubmit(submitData);
             setIsSuccess(true);
             // Reset form after delay
             setTimeout(() => {
                 setHeading("");
                 setDescription("");
-                setCategory("function");
+                setCategory(type === "other" ? "Sonstiges" : "function");
                 setPlatform("mobile");
                 setIsSuccess(false);
             }, 3000);
@@ -89,7 +106,7 @@ export function FeedbackForm({ type, onSubmit, className }: FeedbackFormProps) {
                 />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                         {dict.feedback.form.category}
@@ -100,27 +117,41 @@ export function FeedbackForm({ type, onSubmit, className }: FeedbackFormProps) {
                         className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
                         disabled={isSubmitting}
                     >
-                        <option value="design">{dict.feedback.form.categories.design}</option>
-                        <option value="function">{dict.feedback.form.categories.function}</option>
-                        <option value="other">{dict.feedback.form.categories.other}</option>
+                        {type === "other" ? (
+                            <>
+                                <option value="Plattform/App">Plattform/App</option>
+                                <option value="Veranstaltungen">Veranstaltungen</option>
+                                <option value="Termine">Termine</option>
+                                <option value="Ausflüge">Ausflüge</option>
+                                <option value="Sonstiges">Sonstiges</option>
+                            </>
+                        ) : (
+                            <>
+                                <option value="design">{dict.feedback.form.categories.design}</option>
+                                <option value="function">{dict.feedback.form.categories.function}</option>
+                                <option value="other">{dict.feedback.form.categories.other}</option>
+                            </>
+                        )}
                     </select>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                        {dict.feedback.form.platform}
-                    </label>
-                    <select
-                        value={platform}
-                        onChange={(e) => setPlatform(e.target.value as Platform)}
-                        className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
-                        disabled={isSubmitting}
-                    >
-                        <option value="mobile">Mobile</option>
-                        <option value="web">Web</option>
-                        <option value="both">Both (Web & Mobile)</option>
-                    </select>
-                </div>
+                {type !== "other" && (
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                            {dict.feedback.form.platform}
+                        </label>
+                        <select
+                            value={platform}
+                            onChange={(e) => setPlatform(e.target.value as Platform)}
+                            className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
+                            disabled={isSubmitting}
+                        >
+                            <option value="mobile">Mobile</option>
+                            <option value="web">Web</option>
+                            <option value="both">Both (Web & Mobile)</option>
+                        </select>
+                    </div>
+                )}
             </div>
 
             <div className="space-y-2">

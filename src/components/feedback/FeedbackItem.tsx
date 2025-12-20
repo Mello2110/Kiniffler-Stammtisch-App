@@ -34,10 +34,15 @@ export function FeedbackItem({
     const member = useMemo(() => members.find(m => m.id === data.userId), [members, data.userId]);
     const isOwner = currentUserId === data.userId; // Or isAdmin check if we had it here
 
-    const categoryColors: Record<Category, string> = {
+    const categoryColors: Record<string, string> = {
         design: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
         function: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-        other: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20"
+        other: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20",
+        "Plattform/App": "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+        "Veranstaltungen": "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+        "Termine": "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+        "Ausflüge": "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+        "Sonstiges": "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20"
     };
 
     const platformIcons: Record<Platform, any> = {
@@ -46,7 +51,8 @@ export function FeedbackItem({
         both: Smartphone // Fallback, though we render custom for both
     };
 
-    const PlatformIcon = platformIcons[data.platform];
+    // Safe access to platform icon
+    const PlatformIcon = data.platform ? platformIcons[data.platform] : null;
 
     return (
         <div className={cn(
@@ -89,22 +95,24 @@ export function FeedbackItem({
                     <div className="flex items-center gap-2 shrink-0">
                         <span className={cn(
                             "px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase tracking-wider",
-                            categoryColors[data.category]
+                            categoryColors[data.category] || categoryColors.other
                         )}>
                             {data.category}
                         </span>
-                        <div className="flex gap-1">
-                            {(data.platform === "mobile" || data.platform === "both") && (
-                                <div className="p-1 rounded-md bg-secondary text-muted-foreground" title="Mobile">
-                                    <Smartphone className="h-3 w-3" />
-                                </div>
-                            )}
-                            {(data.platform === "web" || data.platform === "both") && (
-                                <div className="p-1 rounded-md bg-secondary text-muted-foreground" title="Web">
-                                    <Monitor className="h-3 w-3" />
-                                </div>
-                            )}
-                        </div>
+                        {data.platform && (
+                            <div className="flex gap-1">
+                                {(data.platform === "mobile" || data.platform === "both") && (
+                                    <div className="p-1 rounded-md bg-secondary text-muted-foreground" title="Mobile">
+                                        <Smartphone className="h-3 w-3" />
+                                    </div>
+                                )}
+                                {(data.platform === "web" || data.platform === "both") && (
+                                    <div className="p-1 rounded-md bg-secondary text-muted-foreground" title="Web">
+                                        <Monitor className="h-3 w-3" />
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

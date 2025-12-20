@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { FeedbackForm, FeedbackData, FeedbackType } from "@/components/feedback/FeedbackForm";
+import { FeedbackForm, FeedbackData, FeedbackType, Category, Platform } from "@/components/feedback/FeedbackForm";
 
 interface EditFeedbackModalProps {
     type: FeedbackType;
@@ -41,7 +41,7 @@ export function EditFeedbackModal({ type, initialData, onClose, onSubmit }: Edit
                         matching the design, initialized with data.
                     */}
 
-                    <EditFormContent initialData={initialData} onSubmit={onSubmit} onClose={onClose} />
+                    <EditFormContent initialData={initialData} type={type} onSubmit={onSubmit} onClose={onClose} />
                 </div>
             </div>
         </div>
@@ -53,19 +53,30 @@ import { useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-function EditFormContent({ initialData, onSubmit, onClose }: { initialData: FeedbackData, onSubmit: (d: FeedbackData) => Promise<void>, onClose: () => void }) {
+function EditFormContent({ initialData, type, onSubmit, onClose }: { initialData: FeedbackData, type: FeedbackType, onSubmit: (d: FeedbackData) => Promise<void>, onClose: () => void }) {
     const { dict } = useLanguage();
     const [heading, setHeading] = useState(initialData.heading);
     const [description, setDescription] = useState(initialData.description);
-    const [category, setCategory] = useState(initialData.category);
-    const [platform, setPlatform] = useState(initialData.platform);
+    const [category, setCategory] = useState<Category>(initialData.category);
+    // Platform might be undefined, default to mobile if so, but it won't be used if type is other
+    const [platform, setPlatform] = useState<Platform>(initialData.platform || "mobile");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            await onSubmit({ heading, description, category, platform });
+            const submitData: FeedbackData = {
+                heading,
+                description,
+                category
+            };
+
+            if (type !== "other") {
+                submitData.platform = platform;
+            }
+
+            await onSubmit(submitData);
             onClose();
         } catch (error) {
             console.error(error);
@@ -89,36 +100,50 @@ function EditFormContent({ initialData, onSubmit, onClose }: { initialData: Feed
                 />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                         {dict.feedback.form.category}
                     </label>
                     <select
                         value={category}
-                        onChange={(e) => setCategory(e.target.value as any)}
+                        onChange={(e) => setCategory(e.target.value as Category)}
                         className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
                     >
-                        <option value="design">{dict.feedback.form.categories.design}</option>
-                        <option value="function">{dict.feedback.form.categories.function}</option>
-                        <option value="other">{dict.feedback.form.categories.other}</option>
+                        {type === "other" ? (
+                            <>
+                                <option value="Plattform/App">Plattform/App</option>
+                                <option value="Veranstaltungen">Veranstaltungen</option>
+                                <option value="Termine">Termine</option>
+                                <option value="Ausflüge">Ausflüge</option>
+                                <option value="Sonstiges">Sonstiges</option>
+                            </>
+                        ) : (
+                            <>
+                                <option value="design">{dict.feedback.form.categories.design}</option>
+                                <option value="function">{dict.feedback.form.categories.function}</option>
+                                <option value="other">{dict.feedback.form.categories.other}</option>
+                            </>
+                        )}
                     </select>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                        {dict.feedback.form.platform}
-                    </label>
-                    <select
-                        value={platform}
-                        onChange={(e) => setPlatform(e.target.value as any)}
-                        className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
-                    >
-                        <option value="mobile">Mobile</option>
-                        <option value="web">Web</option>
-                        <option value="both">Both (Web & Mobile)</option>
-                    </select>
-                </div>
+                {type !== "other" && (
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                            {dict.feedback.form.platform}
+                        </label>
+                        <select
+                            value={platform}
+                            onChange={(e) => setPlatform(e.target.value as Platform)}
+                            className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="mobile">Mobile</option>
+                            <option value="web">Web</option>
+                            <option value="both">Both (Web & Mobile)</option>
+                        </select>
+                    </div>
+                )}
             </div>
 
             <div className="space-y-2">
