@@ -19,6 +19,15 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
+if (typeof window !== "undefined") {
+    // Enable offline persistence
+    import("firebase/firestore").then(({ enableMultiTabIndexedDbPersistence }) => {
+        enableMultiTabIndexedDbPersistence(db).catch((err) => {
+            console.log("Firestore persistence request:", err.code);
+        });
+    });
+}
+
 let analytics;
 if (typeof window !== "undefined") {
     // Only import analytics on the client side
