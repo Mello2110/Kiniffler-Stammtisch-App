@@ -142,7 +142,7 @@ export function MemberManager() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                <div className="flex items-center gap-1 transition-all">
                                     {(user?.uid === member.id || isAdmin) && (
                                         <button
                                             onClick={() => setEditingMember(member)}

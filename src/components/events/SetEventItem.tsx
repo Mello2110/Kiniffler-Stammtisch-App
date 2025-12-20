@@ -56,7 +56,7 @@ export function SetEventItem({ event, currentUserId, totalMembers, members, onEd
                     {event.description && <p className="text-xs text-muted-foreground line-clamp-1">{event.description}</p>}
                 </div>
 
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 transition-opacity">
                     <button
                         onClick={() => onEdit(event)}
                         className="p-2 text-muted-foreground hover:text-primary transition-colors"

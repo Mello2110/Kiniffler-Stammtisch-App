@@ -239,7 +239,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                                 {item.status === 'pending' && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); removeFile(item.id); }}
-                                        className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 p-1.5 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 p-1.5 rounded-full text-white transition-opacity"
                                     >
                                         <X className="h-3 w-3" />
                                     </button>
