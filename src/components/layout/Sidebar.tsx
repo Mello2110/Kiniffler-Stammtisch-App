@@ -102,12 +102,14 @@ export function Sidebar({ className }: { className?: string }) {
                     />
                 ) : (
                     <div className="flex items-center w-full group">
-                        <h1
-                            className="text-2xl font-bold font-heading bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent truncate max-w-[170px]"
-                            title={title}
-                        >
-                            {title}
-                        </h1>
+                        <Link href="/dashboard" className="truncate max-w-[170px] hover:opacity-80 transition-opacity">
+                            <h1
+                                className="text-2xl font-bold font-heading bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent truncate"
+                                title={title}
+                            >
+                                {title}
+                            </h1>
+                        </Link>
                         <button
                             onClick={() => setIsEditing(true)}
                             className="ml-2 p-1 rounded-md hover:bg-primary/20 transition-colors group/edit"
