@@ -8,7 +8,7 @@ import { FeedbackData } from "./FeedbackForm";
 import { Member } from "@/types";
 
 interface FeedbackListProps {
-    items: FeedbackItemProps["data"][];
+    items: (FeedbackItemProps["data"] & { id: string })[];
     members: Member[];
     currentUserId: string;
     onToggleComplete: (id: string, currentStatus: boolean) => void;
@@ -27,7 +27,14 @@ export function FeedbackList({ items, members, currentUserId, onToggleComplete, 
     openItems.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
     completedItems.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
-    if (items.length === 0) return null;
+    if (items.length === 0) {
+        return (
+            <div className="mt-8 text-center p-8 bg-secondary/20 rounded-xl border border-dashed border-secondary text-muted-foreground animate-in fade-in zoom-in duration-500">
+                <p className="font-medium">Noch keine Einträge in dieser Kategorie.</p>
+                <p className="text-sm opacity-70">Sei der Erste!</p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 mt-8">
