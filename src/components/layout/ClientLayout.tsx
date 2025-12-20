@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -11,6 +12,15 @@ import { useAuth } from "@/contexts/AuthContext";
 export function ClientLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { user, loading } = useAuth();
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+            navigator.serviceWorker
+                .register("/sw.js")
+                .then((registration) => console.log("SW registered: ", registration.scope))
+                .catch((err) => console.log("SW registration failed: ", err));
+        }
+    }, []);
 
     // Pages that should have the full dashboard layout
     const isLoginPage = pathname === "/login";
