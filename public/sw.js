@@ -6,7 +6,15 @@ const URLS_TO_CACHE = [
     '/landing-icon.jpg',
     '/kanpai-logo.png',
     '/login',
-    '/dashboard'
+    '/dashboard',
+    '/cash',
+    '/events',
+    '/feedback',
+    '/gallery',
+    '/hall-of-fame',
+    '/members',
+    '/options',
+    '/stats'
 ];
 
 self.addEventListener('install', (event) => {
