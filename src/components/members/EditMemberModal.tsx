@@ -130,20 +130,7 @@ export function EditMemberModal({ member, onClose }: EditMemberModalProps) {
                     </div>
 
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                            Geburtstag
-                        </label>
-                        <div className="relative">
-                            <Cake className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <input
-                                type="date"
-                                value={birthday}
-                                onChange={(e) => setBirthday(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                            />
-                        </div>
-                    </div>
+
 
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
