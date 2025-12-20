@@ -42,7 +42,8 @@ export function FeedbackItem({
 
     const platformIcons: Record<Platform, any> = {
         mobile: Smartphone,
-        web: Monitor
+        web: Monitor,
+        both: Smartphone // Fallback, though we render custom for both
     };
 
     const PlatformIcon = platformIcons[data.platform];
@@ -92,8 +93,17 @@ export function FeedbackItem({
                         )}>
                             {data.category}
                         </span>
-                        <div className="p-1 rounded-md bg-secondary text-muted-foreground" title={data.platform}>
-                            <PlatformIcon className="h-3 w-3" />
+                        <div className="flex gap-1">
+                            {(data.platform === "mobile" || data.platform === "both") && (
+                                <div className="p-1 rounded-md bg-secondary text-muted-foreground" title="Mobile">
+                                    <Smartphone className="h-3 w-3" />
+                                </div>
+                            )}
+                            {(data.platform === "web" || data.platform === "both") && (
+                                <div className="p-1 rounded-md bg-secondary text-muted-foreground" title="Web">
+                                    <Monitor className="h-3 w-3" />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

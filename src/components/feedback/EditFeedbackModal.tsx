@@ -116,6 +116,7 @@ function EditFormContent({ initialData, onSubmit, onClose }: { initialData: Feed
                     >
                         <option value="mobile">Mobile</option>
                         <option value="web">Web</option>
+                        <option value="both">Both (Web & Mobile)</option>
                     </select>
                 </div>
             </div>

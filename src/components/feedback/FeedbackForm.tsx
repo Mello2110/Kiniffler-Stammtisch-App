@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export type FeedbackType = "problem" | "suggestion" | "other";
 export type Category = "design" | "function" | "other";
-export type Platform = "mobile" | "web";
+export type Platform = "mobile" | "web" | "both";
 
 export interface FeedbackData {
     heading: string;
@@ -118,6 +118,7 @@ export function FeedbackForm({ type, onSubmit, className }: FeedbackFormProps) {
                     >
                         <option value="mobile">Mobile</option>
                         <option value="web">Web</option>
+                        <option value="both">Both (Web & Mobile)</option>
                     </select>
                 </div>
             </div>
