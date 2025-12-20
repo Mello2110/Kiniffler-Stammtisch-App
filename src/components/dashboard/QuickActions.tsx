@@ -14,15 +14,9 @@ export function QuickActions() {
                 <Link
                     key={i}
                     href={action.href}
-                    // Changed hover effects as requested:
-                    // - Added duration-200 for smooth transition
-                    // - Changed hover:bg-accent to hover:bg-accent/40 for subtler effect
-                    // - Added hover:shadow-lg for soft shadow
-                    // - Added hover:-translate-y-0.5 for subtle 2px lift
-                    // - Reduced border opacity slightly for subtlety
-                    className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/40 hover:shadow-lg"
+                    className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground transition-all duration-300 hover:-translate-y-1 hover:bg-primary/5 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5"
                 >
-                    <div className={`rounded-full p-3 ${action.bg} ${action.color}`}>
+                    <div className={`rounded-full p-3 transition-transform duration-300 group-hover:scale-110 ${action.bg} ${action.color}`}>
                         <action.icon className="h-6 w-6" />
                     </div>
                     <span className="text-sm font-medium">{action.label}</span>
