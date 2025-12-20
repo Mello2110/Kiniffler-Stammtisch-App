@@ -123,7 +123,7 @@ export function FeedbackItem({
 
                     {/* Actions */}
                     <div className="flex items-center gap-1 transition-opacity">
-                        {isOwner && !data.completed && (
+                        {!data.completed && (
                             <button
                                 onClick={() => onEdit(id, data)}
                                 className="p-2 hover:bg-muted text-muted-foreground hover:text-primary rounded-full transition-colors"
