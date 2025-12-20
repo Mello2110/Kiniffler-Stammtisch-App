@@ -15,9 +15,9 @@ interface EditMemberModalProps {
 
 const ROLES = [
     "Admin",
+    "Gast",
     "Geschäftsführung",
     "Fußvolk",
-    "IT-Wart",
     "Kassenwart",
     "Musikwart",
     "Organisationswart",
