@@ -4,30 +4,28 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { SetEvent } from "@/types";
+import type { SetEvent, Member } from "@/types";
+import { EventForm } from "./EventForm";
 
 interface EditEventModalProps {
     event: SetEvent;
     onClose: () => void;
+    members: Member[];
 }
 
-export function EditEventModal({ event, onClose }: EditEventModalProps) {
+export function EditEventModal({ event, onClose, members = [] }: EditEventModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Form State
-    const [title, setTitle] = useState(event.title);
-    const [description, setDescription] = useState(event.description || "");
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!title) return;
-
+    const handleSubmit = async (data: any) => {
         setIsSubmitting(true);
         try {
             const ref = doc(db, "set_events", event.id);
             await updateDoc(ref, {
-                title,
-                description
+                title: data.title,
+                description: data.description,
+                time: data.time,
+                location: data.location,
+                hostId: data.hostId
             });
             onClose();
         } catch (error) {
@@ -53,47 +51,20 @@ export function EditEventModal({ event, onClose }: EditEventModalProps) {
                     <p className="text-sm text-muted-foreground">Update event details.</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Title</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Event Title"
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            required
-                            autoFocus
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Description</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Optional description..."
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
-                        />
-                    </div>
-
-                    <div className="flex gap-2 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 rounded-md border border-input bg-background py-2 text-sm font-medium hover:bg-muted"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="flex-1 rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                        >
-                            {isSubmitting ? "Updating..." : "Update Event"}
-                        </button>
-                    </div>
-                </form>
+                <EventForm
+                    initialData={{
+                        title: event.title,
+                        description: event.description || "",
+                        time: event.time || "19:00",
+                        location: event.location || "",
+                        hostId: event.hostId || "neutral"
+                    }}
+                    members={members}
+                    onSubmit={handleSubmit}
+                    onCancel={onClose}
+                    isSubmitting={isSubmitting}
+                    submitLabel="Update Event"
+                />
             </div>
         </div>
     );

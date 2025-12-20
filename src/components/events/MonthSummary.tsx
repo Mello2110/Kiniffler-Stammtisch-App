@@ -8,7 +8,7 @@ import { db } from "@/lib/firebase";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { EditEventModal } from "@/components/events/EditEventModal";
 import { SetEventItem } from "@/components/events/SetEventItem";
-import type { StammtischVote, SetEvent } from "@/types";
+import type { StammtischVote, SetEvent, Member } from "@/types";
 
 interface MonthSummaryProps {
     currentMonth: Date;
@@ -16,9 +16,10 @@ interface MonthSummaryProps {
     setEvents: SetEvent[];
     currentUserId: string;
     totalMembers: number;
+    members: Member[];
 }
 
-export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, totalMembers }: MonthSummaryProps) {
+export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, totalMembers, members }: MonthSummaryProps) {
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [editingEvent, setEditingEvent] = useState<SetEvent | null>(null);
 
@@ -141,6 +142,7 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                 <EditEventModal
                     event={editingEvent}
                     onClose={() => setEditingEvent(null)}
+                    members={members}
                 />
             )}
         </div>

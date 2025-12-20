@@ -1,20 +1,19 @@
-"use client";
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { ThumbsUp, CalendarPlus, X, Loader2, ThumbsDown, Clock, MapPin } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { collection, addDoc, doc, setDoc, serverTimestamp, deleteDoc, query, where, getDocs } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase"; // Ensure firebase is initialized
-import { signInAnonymously } from "firebase/auth"; // Temp auth for now if not logged in
+import { ThumbsUp, CalendarPlus, X, Loader2, ThumbsDown } from "lucide-react";
+import { collection, addDoc, doc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import { signInAnonymously } from "firebase/auth";
 import type { StammtischVote } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { enUS, de, pl } from "date-fns/locale";
+import { EventForm } from "./EventForm";
 
 interface DateInteractionModalProps {
     date: Date;
     onClose: () => void;
-    currentUserId?: string; // We'll need auth context later
+    currentUserId?: string;
     existingVotes?: StammtischVote[];
     members?: import("@/types").Member[];
 }
@@ -26,13 +25,6 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
     const [mode, setMode] = useState<"select" | "add-event">("select");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Form State for Set Event
-    const [eventTitle, setEventTitle] = useState("");
-    const [eventTime, setEventTime] = useState("19:00");
-    const [eventLocation, setEventLocation] = useState("");
-    const [eventDesc, setEventDesc] = useState("");
-    const [hostId, setHostId] = useState("neutral");
-
     const dateStr = format(date, "yyyy-MM-dd");
     const displayDate = format(date, dict.events.modal.titleFormat, { locale: locales[language] });
 
@@ -43,7 +35,6 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
     const handleVote = async () => {
         setIsSubmitting(true);
         try {
-            // Quick anonymous auth if needed
             let userId = currentUserId || auth.currentUser?.uid;
             if (!userId) {
                 const userCred = await signInAnonymously(auth);
@@ -53,8 +44,6 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
             const voteId = `${userId}_${dateStr}`;
             const voteRef = doc(db, "stammtisch_votes", voteId);
 
-            // Use a race to ensure we don't hang forever if network is slow
-            // The UI updates optimistically via onSnapshot anyway
             const writePromise = setDoc(voteRef, {
                 userId,
                 date: dateStr,
@@ -63,29 +52,24 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                 createdAt: serverTimestamp()
             });
 
-            // Force close after 2 seconds max
             const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));
-
             await Promise.race([writePromise, timeoutPromise]);
 
             onClose();
         } catch (error) {
             console.error("Error voting:", error);
-            // Only alert if it's a real error, not just a timeout (timeout resolves, doesn't reject)
             alert("Note: Vote processing. Check console if it doesn't appear.");
-            onClose(); // Close anyway on error to avoid stuck UI? No, maybe keep open. 
-            // Actually, for this implementation, let's allow close on catch if we want "immediately"
+            onClose();
         } finally {
-            if (setIsSubmitting) setIsSubmitting(false); // Safety check if unmounted, though closure handles it
+            if (setIsSubmitting) setIsSubmitting(false);
         }
     };
 
     const handleUnvote = async () => {
         setIsSubmitting(true);
         try {
-            // For unvote we need the user ID
             const userId = currentUserId || auth.currentUser?.uid;
-            if (!userId) return; // Should not happen if hasVoted is true
+            if (!userId) return;
 
             const voteId = `${userId}_${dateStr}`;
             const voteRef = doc(db, "stammtisch_votes", voteId);
@@ -100,21 +84,18 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
         }
     };
 
-    const handleAddEvent = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!eventTitle.trim()) return;
-
+    const handleAddEvent = async (data: any) => {
         setIsSubmitting(true);
         try {
             const writePromise = addDoc(collection(db, "set_events"), {
-                title: eventTitle,
-                description: eventDesc,
+                title: data.title,
+                description: data.description,
                 date: dateStr,
-                time: eventTime,
-                location: eventLocation,
+                time: data.time,
+                location: data.location,
                 month: date.getMonth(),
                 year: date.getFullYear(),
-                hostId,
+                hostId: data.hostId,
                 createdAt: serverTimestamp()
             });
 
@@ -191,90 +172,12 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                         </button>
                     </div>
                 ) : (
-                    <form onSubmit={handleAddEvent} className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">{dict.events.modal.form.title}</label>
-                            <input
-                                type="text"
-                                value={eventTitle}
-                                onChange={(e) => setEventTitle(e.target.value)}
-                                placeholder={dict.events.modal.form.placeholder}
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                autoFocus
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">{dict.events.modal.form.host}</label>
-                            <select
-                                value={hostId}
-                                onChange={(e) => setHostId(e.target.value)}
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                                <option value="neutral">{dict.events.modal.form.neutral}</option>
-                                {members.map(member => (
-                                    <option key={member.id} value={member.id}>
-                                        {member.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">{dict.events.modal.form.time}</label>
-                                <div className="relative">
-                                    <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <input
-                                        type="time"
-                                        value={eventTime}
-                                        onChange={(e) => setEventTime(e.target.value)}
-                                        className="w-full rounded-md border border-input bg-background pl-9 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">{dict.events.modal.form.location}</label>
-                                <div className="relative">
-                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <input
-                                        type="text"
-                                        value={eventLocation}
-                                        onChange={(e) => setEventLocation(e.target.value)}
-                                        placeholder={dict.events.modal.form.venuePlaceholder}
-                                        className="w-full rounded-md border border-input bg-background pl-9 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">{dict.events.modal.form.desc}</label>
-                            <textarea
-                                value={eventDesc}
-                                onChange={(e) => setEventDesc(e.target.value)}
-                                placeholder={dict.events.modal.form.descPlaceholder}
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px]"
-                            />
-                        </div>
-
-                        <div className="flex gap-2 pt-2">
-                            <button
-                                type="button"
-                                onClick={() => setMode("select")}
-                                className="flex-1 rounded-md border border-input bg-background py-2 text-sm font-medium hover:bg-muted"
-                            >
-                                {dict.events.modal.form.back}
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={isSubmitting || !eventTitle.trim()}
-                                className="flex-1 rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                            >
-                                {isSubmitting ? dict.events.modal.form.saving : dict.events.modal.form.create}
-                            </button>
-                        </div>
-                    </form>
+                    <EventForm
+                        members={members}
+                        onSubmit={handleAddEvent}
+                        onCancel={() => setMode("select")}
+                        isSubmitting={isSubmitting}
+                    />
                 )}
             </div>
         </div>

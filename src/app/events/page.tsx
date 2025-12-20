@@ -86,6 +86,7 @@ export default function EventsPage() {
                     setEvents={currentMonthEvents}
                     currentUserId={user?.uid || ""}
                     totalMembers={members.length}
+                    members={members}
                 />
             </section>
 
