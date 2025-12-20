@@ -1,18 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MessageSquarePlus, AlertTriangle, Lightbulb, MessageCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { FeedbackForm, FeedbackType, FeedbackData } from "@/components/feedback/FeedbackForm";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { FeedbackList } from "@/components/feedback/FeedbackList";
+import { EditFeedbackModal } from "@/components/feedback/EditFeedbackModal";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import { Member } from "@/types";
 
 export default function FeedbackPage() {
     const { dict } = useLanguage();
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<FeedbackType>("problem");
+
+    // Modal State
+    const [editingItem, setEditingItem] = useState<{ id: string, data: FeedbackData } | null>(null);
+
+    // Queries
+    // Fetch all feedback (client-side filtering for simplicity as volume is low, 
+    // or use compound queries if indexes allow. For now, separate collections were avoided, so we filter by 'type')
+    const feedbackQuery = useMemo(() => query(collection(db, "feedback"), orderBy("createdAt", "desc")), []);
+    const { data: allFeedback } = useFirestoreQuery<FeedbackData & { id: string, completed: boolean, userId: string, type: string }>(feedbackQuery, { idField: "id" });
+
+    // Filter by active tab
+    const filteredFeedback = useMemo(() => {
+        return allFeedback.filter(f => f.type === activeTab);
+    }, [allFeedback, activeTab]);
+
+    // Fetch members for avatars
+    const membersQuery = useMemo(() => collection(db, "members"), []);
+    const { data: members } = useFirestoreQuery<Member>(membersQuery, { idField: "id" });
+
 
     const handleFeedbackSubmit = async (type: FeedbackType, data: FeedbackData) => {
         try {
@@ -21,12 +44,45 @@ export default function FeedbackPage() {
                 type,
                 userId: user?.uid || "anonymous",
                 userEmail: user?.email || "anonymous",
+                completed: false,
                 status: "new",
                 createdAt: serverTimestamp()
             });
         } catch (error) {
             console.error("Error submitting feedback:", error);
-            throw error; // Re-throw for form to handle error state if needed
+            throw error;
+        }
+    };
+
+    const handleToggleComplete = async (id: string, currentStatus: boolean) => {
+        try {
+            await updateDoc(doc(db, "feedback", id), {
+                completed: !currentStatus
+            });
+        } catch (error) {
+            console.error("Error toggling complete:", error);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Wirklich löschen?")) return;
+        try {
+            await deleteDoc(doc(db, "feedback", id));
+        } catch (error) {
+            console.error("Error deleting feedback:", error);
+        }
+    };
+
+    const handleUpdate = async (data: FeedbackData) => {
+        if (!editingItem) return;
+        try {
+            await updateDoc(doc(db, "feedback", editingItem.id), {
+                ...data
+            });
+            setEditingItem(null);
+        } catch (error) {
+            console.error("Error updating feedback:", error);
+            throw error; // Let modal handle error display if needed (though our modal is simple)
         }
     };
 
@@ -110,7 +166,27 @@ export default function FeedbackPage() {
                         className="border-blue-500/10 shadow-blue-500/5"
                     />
                 )}
+
+                {/* List View */}
+                <FeedbackList
+                    items={filteredFeedback}
+                    members={members}
+                    currentUserId={user?.uid || ""}
+                    onToggleComplete={handleToggleComplete}
+                    onDelete={handleDelete}
+                    onEdit={(id, data) => setEditingItem({ id, data })}
+                />
             </div>
+
+            {/* Edit Modal */}
+            {editingItem && (
+                <EditFeedbackModal
+                    type={activeTab} // Using activeTab here, strictly assuming we edit items of current tab view, which is safe enough as list is filtered
+                    initialData={editingItem.data}
+                    onClose={() => setEditingItem(null)}
+                    onSubmit={handleUpdate}
+                />
+            )}
         </div>
     );
 }
