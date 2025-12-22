@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         email: currentUser.email,
                         name: currentUser.displayName || currentUser.email?.split('@')[0] || "New Member",
                         avatarUrl: currentUser.photoURL || null,
+                        role: "FussVolk",
                         roles: [],
                         points: 0,
                         joinYear: new Date().getFullYear(),
