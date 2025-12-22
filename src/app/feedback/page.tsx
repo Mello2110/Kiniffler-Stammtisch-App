@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { Member } from "@/types";
+import { EditableHeader } from "@/components/common/EditableHeader";
 
 export default function FeedbackPage() {
     const { dict } = useLanguage();
@@ -169,10 +170,16 @@ export default function FeedbackPage() {
         <div className="space-y-6 max-w-4xl mx-auto pb-20">
             {/* Header */}
             <div className="flex flex-col gap-1">
-                <h2 className="text-3xl font-bold font-heading flex items-center gap-3">
+                <div className="flex items-center gap-3">
                     <MessageSquarePlus className="h-8 w-8 text-primary" />
-                    {dict.headers.feedback.title}
-                </h2>
+                    <EditableHeader
+                        pageId="feedback"
+                        headerId="page-title"
+                        defaultText={dict.headers.feedback.title}
+                        as="h2"
+                        className="text-3xl font-bold font-heading"
+                    />
+                </div>
                 <p className="text-muted-foreground">
                     {dict.headers.feedback.subtext}
                 </p>

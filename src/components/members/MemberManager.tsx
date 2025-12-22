@@ -9,6 +9,7 @@ import { UserPlus, Trash2, Loader2, Users, Pencil, Award, Calendar, Cake } from 
 import type { Member } from "@/types";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { EditMemberModal } from "./EditMemberModal";
+import { EditableHeader } from "@/components/common/EditableHeader";
 
 export function MemberManager() {
     const { user } = useAuth();
@@ -77,10 +78,16 @@ export function MemberManager() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
             {/* Add Member Form */}
             <div className="bg-card border rounded-2xl p-6 shadow-sm">
-                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                <div className="mb-6 flex items-center gap-2">
                     <UserPlus className="h-5 w-5 text-primary" />
-                    Neues Mitglied hinzufügen
-                </h2>
+                    <EditableHeader
+                        pageId="members"
+                        headerId="add-member-title"
+                        defaultText="Neues Mitglied hinzufügen"
+                        as="h2"
+                        className="text-xl font-bold"
+                    />
+                </div>
                 <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-4">
                     <input
                         type="text"
@@ -104,10 +111,16 @@ export function MemberManager() {
             {/* Member List */}
             <div className="bg-card border rounded-2xl overflow-hidden shadow-sm">
                 <div className="p-6 border-b bg-muted/30 flex items-center justify-between">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                         <Users className="h-5 w-5 text-primary" />
-                        Aktuelle Mitglieder
-                    </h2>
+                        <EditableHeader
+                            pageId="members"
+                            headerId="current-members-title"
+                            defaultText="Aktuelle Mitglieder"
+                            as="h2"
+                            className="text-xl font-bold"
+                        />
+                    </div>
                     <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
                         {members.length} Personen
                     </span>

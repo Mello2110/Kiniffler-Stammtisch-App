@@ -12,6 +12,7 @@ import { Users, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity } fr
 import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { EditableHeader } from "@/components/common/EditableHeader";
 
 export function DashboardView() {
     const { user } = useAuth();
@@ -295,7 +296,15 @@ export function DashboardView() {
 
             {/* Quick Actions */}
             <div>
-                <h2 className="text-xl font-semibold mb-4">{dict.dashboard.quickActions}</h2>
+                <div className="mb-4">
+                    <EditableHeader
+                        pageId="dashboard"
+                        headerId="quick-actions-title"
+                        defaultText={dict.dashboard.quickActions}
+                        as="h2"
+                        className="text-xl font-semibold"
+                    />
+                </div>
                 <QuickActions />
             </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { Sparkles, Camera, Map } from "lucide-react";
 import { YearCard } from "@/components/gallery/YearCard";
+import { EditableHeader } from "@/components/common/EditableHeader";
 
 export default function GalleryPage() {
     // Generate years from 2015 to 2026
@@ -60,7 +61,13 @@ export default function GalleryPage() {
             {/* Empty State / Info */}
             <div className="flex flex-col items-center justify-center py-12 px-6 text-center border-2 border-dashed rounded-[40px] bg-muted/20">
                 <Map className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-xl font-bold mb-2">Du suchst etwas Spezielles?</h3>
+                <EditableHeader
+                    pageId="gallery"
+                    headerId="search-title"
+                    defaultText="Du suchst etwas Spezielles?"
+                    as="h3"
+                    className="text-xl font-bold mb-2"
+                />
                 <p className="text-muted-foreground max-w-md text-sm">
                     Klicke auf ein Jahr oben, um alle Hochladevorgänge und Fotos aus diesem Zeitraum zu sehen.
                 </p>

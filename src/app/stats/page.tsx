@@ -9,6 +9,7 @@ import { PointsLeaderboard } from "@/components/stats/PointsLeaderboard";
 import { PointsMatrix } from "@/components/stats/PointsMatrix";
 import { Trophy, BarChart3 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { EditableHeader } from "@/components/common/EditableHeader";
 
 export default function StatsPage() {
     const { dict } = useLanguage();
@@ -71,7 +72,15 @@ export default function StatsPage() {
 
             {/* Matrix Table */}
             <section>
-                <h2 className="text-xl font-semibold mb-4">{dict.stats.matrixTitle} ({currentYear})</h2>
+                <div className="mb-4">
+                    <EditableHeader
+                        pageId="stats"
+                        headerId="points-matrix-title"
+                        defaultText={`${dict.stats.matrixTitle} (${currentYear})`}
+                        as="h2"
+                        className="text-xl font-semibold"
+                    />
+                </div>
                 {isLoadingMembers ? (
                     <div className="p-8 text-center text-muted-foreground">{dict.stats.matrixLoading}</div>
                 ) : (

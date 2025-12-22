@@ -16,6 +16,7 @@ import { EditExpenseModal } from "@/components/cash/EditExpenseModal";
 import { Plus, Wallet, PiggyBank } from "lucide-react";
 import type { Expense } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { EditableHeader } from "@/components/common/EditableHeader";
 
 export default function CashPage() {
     const { user } = useAuth();
@@ -85,7 +86,13 @@ export default function CashPage() {
             <div className="grid gap-8 lg:grid-cols-1">
                 {/* Section 1: Monthly Contributions */}
                 <section className="space-y-4">
-                    <h2 className="text-xl font-semibold">Monthly Contributions (€15)</h2>
+                    <EditableHeader
+                        pageId="cash"
+                        headerId="monthly-contributions-title"
+                        defaultText="Monthly Contributions (€15)"
+                        as="h2"
+                        className="text-xl font-semibold"
+                    />
                     {isLoadingMembers ? (
                         <div className="p-4 text-center text-muted-foreground">Lade Mitglieder...</div>
                     ) : (
@@ -100,7 +107,13 @@ export default function CashPage() {
 
                 {/* Section: Spendenwürfeln */}
                 <section className="space-y-4">
-                    <h2 className="text-xl font-semibold">Spendenwürfeln</h2>
+                    <EditableHeader
+                        pageId="cash"
+                        headerId="spendenwuerfeln-title"
+                        defaultText="Spendenwürfeln"
+                        as="h2"
+                        className="text-xl font-semibold"
+                    />
                     {isLoadingMembers ? (
                         <div className="p-4 text-center text-muted-foreground">Lade...</div>
                     ) : (
@@ -117,7 +130,13 @@ export default function CashPage() {
                     {/* Section 2: Penalties (Existing) */}
                     <section className="space-y-4">
                         <div className="flex items-center justify-between h-[34px]">
-                            <h2 className="text-xl font-semibold">Penalties</h2>
+                            <EditableHeader
+                                pageId="cash"
+                                headerId="penalties-title"
+                                defaultText="Penalties"
+                                as="h2"
+                                className="text-xl font-semibold"
+                            />
                             {canManageFinance && (
                                 <button
                                     onClick={() => setIsPenaltyModalOpen(true)}

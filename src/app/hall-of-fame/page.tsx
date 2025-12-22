@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { Crown, Medal, Banknote, Calendar, Coins, Sparkles } from "lucide-react";
 import type { Member, Donation, Penalty, SetEvent } from "@/types";
 import { cn } from "@/lib/utils";
+import { EditableHeader } from "@/components/common/EditableHeader";
 
 interface RankedMember {
     id: string;
@@ -85,7 +86,7 @@ export default function HallOfFamePage() {
         fetchAll();
     }, []);
 
-    const RankCard = ({ title, icon: Icon, data, unit, colorHex }: any) => (
+    const RankCard = ({ title, icon: Icon, data, unit, colorHex, headerId }: any) => (
         <div className="relative group overflow-hidden bg-card border rounded-[2.5rem] hover:border-primary/50 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-primary/20 p-8 flex flex-col gap-6">
 
             {/* Header */}
@@ -95,7 +96,13 @@ export default function HallOfFamePage() {
                         <Icon className="h-6 w-6" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold font-heading leading-none">{title}</h2>
+                        <EditableHeader
+                            pageId="hall-of-fame"
+                            headerId={headerId}
+                            defaultText={title}
+                            as="h2"
+                            className="text-xl font-bold font-heading leading-none"
+                        />
                         <p className="text-xs text-muted-foreground font-bold tracking-wider uppercase mt-1">Top 3 Legends</p>
                     </div>
                 </div>
@@ -201,24 +208,27 @@ export default function HallOfFamePage() {
             <div className="grid gap-6 md:grid-cols-3">
                 <RankCard
                     title="Top Donors"
-                    icon={Coins} // Changed from Heart to Money-related
+                    headerId="top-donors-title"
+                    icon={Coins}
                     data={topDonors}
                     unit="€"
-                    colorHex="#D4A017" // Gold
+                    colorHex="#D4A017"
                 />
                 <RankCard
                     title="Top Penalty Payers"
+                    headerId="top-penalty-payers-title"
                     icon={Banknote}
                     data={topPenaltyPayers}
                     unit="€"
-                    colorHex="#C62828" // Red-ish for penalties, or stick to Fiege Green? Let's use Red for penalties distinction
+                    colorHex="#C62828"
                 />
                 <RankCard
                     title="Best Hosts"
+                    headerId="best-hosts-title"
                     icon={Calendar}
                     data={topHosts}
                     unit="x"
-                    colorHex="#1A5C2E" // Fiege Green
+                    colorHex="#1A5C2E"
                 />
             </div>
         </div>
