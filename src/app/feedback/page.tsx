@@ -98,7 +98,7 @@ export default function FeedbackPage() {
                 // Add new vote
                 newVotes[user.uid] = type;
                 if (type === "like") likes++;
-                else dislikes--;
+                else dislikes++;
 
                 // If switching, remove old vote effect (neutralize previous)
                 if (previousVote) {
