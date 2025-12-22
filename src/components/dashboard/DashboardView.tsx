@@ -12,6 +12,7 @@ import { Users, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity } fr
 import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTitle } from "@/contexts/TitleContext";
 import { EditableHeader } from "@/components/common/EditableHeader";
 
 export function DashboardView() {
@@ -187,6 +188,7 @@ export function DashboardView() {
     }, [events, votes, todayStr]);
 
     const { dict } = useLanguage();
+    const { title: sidebarTitle } = useTitle();
 
     const currentCashBalance = startingBalance + contributionsTotal + penaltyPot - expensesTotal;
 
@@ -201,7 +203,7 @@ export function DashboardView() {
                             {dict.headers.dashboard.badge}
                         </div>
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
-                            {dict.headers.dashboard.title} <span className="text-primary italic">{dict.headers.dashboard.highlight}</span>
+                            {sidebarTitle} <span className="text-primary italic">{dict.headers.dashboard.highlight}</span>
                         </h1>
                         <p className="text-muted-foreground text-lg leading-relaxed">
                             {dict.headers.dashboard.subtext}
