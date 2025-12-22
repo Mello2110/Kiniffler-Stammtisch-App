@@ -20,6 +20,8 @@ export function DonationTable({ members, currentYear, currentUserId, canManage }
     const [donations, setDonations] = useState<Donation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
+    const [editingCell, setEditingCell] = useState<string | null>(null); // "userId_month"
+    const [editValue, setEditValue] = useState("");
 
     useEffect(() => {
         const fetchDonations = async () => {
@@ -31,6 +33,12 @@ export function DonationTable({ members, currentYear, currentUserId, canManage }
         };
         fetchDonations();
     }, [currentYear]);
+
+    const handleCellClick = (memberId: string, monthIndex: number, currentValue: number) => {
+        if (!canManage) return;
+        setEditingCell(`${memberId}_${monthIndex}`);
+        setEditValue(currentValue === 0 ? "" : currentValue.toString());
+    };
 
     const handleDonationChange = async (memberId: string, monthIndex: number, newValue: string) => {
         if (!canManage) return;
@@ -67,6 +75,7 @@ export function DonationTable({ members, currentYear, currentUserId, canManage }
             console.error("Error updating donation:", error);
         } finally {
             setUpdatingId(null);
+            setEditingCell(null);
         }
     };
 
@@ -96,30 +105,36 @@ export function DonationTable({ members, currentYear, currentUserId, canManage }
                                 </td>
                                 {MONTHS.map((_, monthIndex) => {
                                     const donation = memberDonations.find(d => d.month === monthIndex);
+                                    const currentAmount = donation?.amount || 0;
+                                    const isEditing = editingCell === `${member.id}_${monthIndex}`;
                                     const isUpdating = updatingId === `${member.id}_${currentYear}_${monthIndex}`;
-                                    const canEdit = member.id === currentUserId;
 
                                     return (
-                                        <td key={monthIndex} className="p-0 text-center border-r border-b relative min-w-[3rem]">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="1"
-                                                disabled={!canManage || isUpdating}
-                                                className={cn(
-                                                    "w-full h-10 text-center bg-transparent focus:bg-primary/5 outline-none transition-colors scroll-none appearance-none",
-                                                    // Hide spin buttons
-                                                    "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                                    donation?.amount ? "font-bold text-primary" : "text-muted-foreground",
-                                                    !canManage && "opacity-50 cursor-default bg-muted/10"
-                                                )}
-                                                placeholder={canManage ? "-" : ""}
-                                                value={donation?.amount || ""}
-                                                onChange={(e) => handleDonationChange(member.id, monthIndex, e.target.value)}
-                                            />
-                                            {isUpdating && (
-                                                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                                                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                        <td key={monthIndex} className="p-1 text-center border-r border-b">
+                                            {isEditing ? (
+                                                <input
+                                                    type="number"
+                                                    value={editValue}
+                                                    onChange={(e) => setEditValue(e.target.value)}
+                                                    onBlur={() => handleDonationChange(member.id, monthIndex, editValue)}
+                                                    onKeyDown={(e) => e.key === "Enter" && handleDonationChange(member.id, monthIndex, editValue)}
+                                                    className="w-10 text-center bg-background border rounded px-1 py-0.5 text-xs focus:ring-1 focus:ring-primary outline-none"
+                                                    autoFocus
+                                                />
+                                            ) : (
+                                                <div
+                                                    onClick={() => handleCellClick(member.id, monthIndex, currentAmount)}
+                                                    className={cn(
+                                                        "cursor-pointer hover:bg-white/10 rounded py-1 transition-colors min-h-[24px] flex items-center justify-center",
+                                                        currentAmount > 0 ? "font-bold text-primary" : "text-muted-foreground/30",
+                                                        !canManage && "cursor-default"
+                                                    )}
+                                                >
+                                                    {isUpdating ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                                    ) : (
+                                                        currentAmount > 0 ? currentAmount : "-"
+                                                    )}
                                                 </div>
                                             )}
                                         </td>
