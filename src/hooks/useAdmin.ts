@@ -27,7 +27,9 @@ export function useAdmin(): UseAdminResult {
                 const docRef = doc(db, "members", user.uid);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
-                    setIsAdmin(!!docSnap.data().isAdmin);
+                    const data = docSnap.data();
+                    // Check both isAdmin flag and role === "Admin" for compatibility
+                    setIsAdmin(!!data.isAdmin || data.role === "Admin");
                 } else {
                     setIsAdmin(false);
                 }

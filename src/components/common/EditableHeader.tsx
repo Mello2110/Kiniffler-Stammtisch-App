@@ -65,8 +65,9 @@ export function EditableHeader({
             {isAdmin && (
                 <button
                     onClick={() => setIsEditing(true)}
-                    className="p-1 rounded-md hover:bg-primary/20 transition-all opacity-0 group-hover/header:opacity-100 focus:opacity-100"
+                    className="p-1 rounded-md hover:bg-primary/20 transition-all opacity-60 hover:opacity-100"
                     aria-label="Edit header"
+                    title="Click to edit"
                 >
                     <Pencil className="h-4 w-4 text-primary transition-transform hover:scale-110" />
                 </button>
