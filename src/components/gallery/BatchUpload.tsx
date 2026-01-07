@@ -24,70 +24,119 @@ interface UploadQueueItem {
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
+// DEBUG: Log config on load
+console.log("[Cloudinary Config]", {
+    cloudName: CLOUDINARY_CLOUD_NAME || "NOT SET",
+    preset: CLOUDINARY_UPLOAD_PRESET || "NOT SET"
+});
+
 export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
     const { user } = useAuth();
     const [queue, setQueue] = useState<UploadQueueItem[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [description, setDescription] = useState("");
+    const [configError, setConfigError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // FIX: Improved image compression with proper error handling
     const compressImage = (file: File): Promise<Blob> => {
+        console.log("[Compress] Starting compression for:", file.name);
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.readAsDataURL(file);
+
             reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target?.result as string;
+                console.log("[Compress] FileReader loaded");
+                const img = document.createElement('img'); // FIX: Use document.createElement instead of new Image()
+
                 img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1920;
-                    let width = img.width;
-                    let height = img.height;
+                    console.log("[Compress] Image loaded:", img.width, "x", img.height);
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1920;
+                        let width = img.width;
+                        let height = img.height;
 
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            reject(new Error('Canvas context failed'));
+                            return;
+                        }
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob(
+                            (blob) => {
+                                if (blob) {
+                                    console.log("[Compress] Success, blob size:", blob.size);
+                                    resolve(blob);
+                                } else {
+                                    reject(new Error('Compression failed - no blob'));
+                                }
+                            },
+                            'image/jpeg',
+                            0.85
+                        );
+                    } catch (err) {
+                        console.error("[Compress] Canvas error:", err);
+                        reject(err);
                     }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx?.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob(
-                        (blob) => blob ? resolve(blob) : reject(new Error('Compression failed')),
-                        'image/jpeg',
-                        0.85
-                    );
                 };
+
+                // FIX: Add error handler for image loading
+                img.onerror = (err) => {
+                    console.error("[Compress] Image load error:", err);
+                    reject(new Error('Failed to load image'));
+                };
+
+                img.src = event.target?.result as string;
             };
-            reader.onerror = reject;
+
+            reader.onerror = (err) => {
+                console.error("[Compress] FileReader error:", err);
+                reject(err);
+            };
+
+            reader.readAsDataURL(file);
         });
     };
 
     const uploadToCloudinary = async (file: Blob, fileName: string): Promise<string> => {
+        console.log("[Upload] Starting Cloudinary upload for:", fileName);
+
         const formData = new FormData();
         formData.append('file', file, fileName);
         formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET || '');
         formData.append('folder', `gallery/${year}`);
 
-        const response = await fetch(
-            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-            {
-                method: 'POST',
-                body: formData,
-            }
-        );
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+        console.log("[Upload] Posting to:", url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
+
+        console.log("[Upload] Response status:", response.status);
 
         if (!response.ok) {
-            throw new Error('Cloudinary upload failed');
+            const errorText = await response.text();
+            console.error("[Upload] Cloudinary error:", errorText);
+            throw new Error(`Cloudinary upload failed: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log("[Upload] Success! URL:", data.secure_url);
         return data.secure_url;
     };
 
     const handleFiles = (files: FileList | null) => {
         if (!files) return;
+        console.log("[Files] Selected:", files.length, "files");
 
         const newItems: UploadQueueItem[] = Array.from(files).slice(0, 50).map(file => ({
             id: Math.random().toString(36).substring(7),
@@ -105,21 +154,33 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
     };
 
     const startUpload = async () => {
-        if (!user || queue.length === 0 || isProcessing) return;
+        console.log("[StartUpload] Called", { user: !!user, queueLen: queue.length, isProcessing });
 
-        if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-            console.error("Cloudinary not configured. Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET");
+        if (!user || queue.length === 0 || isProcessing) {
+            console.log("[StartUpload] Early return - conditions not met");
             return;
         }
 
-        setIsProcessing(true);
+        if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+            const msg = "Cloudinary nicht konfiguriert! Bitte NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME und NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env.local setzen.";
+            console.error("[StartUpload]", msg);
+            setConfigError(msg);
+            return;
+        }
 
-        const uploadPromises = queue.map(async (item) => {
-            if (item.status === 'completed') return;
+        setConfigError(null);
+        setIsProcessing(true);
+        console.log("[StartUpload] Processing", queue.length, "files");
+
+        // FIX: Process uploads sequentially to avoid overwhelming
+        for (const item of queue) {
+            if (item.status === 'completed') continue;
 
             setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'uploading', progress: 10 } : q));
 
             try {
+                console.log("[StartUpload] Processing:", item.file.name);
+
                 // Compress image
                 const compressedBlob = await compressImage(item.file);
                 setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 30 } : q));
@@ -129,6 +190,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 80 } : q));
 
                 // Save metadata to Firestore
+                console.log("[StartUpload] Saving to Firestore...");
                 await addDoc(collection(db, "gallery"), {
                     year,
                     url: downloadURL,
@@ -137,15 +199,16 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                     uploaderName: user.displayName || user.email || "Unbekannt",
                     createdAt: serverTimestamp(),
                 });
+                console.log("[StartUpload] Firestore save complete");
 
                 setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'completed', progress: 100 } : q));
             } catch (err) {
-                console.error("Upload process error:", err);
-                setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', error: "Upload fehlgeschlagen" } : q));
+                console.error("[StartUpload] Error uploading:", item.file.name, err);
+                setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', error: err instanceof Error ? err.message : "Upload fehlgeschlagen" } : q));
             }
-        });
+        }
 
-        await Promise.allSettled(uploadPromises);
+        console.log("[StartUpload] All uploads complete");
         setIsProcessing(false);
         onUploadComplete();
     };
@@ -174,6 +237,17 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                     </button>
                 )}
             </div>
+
+            {/* FIX: Show config error alert */}
+            {configError && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-red-500 font-bold text-sm">Konfigurationsfehler</p>
+                        <p className="text-red-400 text-xs mt-1">{configError}</p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
