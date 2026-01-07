@@ -93,6 +93,7 @@ export default function YearPageClient({ year }: YearPageClientProps) {
             <Lightbox
                 image={selectedImage}
                 onClose={() => setSelectedImage(null)}
+                onDelete={() => setRefreshKey(prev => prev + 1)}
             />
         </div>
     );

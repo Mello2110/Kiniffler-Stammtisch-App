@@ -95,5 +95,6 @@ export interface GalleryImage {
     year: number;
     description?: string;
     uploadedBy: string;
+    uploaderName?: string;
     createdAt: any; // Firestore Timestamp
 }

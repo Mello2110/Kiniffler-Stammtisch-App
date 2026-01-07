@@ -1,22 +1,35 @@
 "use client";
 
-import { X, Calendar, User } from "lucide-react";
+import { X, Calendar, User, Trash2 } from "lucide-react";
 import type { GalleryImage } from "@/types";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { DeleteImageButton } from "./DeleteImageButton";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LightboxProps {
     image: GalleryImage | null;
     onClose: () => void;
+    onDelete?: () => void;
 }
 
-export function Lightbox({ image, onClose }: LightboxProps) {
+export function Lightbox({ image, onClose, onDelete }: LightboxProps) {
+    const { user } = useAuth();
+
     if (!image) return null;
 
-    // Handle ESC key
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") onClose();
+    const handleDelete = () => {
+        if (onDelete) {
+            onDelete();
+        }
+        onClose();
     };
+
+    // Check if user can delete (uploaded the image or is admin)
+    const canDelete = user && (
+        user.uid === image.uploadedBy ||
+        (user as any).isAdmin === true
+    );
 
     return (
         <div
@@ -55,7 +68,7 @@ export function Lightbox({ image, onClose }: LightboxProps) {
                         <div className="flex items-center gap-4 text-white/50 text-sm">
                             <span className="flex items-center gap-1.5">
                                 <User className="h-4 w-4" />
-                                {image.uploadedBy}
+                                {image.uploaderName || image.uploadedBy}
                             </span>
                             {image.createdAt && (
                                 <span className="flex items-center gap-1.5">
@@ -65,6 +78,15 @@ export function Lightbox({ image, onClose }: LightboxProps) {
                             )}
                         </div>
                     </div>
+
+                    {/* Delete button */}
+                    {canDelete && (
+                        <DeleteImageButton
+                            imageId={image.id}
+                            onDelete={handleDelete}
+                            variant="button"
+                        />
+                    )}
                 </div>
             </div>
         </div>
