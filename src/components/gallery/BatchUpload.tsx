@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Upload, X, Loader2, Camera, Check, AlertCircle, Trash2 } from "lucide-react";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -21,6 +20,9 @@ interface UploadQueueItem {
     status: 'pending' | 'uploading' | 'completed' | 'error';
     error?: string;
 }
+
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
 export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
     const { user } = useAuth();
@@ -62,6 +64,28 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         });
     };
 
+    const uploadToCloudinary = async (file: Blob, fileName: string): Promise<string> => {
+        const formData = new FormData();
+        formData.append('file', file, fileName);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET || '');
+        formData.append('folder', `gallery/${year}`);
+
+        const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+            {
+                method: 'POST',
+                body: formData,
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('Cloudinary upload failed');
+        }
+
+        const data = await response.json();
+        return data.secure_url;
+    };
+
     const handleFiles = (files: FileList | null) => {
         if (!files) return;
 
@@ -83,47 +107,41 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
     const startUpload = async () => {
         if (!user || queue.length === 0 || isProcessing) return;
 
+        if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+            console.error("Cloudinary not configured. Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET");
+            return;
+        }
+
         setIsProcessing(true);
 
         const uploadPromises = queue.map(async (item) => {
             if (item.status === 'completed') return;
 
-            setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'uploading' } : q));
+            setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'uploading', progress: 10 } : q));
 
             try {
+                // Compress image
                 const compressedBlob = await compressImage(item.file);
-                const storageRef = ref(storage, `gallery/${year}/${Date.now()}_${item.file.name}`);
-                const uploadTask = uploadBytesResumable(storageRef, compressedBlob);
+                setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 30 } : q));
 
-                return new Promise<void>((resolve, reject) => {
-                    uploadTask.on(
-                        'state_changed',
-                        (snapshot) => {
-                            const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                            setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: p } : q));
-                        },
-                        (error) => {
-                            setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', error: error.message } : q));
-                            reject(error);
-                        },
-                        async () => {
-                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                            await addDoc(collection(db, "gallery"), {
-                                year,
-                                url: downloadURL,
-                                description: description.trim(),
-                                uploadedBy: user.uid,
-                                uploaderName: user.displayName || user.email || "Unbekannt",
-                                createdAt: serverTimestamp(),
-                            });
-                            setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'completed', progress: 100 } : q));
-                            resolve();
-                        }
-                    );
+                // Upload to Cloudinary
+                const downloadURL = await uploadToCloudinary(compressedBlob, item.file.name);
+                setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 80 } : q));
+
+                // Save metadata to Firestore
+                await addDoc(collection(db, "gallery"), {
+                    year,
+                    url: downloadURL,
+                    description: description.trim(),
+                    uploadedBy: user.uid,
+                    uploaderName: user.displayName || user.email || "Unbekannt",
+                    createdAt: serverTimestamp(),
                 });
+
+                setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'completed', progress: 100 } : q));
             } catch (err) {
                 console.error("Upload process error:", err);
-                setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', error: "Fehler (CORS/Netzwerk)" } : q));
+                setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', error: "Upload fehlgeschlagen" } : q));
             }
         });
 
