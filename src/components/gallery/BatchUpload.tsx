@@ -24,17 +24,19 @@ interface UploadQueueItem {
 }
 
 // Configuration constants
-const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+// Configuration constants
+// Hardcoded fallbacks for production reliability
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "doasrf18u";
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "stammtisch_gallery";
 const MAX_CONCURRENT_UPLOADS = 3;
-const MAX_QUEUE_SIZE = 10;
+const MAX_QUEUE_SIZE = 100;
 const MAX_RETRIES = 3;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 // DEBUG: Log config on load
 console.log("[Cloudinary Config]", {
-    cloudName: CLOUDINARY_CLOUD_NAME || "NOT SET",
-    preset: CLOUDINARY_UPLOAD_PRESET || "NOT SET"
+    cloudName: CLOUDINARY_CLOUD_NAME ? "OK (Set)" : "MISSING",
+    preset: CLOUDINARY_UPLOAD_PRESET ? "OK (Set)" : "MISSING"
 });
 
 export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
@@ -301,7 +303,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         if (!user || queue.length === 0) return;
 
         if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-            const msg = "Cloudinary nicht konfiguriert! Bitte NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME und NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env.local setzen.";
+            const msg = "Cloudinary Konfigurationsfehler. Bitte Entwickler kontaktieren.";
             console.error("[StartUpload]", msg);
             setConfigError(msg);
             return;
@@ -375,7 +377,10 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 </div>
                 {queue.length > 0 && (
                     <button
-                        onClick={() => setQueue([])}
+                        onClick={() => {
+                            setQueue([]);
+                            setDescription("");
+                        }}
                         className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors flex items-center gap-2"
                     >
                         <Trash2 className="h-4 w-4" />

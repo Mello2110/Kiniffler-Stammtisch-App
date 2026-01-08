@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kp-stammtisch-v1';
+const CACHE_NAME = 'kp-stammtisch-v2';
 const URLS_TO_CACHE = [
     '/',
     '/manifest.json',

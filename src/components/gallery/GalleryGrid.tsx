@@ -164,7 +164,7 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
                 </div>
             )}
             <div className="space-y-10">
-                <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {images.map((image, index) => {
                         const isSelected = selectedIds.has(image.id);
 
@@ -173,7 +173,7 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
                                 key={image.id}
                                 ref={index === images.length - 1 ? lastElementRef : null}
                                 className={cn(
-                                    "relative group break-inside-avoid rounded-[2.5rem] overflow-hidden cursor-pointer border bg-card transition-all duration-500 shadow-sm hover:shadow-2xl animate-in fade-in slide-in-from-bottom-4",
+                                    "relative group rounded-[2.5rem] overflow-hidden cursor-pointer border bg-card transition-all duration-500 shadow-sm hover:shadow-2xl animate-in fade-in slide-in-from-bottom-4 aspect-square",
                                     isSelected
                                         ? "border-primary ring-2 ring-primary/50 scale-[0.98]"
                                         : "hover:border-primary/50 hover:shadow-primary/20"
@@ -184,7 +184,7 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
                                 <img
                                     src={image.url}
                                     alt={image.description || "Stammtisch Foto"}
-                                    className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110"
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                     loading="lazy"
                                 />
 
