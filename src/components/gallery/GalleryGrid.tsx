@@ -60,32 +60,34 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
 
     const allSelected = images.length > 0 && selectedIds.size === images.length;
 
-    // Initial Load
+    // Initial Load - Fetch ALL images for the year
     useEffect(() => {
         setIsLoading(true);
         setImages([]);
-        setLastDoc(null);
-        setHasMore(true);
         setSelectedIds(new Set());
 
         const fetchImages = async () => {
             try {
+                // Fetch ALL images for the selected year (no limit)
                 let q = query(
                     collection(db, "gallery"),
-                    orderBy("createdAt", "desc"),
-                    limit(pageSize)
+                    where("year", "==", year)
                 );
 
-                if (year) {
-                    q = query(q, where("year", "==", year));
-                }
-
                 const snapshot = await getDocs(q);
-                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GalleryImage));
+                let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GalleryImage));
+
+                // Sort client-side by captureDate (newest first)
+                // Fallback to createdAt or uploadDate if captureDate is missing
+                data.sort((a, b) => {
+                    const dateA = new Date(a.captureDate || a.uploadDate || (a.createdAt as any)?.toDate() || 0);
+                    const dateB = new Date(b.captureDate || b.uploadDate || (b.createdAt as any)?.toDate() || 0);
+                    return dateB.getTime() - dateA.getTime();
+                });
 
                 setImages(data);
-                setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
-                setHasMore(snapshot.docs.length === pageSize);
+                // No pagination needed anymore
+                setHasMore(false);
             } catch (error) {
                 console.error("Error fetching images:", error);
             } finally {
@@ -93,58 +95,12 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
             }
         };
 
-        fetchImages();
-    }, [year, pageSize, refreshKey]);
-
-    // Infinite Scroll Logic
-    const loadMore = async () => {
-        if (!lastDoc || isLoadingMore || !hasMore) return;
-
-        setIsLoadingMore(true);
-        try {
-            let q = query(
-                collection(db, "gallery"),
-                orderBy("createdAt", "desc"),
-                startAfter(lastDoc),
-                limit(pageSize)
-            );
-
-            if (year) {
-                q = query(q, where("year", "==", year));
-            }
-
-            const snapshot = await getDocs(q);
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GalleryImage));
-
-            setImages(prev => [...prev, ...data]);
-            setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
-            setHasMore(snapshot.docs.length === pageSize);
-        } catch (error) {
-            console.error("Error loading more images:", error);
-        } finally {
-            setIsLoadingMore(false);
+        if (year) {
+            fetchImages();
         }
-    };
+    }, [year, refreshKey]);
 
-    // Intersection Observer for Infinite Scroll
-    useEffect(() => {
-        if (isLoading) return;
-        if (observer.current) observer.current.disconnect();
-
-        observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore) {
-                loadMore();
-            }
-        });
-
-        if (lastElementRef.current) {
-            observer.current.observe(lastElementRef.current);
-        }
-
-        return () => {
-            if (observer.current) observer.current.disconnect();
-        };
-    }, [lastDoc, hasMore, isLoading]);
+    // Cleanup: Removed infinite scroll logic as we now load all images at once for sorting
 
     // Refresh after bulk delete
     const handleBulkDeleteComplete = () => {

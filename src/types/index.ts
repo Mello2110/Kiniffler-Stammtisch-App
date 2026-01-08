@@ -98,4 +98,6 @@ export interface GalleryImage {
     uploaderName?: string;
     publicId?: string; // Cloudinary public_id for deletion
     createdAt: any; // Firestore Timestamp
+    captureDate?: string; // ISO string 2024-01-01T12:00:00.000Z
+    uploadDate?: string; // ISO string
 }

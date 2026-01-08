@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, Loader2, Camera, Check, AlertCircle, Trash2, RefreshCw, Ban } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import EXIF from "exif-js";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +46,30 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
     const [rejectedFiles, setRejectedFiles] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeUploadsRef = useRef<Set<string>>(new Set());
+
+    const getExifDate = (file: File): Promise<string | null> => {
+        return new Promise((resolve) => {
+            EXIF.getData(file as any, function (this: any) {
+                const date = EXIF.getTag(this, "DateTimeOriginal");
+                if (date) {
+                    // Convert format "YYYY:MM:DD HH:MM:SS" to ISO string
+                    const [datePart, timePart] = date.split(" ");
+                    const [year, month, day] = datePart.split(":");
+                    const isoString = `${year}-${month}-${day}T${timePart}`;
+                    try {
+                        const d = new Date(isoString);
+                        if (!isNaN(d.getTime())) {
+                            resolve(d.toISOString());
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn("Invalid EXIF date:", date);
+                    }
+                }
+                resolve(null);
+            });
+        });
+    };
 
     // FIX: Improved image compression with proper error handling
     const compressImage = (file: File): Promise<Blob> => {
@@ -214,6 +239,10 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         try {
             console.log("[StartUpload] Processing:", item.file.name);
 
+            // Get EXIF date BEFORE compression (compression strips metadata)
+            const exifDate = await getExifDate(item.file);
+            console.log("[StartUpload] EXIF Date:", exifDate);
+
             // Compress image
             const compressedBlob = await compressImage(item.file);
             setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 30 } : q));
@@ -222,7 +251,8 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
             const cloudinaryResult = await uploadToCloudinary(compressedBlob, item.file.name);
             setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 80 } : q));
 
-            // Save metadata to Firestore (including publicId for future Cloudinary delete)
+            // Save metadata to Firestore
+            const timestamp = new Date().toISOString();
             console.log("[StartUpload] Saving to Firestore with publicId:", cloudinaryResult.publicId);
             await addDoc(collection(db, "gallery"), {
                 year,
@@ -232,6 +262,8 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 uploadedBy: user.uid,
                 uploaderName: user.displayName || user.email || "Unbekannt",
                 createdAt: serverTimestamp(),
+                captureDate: exifDate || timestamp, // Use EXIF if available, else current time
+                uploadDate: timestamp,
             });
             console.log("[StartUpload] Firestore save complete");
 
