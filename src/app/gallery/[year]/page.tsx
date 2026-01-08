@@ -1,7 +1,8 @@
 import YearPageClient from "./YearPageClient";
 
 export async function generateStaticParams() {
-    const years = ["2023", "2024", "2025", "2026"];
+    // Generate years from 2015 to 2026
+    const years = Array.from({ length: 2026 - 2015 + 1 }, (_, i) => (2026 - i).toString());
     return years.map((year) => ({
         year: year,
     }));

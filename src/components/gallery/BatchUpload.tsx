@@ -9,8 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface BatchUploadProps {
-    year: number;
-    onUploadComplete: () => void;
+    onUploadComplete: (stats: { [year: number]: number }) => void;
 }
 
 interface UploadQueueItem {
@@ -21,9 +20,9 @@ interface UploadQueueItem {
     status: 'pending' | 'uploading' | 'completed' | 'error' | 'rejected';
     error?: string;
     retryCount: number;
+    detectedYear?: number;
 }
 
-// Configuration constants
 // Configuration constants
 // Hardcoded fallbacks for production reliability
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "doasrf18u";
@@ -39,8 +38,10 @@ console.log("[Cloudinary Config]", {
     preset: CLOUDINARY_UPLOAD_PRESET ? "OK (Set)" : "MISSING"
 });
 
-export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
+export function BatchUpload({ onUploadComplete }: BatchUploadProps) {
     const { user } = useAuth();
+    // Default fallback is now the current year if detection fails completely
+    const currentYear = new Date().getFullYear();
     const [queue, setQueue] = useState<UploadQueueItem[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [description, setDescription] = useState("");
@@ -48,28 +49,46 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
     const [rejectedFiles, setRejectedFiles] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeUploadsRef = useRef<Set<string>>(new Set());
+    const uploadedStatsRef = useRef<{ [year: number]: number }>({});
 
     const getExifDate = (file: File): Promise<string | null> => {
         return new Promise((resolve) => {
-            EXIF.getData(file as any, function (this: any) {
-                const date = EXIF.getTag(this, "DateTimeOriginal");
-                if (date) {
-                    // Convert format "YYYY:MM:DD HH:MM:SS" to ISO string
-                    const [datePart, timePart] = date.split(" ");
-                    const [year, month, day] = datePart.split(":");
-                    const isoString = `${year}-${month}-${day}T${timePart}`;
-                    try {
-                        const d = new Date(isoString);
-                        if (!isNaN(d.getTime())) {
-                            resolve(d.toISOString());
-                            return;
+            try {
+                EXIF.getData(file as any, function (this: any) {
+                    const date = EXIF.getTag(this, "DateTimeOriginal");
+                    console.log(`[EXIF] Raw date for ${file.name}:`, date);
+
+                    if (date && typeof date === 'string') {
+                        try {
+                            // Expected format: "YYYY:MM:DD HH:MM:SS"
+                            const parts = date.split(" ");
+                            if (parts.length >= 1) {
+                                const datePart = parts[0];
+                                const timePart = parts[1] || "12:00:00";
+                                const [year, month, day] = datePart.split(":");
+
+                                if (year && month && day) {
+                                    const isoString = `${year}-${month}-${day}T${timePart}`;
+                                    const d = new Date(isoString);
+                                    if (!isNaN(d.getTime())) {
+                                        console.log(`[EXIF] Parsed valid date: ${d.toISOString()}`);
+                                        resolve(d.toISOString());
+                                        return;
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.warn("[EXIF] Date parsing error:", e);
                         }
-                    } catch (e) {
-                        console.warn("Invalid EXIF date:", date);
+                    } else {
+                        console.log("[EXIF] No DateTimeOriginal found or invalid format");
                     }
-                }
+                    resolve(null);
+                });
+            } catch (err) {
+                console.error("[EXIF] Critical error in getData:", err);
                 resolve(null);
-            });
+            }
         });
     };
 
@@ -139,35 +158,6 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         });
     };
 
-    const uploadToCloudinary = async (file: Blob, fileName: string): Promise<{ url: string; publicId: string }> => {
-        console.log("[Upload] Starting Cloudinary upload for:", fileName);
-
-        const formData = new FormData();
-        formData.append('file', file, fileName);
-        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET || '');
-        formData.append('folder', `gallery/${year}`);
-
-        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
-        console.log("[Upload] Posting to:", url);
-
-        const response = await fetch(url, {
-            method: 'POST',
-            body: formData,
-        });
-
-        console.log("[Upload] Response status:", response.status);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("[Upload] Cloudinary error:", errorText);
-            throw new Error(`Cloudinary upload failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("[Upload] Success! URL:", data.secure_url, "public_id:", data.public_id);
-        return { url: data.secure_url, publicId: data.public_id };
-    };
-
     // File validation - blocks videos and non-image files
     const validateFile = (file: File): { valid: boolean; error?: string } => {
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
@@ -180,7 +170,52 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         return { valid: true };
     };
 
-    const handleFiles = (files: FileList | null) => {
+    // Robust Date Parser
+    const detectYearForFile = async (file: File, defaultYear: number): Promise<{ year: number, method: string }> => {
+        // 1. EXIF
+        try {
+            const exifDate = await getExifDate(file);
+            if (exifDate) {
+                const y = new Date(exifDate).getFullYear();
+                if (!isNaN(y) && y > 1900 && y <= new Date().getFullYear() + 1) {
+                    return { year: y, method: "EXIF" };
+                }
+            }
+        } catch (e) {
+            console.warn("EXIF detection failed", e);
+        }
+
+        // 2. Filename Parsing (Expanded)
+        const filename = file.name;
+
+        // YYYY-MM-DD or YYYYMMDD
+        const isoMatch = filename.match(/(20\d{2})[-_]?(\d{2})[-_]?(\d{2})/);
+        if (isoMatch) {
+            const y = parseInt(isoMatch[1]);
+            if (y >= 2000 && y <= new Date().getFullYear() + 1) return { year: y, method: "Filename (ISO)" };
+        }
+
+        // DD.MM.YYYY (German)
+        const deMatch = filename.match(/(\d{2})\.(\d{2})\.(20\d{2})/);
+        if (deMatch) {
+            const y = parseInt(deMatch[3]);
+            if (y >= 2000 && y <= new Date().getFullYear() + 1) return { year: y, method: "Filename (DE)" };
+        }
+
+        // 3. Last Modified (Sanity Checked)
+        if (file.lastModified) {
+            const d = new Date(file.lastModified);
+            const y = d.getFullYear();
+            if (!isNaN(y)) {
+                // We return this even if it's the current year, because if EXIF/filename failed, this is our best guess.
+                return { year: y, method: "Last Modified" };
+            }
+        }
+
+        return { year: defaultYear, method: "Default" };
+    };
+
+    const handleFiles = async (files: FileList | null) => {
         if (!files) return;
         console.log("[Files] Selected:", files.length, "files");
 
@@ -193,32 +228,42 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         }
 
         setConfigError(null);
-        const rejected: string[] = [];
-        const validItems: UploadQueueItem[] = [];
 
-        Array.from(files).slice(0, availableSlots).forEach(file => {
+        const newItems: UploadQueueItem[] = [];
+        const rejected: string[] = [];
+
+        // Convert to array and slice
+        const fileArray = Array.from(files).slice(0, availableSlots);
+
+        // Process each file
+        for (const file of fileArray) {
             const validation = validateFile(file);
             if (!validation.valid) {
                 rejected.push(`${file.name}: ${validation.error}`);
-            } else {
-                validItems.push({
-                    id: Math.random().toString(36).substring(7),
-                    file,
-                    preview: URL.createObjectURL(file),
-                    progress: 0,
-                    status: 'pending',
-                    retryCount: 0
-                });
+                continue;
             }
-        });
+
+            // Detect year immediately
+            const detection = await detectYearForFile(file, currentYear);
+
+            newItems.push({
+                id: Math.random().toString(36).substring(7),
+                file,
+                preview: URL.createObjectURL(file),
+                progress: 0,
+                status: 'pending',
+                retryCount: 0,
+                detectedYear: detection.year
+            });
+        }
 
         if (rejected.length > 0) {
             setRejectedFiles(rejected);
-            setTimeout(() => setRejectedFiles([]), 5000); // Clear after 5s
+            setTimeout(() => setRejectedFiles([]), 5000);
         }
 
-        if (validItems.length > 0) {
-            setQueue(prev => [...prev, ...validItems]);
+        if (newItems.length > 0) {
+            setQueue(prev => [...prev, ...newItems]);
         }
 
         // Clear file input
@@ -245,21 +290,45 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
             const exifDate = await getExifDate(item.file);
             console.log("[StartUpload] EXIF Date:", exifDate);
 
+            // Use the year we detected during selection
+            const detectedYear = item.detectedYear || currentYear;
+            const detectionMethod = item.detectedYear ? "Pre-detected" : "Default (Current Year)";
+
+            console.log(`[StartUpload] Year Decision for ${item.file.name}:
+            - Output Year: ${detectedYear}
+            - Method: ${detectionMethod}
+            - Default Fallback: ${currentYear}
+            - EXIF Date: ${exifDate || "None"}
+            - Last Modified: ${new Date(item.file.lastModified).toISOString()}`);
+
             // Compress image
             const compressedBlob = await compressImage(item.file);
             setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 30 } : q));
 
-            // Upload to Cloudinary
-            const cloudinaryResult = await uploadToCloudinary(compressedBlob, item.file.name);
+            // Upload to Cloudinary - use DETECTED YEAR in folder path
+            const formData = new FormData();
+            formData.append('file', compressedBlob, item.file.name);
+            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET || '');
+            formData.append('folder', `gallery/${detectedYear}`);
+
+            const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+            const response = await fetch(url, { method: 'POST', body: formData });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Cloudinary upload failed: ${response.status}`);
+            }
+
+            const cloudinaryResult = await response.json();
             setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 80 } : q));
 
-            // Save metadata to Firestore
+            // Save metadata to Firestore - use DETECTED YEAR
             const timestamp = new Date().toISOString();
-            console.log("[StartUpload] Saving to Firestore with publicId:", cloudinaryResult.publicId);
+            console.log("[StartUpload] Saving to Firestore with publicId:", cloudinaryResult.public_id);
             await addDoc(collection(db, "gallery"), {
-                year,
-                url: cloudinaryResult.url,
-                publicId: cloudinaryResult.publicId,
+                year: detectedYear,
+                url: cloudinaryResult.secure_url,
+                publicId: cloudinaryResult.public_id,
                 description: description.trim(),
                 uploadedBy: user.uid,
                 uploaderName: user.displayName || user.email || "Unbekannt",
@@ -268,6 +337,9 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 uploadDate: timestamp,
             });
             console.log("[StartUpload] Firestore save complete");
+
+            // Store the year stats
+            uploadedStatsRef.current[detectedYear] = (uploadedStatsRef.current[detectedYear] || 0) + 1;
 
             setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'completed', progress: 100 } : q));
         } catch (err) {
@@ -324,12 +396,14 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
 
             // If nothing left to do and nothing currently running, we're done
             if (pending.length === 0 && !uploading) {
-                console.log("[Queue] All uploads processed");
+                console.log("[Queue] All uploads processed", uploadedStatsRef.current);
                 setIsProcessing(false);
                 // Verify if we actually completed some uploads successfully
                 const completed = queue.filter(q => q.status === 'completed').length;
                 if (completed > 0) {
-                    onUploadComplete();
+                    onUploadComplete(uploadedStatsRef.current);
+                    // Reset stats for next batch
+                    uploadedStatsRef.current = {};
                 }
                 return;
             }
@@ -369,7 +443,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 <div className="space-y-1">
                     <h2 className="text-2xl font-black outfit flex items-center gap-2">
                         <Camera className="h-6 w-6 text-primary" />
-                        Fotos für {year} hochladen
+                        Fotos hochladen
                     </h2>
                     <p className="text-muted-foreground text-sm">
                         Max. {MAX_QUEUE_SIZE} Bilder gleichzeitig. {MAX_CONCURRENT_UPLOADS} parallele Uploads.
@@ -493,6 +567,13 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                             <div key={item.id} className="relative aspect-square rounded-2xl overflow-hidden border bg-muted group">
                                 <img src={item.preview} alt="Upload" className="w-full h-full object-cover" />
 
+                                {/* Year Badge */}
+                                {item.detectedYear && (
+                                    <div className="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full z-10 font-bold backdrop-blur-sm pointer-events-none">
+                                        {item.detectedYear}
+                                    </div>
+                                )}
+
                                 {/* Progress Overlay */}
                                 {item.status === 'uploading' && (
                                     <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-2">
@@ -537,25 +618,25 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                             </div>
                         ))}
                     </div>
-
-                    <button
-                        onClick={startUpload}
-                        disabled={isProcessing || allCompleted || !user || pendingCount === 0}
-                        className="w-full py-5 rounded-[2rem] bg-primary text-primary-foreground font-black text-xl outfit tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 overflow-hidden relative shadow-2xl shadow-primary/30"
-                    >
-                        {isProcessing ? (
-                            <div className="flex items-center justify-center gap-3">
-                                <Loader2 className="h-6 w-6 animate-spin" />
-                                HOCHLADEN... ({uploadingCount} aktiv)
-                            </div>
-                        ) : allCompleted ? (
-                            "FERTIG!"
-                        ) : (
-                            `JETZT HOCHLADEN (${pendingCount})`
-                        )}
-                    </button>
                 </div>
             )}
+
+            <button
+                onClick={startUpload}
+                disabled={isProcessing || allCompleted || !user || pendingCount === 0}
+                className="w-full py-5 rounded-[2rem] bg-primary text-primary-foreground font-black text-xl outfit tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 overflow-hidden relative shadow-2xl shadow-primary/30"
+            >
+                {isProcessing ? (
+                    <div className="flex items-center justify-center gap-3">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        HOCHLADEN... ({uploadingCount} aktiv)
+                    </div>
+                ) : allCompleted ? (
+                    "FERTIG!"
+                ) : (
+                    `JETZT HOCHLADEN (${pendingCount})`
+                )}
+            </button>
         </div>
     );
 }
