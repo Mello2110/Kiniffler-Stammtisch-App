@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface BatchUploadProps {
+    year?: number;
     onUploadComplete: (stats: { [year: number]: number }) => void;
 }
 
@@ -38,10 +39,8 @@ console.log("[Cloudinary Config]", {
     preset: CLOUDINARY_UPLOAD_PRESET ? "OK (Set)" : "MISSING"
 });
 
-export function BatchUpload({ onUploadComplete }: BatchUploadProps) {
+export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
     const { user } = useAuth();
-    // Default fallback is now the current year if detection fails completely
-    const currentYear = new Date().getFullYear();
     const [queue, setQueue] = useState<UploadQueueItem[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [description, setDescription] = useState("");
@@ -244,7 +243,7 @@ export function BatchUpload({ onUploadComplete }: BatchUploadProps) {
             }
 
             // Detect year immediately
-            const detection = await detectYearForFile(file, currentYear);
+            const detection = await detectYearForFile(file, year);
 
             newItems.push({
                 id: Math.random().toString(36).substring(7),
@@ -291,13 +290,13 @@ export function BatchUpload({ onUploadComplete }: BatchUploadProps) {
             console.log("[StartUpload] EXIF Date:", exifDate);
 
             // Use the year we detected during selection
-            const detectedYear = item.detectedYear || currentYear;
-            const detectionMethod = item.detectedYear ? "Pre-detected" : "Default (Current Year)";
+            const detectedYear = item.detectedYear || year || new Date().getFullYear();
+            const detectionMethod = item.detectedYear ? "Pre-detected" : "Default";
 
             console.log(`[StartUpload] Year Decision for ${item.file.name}:
             - Output Year: ${detectedYear}
             - Method: ${detectionMethod}
-            - Default Fallback: ${currentYear}
+            - Original Page Year: ${year}
             - EXIF Date: ${exifDate || "None"}
             - Last Modified: ${new Date(item.file.lastModified).toISOString()}`);
 
@@ -443,7 +442,7 @@ export function BatchUpload({ onUploadComplete }: BatchUploadProps) {
                 <div className="space-y-1">
                     <h2 className="text-2xl font-black outfit flex items-center gap-2">
                         <Camera className="h-6 w-6 text-primary" />
-                        Fotos hochladen
+                        {year ? `Fotos für ${year} hochladen` : 'Fotos hochladen (Auto-Jahr Sortierung)'}
                     </h2>
                     <p className="text-muted-foreground text-sm">
                         Max. {MAX_QUEUE_SIZE} Bilder gleichzeitig. {MAX_CONCURRENT_UPLOADS} parallele Uploads.

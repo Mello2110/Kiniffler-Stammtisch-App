@@ -18,8 +18,39 @@ export default function YearPageClient({ year }: YearPageClientProps) {
     const [refreshKey, setRefreshKey] = useState(0);
     const [pageSize, setPageSize] = useState(20);
 
+    const [uploadStats, setUploadStats] = useState<{ [year: number]: number } | null>(null);
+
     // Generate years for tabs (consistent with main gallery page)
     const years = Array.from({ length: 2026 - 2015 + 1 }, (_, i) => 2026 - i);
+
+    const handleUploadComplete = (stats: { [year: number]: number }) => {
+        setRefreshKey(prev => prev + 1);
+        setUploadStats(stats);
+
+        // Auto-switch logic:
+        // If we uploaded files predominantly to a different year, switch there.
+        const uploadedYears = Object.keys(stats).map(Number);
+
+        if (uploadedYears.length > 0) {
+            // Find the year with the most uploads
+            const mainYear = uploadedYears.reduce((a, b) => stats[a] > stats[b] ? a : b);
+
+            if (mainYear !== yearNum) {
+                // If the majority of files went to another year, redirect there.
+                // But gives a small delay so they can read the stats?
+                // Actually, let's Redirect immediately if ALL files went to another year.
+                // If it's a mix, stay here and show stats.
+
+                const totalFiles = Object.values(stats).reduce((a, b) => a + b, 0);
+                const mainYearCount = stats[mainYear];
+
+                // If > 70% of files went to another year, redirect
+                if (mainYearCount / totalFiles > 0.7) {
+                    router.push(`/gallery/${mainYear}`);
+                }
+            }
+        }
+    };
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-20">

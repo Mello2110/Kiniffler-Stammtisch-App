@@ -1,40 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Sparkles, Camera, Map } from "lucide-react";
-import Link from "next/link";
 import { YearCard } from "@/components/gallery/YearCard";
 import { EditableHeader } from "@/components/common/EditableHeader";
 import { BatchUpload } from "@/components/gallery/BatchUpload";
 
 export default function GalleryPage() {
-    const router = useRouter();
-    const [uploadStats, setUploadStats] = useState<{ [year: number]: number } | null>(null);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     // Generate years from 2015 to 2026
     const years = Array.from({ length: 2026 - 2015 + 1 }, (_, i) => 2026 - i);
 
     const handleUploadComplete = (stats: { [year: number]: number }) => {
-        setUploadStats(stats);
-
-        // Auto-switch logic:
-        // If we uploaded files predominantly to a different year, switch there.
-        const uploadedYears = Object.keys(stats).map(Number);
-
-        if (uploadedYears.length > 0) {
-            // Find the year with the most uploads
-            const mainYear = uploadedYears.reduce((a, b) => stats[a] > stats[b] ? a : b);
-            const totalFiles = Object.values(stats).reduce((a, b) => a + b, 0);
-            const mainYearCount = stats[mainYear];
-
-            // If > 70% of files went to a specific year, redirect there after 1.5s
-            if (mainYearCount / totalFiles > 0.7) {
-                setTimeout(() => {
-                    router.push(`/gallery/${mainYear}`);
-                }, 1500);
-            }
-        }
+        // Refresh year cards to show updated counts
+        setRefreshKey(prev => prev + 1);
+        console.log("[Gallery] Upload complete, stats:", stats);
     };
 
     return (
@@ -51,8 +32,7 @@ export default function GalleryPage() {
                             Foto <span className="text-primary italic">Archiv</span>
                         </h1>
                         <p className="text-muted-foreground text-lg leading-relaxed">
-                            Wähle ein Jahr, um in unseren Erinnerungen zu schwelgen.
-                            Jede Aufnahme erzählt eine Geschichte unserer Freundschaft.
+                            Lade deine Bilder zentral hoch – sie werden automatisch nach Jahr sortiert.
                         </p>
                     </div>
 
@@ -71,41 +51,7 @@ export default function GalleryPage() {
                 <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             </div>
 
-            {/* Upload Stats Notification */}
-            {uploadStats && (
-                <div className="fixed top-20 right-4 z-50 bg-card border shadow-2xl p-6 rounded-2xl max-w-sm animate-in slide-in-from-right duration-500">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                        <div className="space-y-1">
-                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                <span className="bg-green-500/20 text-green-600 p-1 rounded-md">✅</span>
-                                Upload Bericht
-                            </h3>
-                            <p className="text-muted-foreground text-xs">
-                                Deine Fotos wurden automatisch sortiert.
-                                {Object.keys(uploadStats).length > 0 && " Weiterleitung..."}
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => setUploadStats(null)}
-                            className="text-muted-foreground hover:text-foreground"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                    <div className="space-y-2">
-                        {Object.entries(uploadStats).map(([y, count]) => (
-                            <div key={y} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-                                <span className="font-bold text-primary">{y}</span>
-                                <span className="text-sm font-medium bg-background px-2 py-1 rounded-md border">
-                                    {count} {count === 1 ? 'Foto' : 'Fotos'}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Central Uploader */}
+            {/* Central Upload Section */}
             <div className="px-4 sm:px-0">
                 <BatchUpload onUploadComplete={handleUploadComplete} />
             </div>
@@ -116,6 +62,7 @@ export default function GalleryPage() {
                     <YearCard
                         key={year}
                         year={year}
+                        refreshKey={refreshKey}
                         description={
                             year === 2026 ? "Zukunftspläne" :
                                 year === 2025 ? "Aktuelles Jahr" :
@@ -132,12 +79,12 @@ export default function GalleryPage() {
                 <EditableHeader
                     pageId="gallery"
                     headerId="search-title"
-                    defaultText="Du suchst etwas Spezielles?"
+                    defaultText="Durchsuche die Jahresarchive"
                     as="h3"
                     className="text-xl font-bold mb-2"
                 />
                 <p className="text-muted-foreground max-w-md text-sm">
-                    Klicke auf ein Jahr oben, um alle Hochladevorgänge und Fotos aus diesem Zeitraum zu sehen.
+                    Klicke auf ein Jahr, um alle Fotos aus diesem Zeitraum zu sehen.
                 </p>
             </div>
         </div>
