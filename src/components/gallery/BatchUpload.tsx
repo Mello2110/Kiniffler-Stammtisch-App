@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface BatchUploadProps {
-    year?: number;
+    year: number;
     onUploadComplete: (stats: { [year: number]: number }) => void;
 }
 
@@ -21,7 +21,6 @@ interface UploadQueueItem {
     status: 'pending' | 'uploading' | 'completed' | 'error' | 'rejected';
     error?: string;
     retryCount: number;
-    detectedYear?: number;
 }
 
 // Configuration constants
@@ -169,52 +168,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         return { valid: true };
     };
 
-    // Robust Date Parser
-    const detectYearForFile = async (file: File, defaultYear: number): Promise<{ year: number, method: string }> => {
-        // 1. EXIF
-        try {
-            const exifDate = await getExifDate(file);
-            if (exifDate) {
-                const y = new Date(exifDate).getFullYear();
-                if (!isNaN(y) && y > 1900 && y <= new Date().getFullYear() + 1) {
-                    return { year: y, method: "EXIF" };
-                }
-            }
-        } catch (e) {
-            console.warn("EXIF detection failed", e);
-        }
-
-        // 2. Filename Parsing (Expanded)
-        const filename = file.name;
-
-        // YYYY-MM-DD or YYYYMMDD
-        const isoMatch = filename.match(/(20\d{2})[-_]?(\d{2})[-_]?(\d{2})/);
-        if (isoMatch) {
-            const y = parseInt(isoMatch[1]);
-            if (y >= 2000 && y <= new Date().getFullYear() + 1) return { year: y, method: "Filename (ISO)" };
-        }
-
-        // DD.MM.YYYY (German)
-        const deMatch = filename.match(/(\d{2})\.(\d{2})\.(20\d{2})/);
-        if (deMatch) {
-            const y = parseInt(deMatch[3]);
-            if (y >= 2000 && y <= new Date().getFullYear() + 1) return { year: y, method: "Filename (DE)" };
-        }
-
-        // 3. Last Modified (Sanity Checked)
-        if (file.lastModified) {
-            const d = new Date(file.lastModified);
-            const y = d.getFullYear();
-            if (!isNaN(y)) {
-                // We return this even if it's the current year, because if EXIF/filename failed, this is our best guess.
-                return { year: y, method: "Last Modified" };
-            }
-        }
-
-        return { year: defaultYear, method: "Default" };
-    };
-
-    const handleFiles = async (files: FileList | null) => {
+    const handleFiles = (files: FileList | null) => {
         if (!files) return;
         console.log("[Files] Selected:", files.length, "files");
 
@@ -227,42 +181,32 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         }
 
         setConfigError(null);
-
-        const newItems: UploadQueueItem[] = [];
         const rejected: string[] = [];
+        const validItems: UploadQueueItem[] = [];
 
-        // Convert to array and slice
-        const fileArray = Array.from(files).slice(0, availableSlots);
-
-        // Process each file
-        for (const file of fileArray) {
+        Array.from(files).slice(0, availableSlots).forEach(file => {
             const validation = validateFile(file);
             if (!validation.valid) {
                 rejected.push(`${file.name}: ${validation.error}`);
-                continue;
+            } else {
+                validItems.push({
+                    id: Math.random().toString(36).substring(7),
+                    file,
+                    preview: URL.createObjectURL(file),
+                    progress: 0,
+                    status: 'pending',
+                    retryCount: 0
+                });
             }
-
-            // Detect year immediately
-            const detection = await detectYearForFile(file, year);
-
-            newItems.push({
-                id: Math.random().toString(36).substring(7),
-                file,
-                preview: URL.createObjectURL(file),
-                progress: 0,
-                status: 'pending',
-                retryCount: 0,
-                detectedYear: detection.year
-            });
-        }
+        });
 
         if (rejected.length > 0) {
             setRejectedFiles(rejected);
-            setTimeout(() => setRejectedFiles([]), 5000);
+            setTimeout(() => setRejectedFiles([]), 5000); // Clear after 5s
         }
 
-        if (newItems.length > 0) {
-            setQueue(prev => [...prev, ...newItems]);
+        if (validItems.length > 0) {
+            setQueue(prev => [...prev, ...validItems]);
         }
 
         // Clear file input
@@ -289,9 +233,54 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
             const exifDate = await getExifDate(item.file);
             console.log("[StartUpload] EXIF Date:", exifDate);
 
-            // Use the year we detected during selection
-            const detectedYear = item.detectedYear || year || new Date().getFullYear();
-            const detectionMethod = item.detectedYear ? "Pre-detected" : "Default";
+            // AUTO-DETECT YEAR
+            // Priority: 1. EXIF, 2. File Last Modified, 3. Currrent Year
+            let detectedYear = year; // Default to prop
+            let detectionMethod = "Default (Page Year)";
+
+            if (exifDate) {
+                const y = new Date(exifDate).getFullYear();
+                if (!isNaN(y) && y > 1900 && y <= new Date().getFullYear() + 1) {
+                    detectedYear = y;
+                    detectionMethod = "EXIF Data";
+                }
+            }
+
+            // Fallback: Try to parse date from filename (e.g. IMG_20240512_...)
+            if (detectionMethod === "Default (Page Year)") {
+                // Common formats: 
+                // IMG_20240512_... (Android/iOS)
+                // WhatsApp Image 2024-05-12...
+                // PXL_20240512_... (Pixel)
+                // 20240512_...
+                const filenameYearMatch = item.file.name.match(/(20\d{2})[-_]?(\d{2})[-_]?(\d{2})/);
+                if (filenameYearMatch) {
+                    const y = parseInt(filenameYearMatch[1]);
+                    // Sanity check
+                    if (y >= 2000 && y <= new Date().getFullYear() + 1) {
+                        detectedYear = y;
+                        detectionMethod = "Filename Parse";
+                    }
+                }
+            }
+
+            // Fallback: File Last Modified (only if nothing else found)
+            if (detectionMethod === "Default (Page Year)" && item.file.lastModified) {
+                const d = new Date(item.file.lastModified);
+                const y = d.getFullYear();
+                if (!isNaN(y)) {
+                    // Only use lastModified if it seems reasonable (e.g. not 1970)
+                    // AND distinct from "today" if possible? 
+                    // Actually, if it's "today" it's ambiguous. But we can't distinguish unless we assume old photos.
+                    detectedYear = y;
+                    detectionMethod = "File Last Modified";
+                }
+            }
+
+            if (detectionMethod === "Default (Page Year)") {
+                detectionMethod = "Current Date (Fallback)";
+                detectedYear = new Date().getFullYear();
+            }
 
             console.log(`[StartUpload] Year Decision for ${item.file.name}:
             - Output Year: ${detectedYear}
@@ -442,7 +431,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 <div className="space-y-1">
                     <h2 className="text-2xl font-black outfit flex items-center gap-2">
                         <Camera className="h-6 w-6 text-primary" />
-                        {year ? `Fotos für ${year} hochladen` : 'Fotos hochladen (Auto-Jahr Sortierung)'}
+                        Fotos für {year} hochladen
                     </h2>
                     <p className="text-muted-foreground text-sm">
                         Max. {MAX_QUEUE_SIZE} Bilder gleichzeitig. {MAX_CONCURRENT_UPLOADS} parallele Uploads.
@@ -565,13 +554,6 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                         {queue.map((item) => (
                             <div key={item.id} className="relative aspect-square rounded-2xl overflow-hidden border bg-muted group">
                                 <img src={item.preview} alt="Upload" className="w-full h-full object-cover" />
-
-                                {/* Year Badge */}
-                                {item.detectedYear && (
-                                    <div className="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full z-10 font-bold backdrop-blur-sm pointer-events-none">
-                                        {item.detectedYear}
-                                    </div>
-                                )}
 
                                 {/* Progress Overlay */}
                                 {item.status === 'uploading' && (

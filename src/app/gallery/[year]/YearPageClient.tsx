@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
+import { BatchUpload } from "@/components/gallery/BatchUpload";
 import { ArrowLeft, Calendar, Filter } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,45 @@ export default function YearPageClient({ year }: YearPageClientProps) {
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-20">
+            {/* Upload Stats Notification */}
+            {uploadStats && (
+                <div className="fixed top-20 right-4 z-50 bg-card border shadow-2xl p-6 rounded-2xl max-w-sm animate-in slide-in-from-right duration-500">
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="space-y-1">
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                <span className="bg-green-500/20 text-green-600 p-1 rounded-md">✅</span>
+                                Upload Bericht
+                            </h3>
+                            <p className="text-muted-foreground text-xs">
+                                Deine Fotos wurden automatisch sortiert.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setUploadStats(null)}
+                            className="text-muted-foreground hover:text-foreground"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {Object.entries(uploadStats).map(([y, count]) => (
+                            <div key={y} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
+                                <span className="font-bold text-primary">{y}</span>
+                                <span className="text-sm font-medium bg-background px-2 py-1 rounded-md border">
+                                    {count} {count === 1 ? 'Foto' : 'Fotos'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                    {/* Helper text if split years */}
+                    {Object.keys(uploadStats).length > 1 && (
+                        <p className="mt-4 text-[10px] text-orange-500 font-bold leading-tight">
+                            ⚠ Fotos wurden auf mehrere Jahre verteilt (basierend auf Aufnahmedatum).
+                        </p>
+                    )}
+                </div>
+            )}
+
             {/* Breadcrumbs / Header */}
             <div className="flex flex-col gap-6 px-4 sm:px-0">
                 <div className="flex items-center justify-between">
@@ -124,6 +164,14 @@ export default function YearPageClient({ year }: YearPageClientProps) {
                     ))}
                 </div>
             </div>
+
+            {/* Batch Upload Section */}
+            <section className="px-4 sm:px-0">
+                <BatchUpload
+                    year={yearNum}
+                    onUploadComplete={handleUploadComplete}
+                />
+            </section>
 
             {/* Photo Grid */}
             <section className="space-y-6 px-4 sm:px-0">

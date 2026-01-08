@@ -1,22 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { Sparkles, Camera, Map } from "lucide-react";
 import { YearCard } from "@/components/gallery/YearCard";
 import { EditableHeader } from "@/components/common/EditableHeader";
-import { BatchUpload } from "@/components/gallery/BatchUpload";
 
 export default function GalleryPage() {
-    const [refreshKey, setRefreshKey] = useState(0);
-
     // Generate years from 2015 to 2026
     const years = Array.from({ length: 2026 - 2015 + 1 }, (_, i) => 2026 - i);
-
-    const handleUploadComplete = (stats: { [year: number]: number }) => {
-        // Refresh year cards to show updated counts
-        setRefreshKey(prev => prev + 1);
-        console.log("[Gallery] Upload complete, stats:", stats);
-    };
 
     return (
         <div className="max-w-7xl mx-auto space-y-10 pb-20">
@@ -32,7 +22,8 @@ export default function GalleryPage() {
                             Foto <span className="text-primary italic">Archiv</span>
                         </h1>
                         <p className="text-muted-foreground text-lg leading-relaxed">
-                            Lade deine Bilder zentral hoch – sie werden automatisch nach Jahr sortiert.
+                            Wähle ein Jahr, um in unseren Erinnerungen zu schwelgen.
+                            Jede Aufnahme erzählt eine Geschichte unserer Freundschaft.
                         </p>
                     </div>
 
@@ -51,18 +42,12 @@ export default function GalleryPage() {
                 <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             </div>
 
-            {/* Central Upload Section */}
-            <div className="px-4 sm:px-0">
-                <BatchUpload onUploadComplete={handleUploadComplete} />
-            </div>
-
             {/* Year Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4 sm:px-0">
                 {years.map((year) => (
                     <YearCard
                         key={year}
                         year={year}
-                        refreshKey={refreshKey}
                         description={
                             year === 2026 ? "Zukunftspläne" :
                                 year === 2025 ? "Aktuelles Jahr" :
@@ -79,12 +64,12 @@ export default function GalleryPage() {
                 <EditableHeader
                     pageId="gallery"
                     headerId="search-title"
-                    defaultText="Durchsuche die Jahresarchive"
+                    defaultText="Du suchst etwas Spezielles?"
                     as="h3"
                     className="text-xl font-bold mb-2"
                 />
                 <p className="text-muted-foreground max-w-md text-sm">
-                    Klicke auf ein Jahr, um alle Fotos aus diesem Zeitraum zu sehen.
+                    Klicke auf ein Jahr oben, um alle Hochladevorgänge und Fotos aus diesem Zeitraum zu sehen.
                 </p>
             </div>
         </div>

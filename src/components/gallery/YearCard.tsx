@@ -1,42 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Calendar, Image as ImageIcon, ChevronRight } from "lucide-react";
-import { collection, query, where, getCountFromServer } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 interface YearCardProps {
     year: number;
     description?: string;
-    refreshKey?: number;
 }
 
-export function YearCard({ year, description = "Unsere Momente", refreshKey = 0 }: YearCardProps) {
-    const [imageCount, setImageCount] = useState<number | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchCount = async () => {
-            setIsLoading(true);
-            try {
-                const q = query(
-                    collection(db, "gallery"),
-                    where("year", "==", year)
-                );
-                const snapshot = await getCountFromServer(q);
-                setImageCount(snapshot.data().count);
-            } catch (error) {
-                console.error(`[YearCard] Error fetching count for ${year}:`, error);
-                setImageCount(0);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchCount();
-    }, [year, refreshKey]);
-
+export function YearCard({ year, description = "Unsere Momente" }: YearCardProps) {
     return (
         <Link
             href={`/gallery/${year}`}
@@ -62,16 +34,9 @@ export function YearCard({ year, description = "Unsere Momente", refreshKey = 0 
                     <h3 className="text-4xl md:text-5xl font-black tracking-tighter outfit">
                         {year}
                     </h3>
-                    <div className="flex items-center gap-2">
-                        <p className="text-muted-foreground text-sm font-medium">
-                            {description}
-                        </p>
-                        {!isLoading && imageCount !== null && imageCount > 0 && (
-                            <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                                {imageCount}
-                            </span>
-                        )}
-                    </div>
+                    <p className="text-muted-foreground text-sm font-medium">
+                        {description}
+                    </p>
                 </div>
             </div>
 
