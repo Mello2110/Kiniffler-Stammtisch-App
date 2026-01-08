@@ -3,27 +3,45 @@
 import { useState, useEffect, useRef } from "react";
 import { collection, query, orderBy, where, limit, startAfter, getDocs, QueryDocumentSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Loader2, Maximize2, Camera, Check, CheckSquare, Square } from "lucide-react";
+import { Lightbox } from "./Lightbox";
+import { Loader2, Maximize2, Camera, Check, CheckSquare, Square, Undo } from "lucide-react";
 import type { GalleryImage } from "@/types";
 import { cn } from "@/lib/utils";
 import { BulkActionBar } from "./BulkActionBar";
 
 interface GalleryGridProps {
-    onImageClick: (image: GalleryImage) => void;
     year?: number;
     pageSize?: number;
     refreshKey?: number;
 }
 
-export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 }: GalleryGridProps) {
+export function GalleryGrid({ year, pageSize = 20, refreshKey = 0 }: GalleryGridProps) {
     const [images, setImages] = useState<GalleryImage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    // Lightbox State
+    const [selectedImageIndex, setSelectedImageIndex] = useState<number>(-1);
+    const isLightboxOpen = selectedImageIndex >= 0;
+
     const observer = useRef<IntersectionObserver | null>(null);
     const lastElementRef = useRef<HTMLDivElement>(null);
+
+    // Lightbox Navigation Handlers
+    const handleNext = () => {
+        setSelectedImageIndex(prev => (prev + 1) % images.length);
+    };
+
+    const handlePrev = () => {
+        setSelectedImageIndex(prev => (prev - 1 + images.length) % images.length);
+    };
+
+    const handleCloseLightbox = () => {
+        setSelectedImageIndex(-1);
+    };
 
     // Get selected images
     const selectedImages = images.filter(img => selectedIds.has(img.id));
@@ -109,6 +127,16 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
         setSelectedIds(new Set());
     };
 
+    // Refresh after single delete in lightbox
+    const handleSingleDelete = () => {
+        // Remove current image
+        if (isLightboxOpen) {
+            const currentId = images[selectedImageIndex].id;
+            setImages(prev => prev.filter(img => img.id !== currentId));
+            handleCloseLightbox();
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-in fade-in">
@@ -152,6 +180,7 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
                         {allSelected ? (
                             <>
                                 <CheckSquare className="h-4 w-4" />
+                                <Undo className="h-4 w-4" />
                                 Alle abwählen
                             </>
                         ) : (
@@ -179,7 +208,7 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
                                         : "hover:border-primary/50 hover:shadow-primary/20"
                                 )}
                                 style={{ animationDelay: `${index * 50}ms` }}
-                                onClick={() => onImageClick(image)}
+                                onClick={() => setSelectedImageIndex(index)}
                             >
                                 <img
                                     src={image.url}
@@ -253,6 +282,20 @@ export function GalleryGrid({ onImageClick, year, pageSize = 20, refreshKey = 0 
                 onClearSelection={clearSelection}
                 onDeleteComplete={handleBulkDeleteComplete}
             />
+
+            {/* Lightbox with Navigation */}
+            {isLightboxOpen && (
+                <Lightbox
+                    image={images[selectedImageIndex]}
+                    onClose={handleCloseLightbox}
+                    onDelete={handleSingleDelete}
+                    onNext={handleNext}
+                    onPrev={handlePrev}
+                    hasNavigation={true}
+                    currentIndex={selectedImageIndex}
+                    totalCount={images.length}
+                />
+            )}
         </>
     );
 }

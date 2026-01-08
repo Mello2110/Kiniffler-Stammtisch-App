@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
-import { Lightbox } from "@/components/gallery/Lightbox";
 import { BatchUpload } from "@/components/gallery/BatchUpload";
 import { ArrowLeft, Calendar, Filter } from "lucide-react";
 import Link from "next/link";
@@ -14,7 +13,6 @@ interface YearPageClientProps {
 
 export default function YearPageClient({ year }: YearPageClientProps) {
     const yearNum = parseInt(year);
-    const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [pageSize, setPageSize] = useState(20);
 
@@ -83,18 +81,10 @@ export default function YearPageClient({ year }: YearPageClientProps) {
 
                 <GalleryGrid
                     key={`${yearNum}-${refreshKey}-${pageSize}`}
-                    onImageClick={setSelectedImage}
                     year={yearNum}
                     pageSize={pageSize}
                 />
             </section>
-
-            {/* Lightbox */}
-            <Lightbox
-                image={selectedImage}
-                onClose={() => setSelectedImage(null)}
-                onDelete={() => setRefreshKey(prev => prev + 1)}
-            />
         </div>
     );
 }

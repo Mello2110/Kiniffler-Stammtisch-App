@@ -40,7 +40,7 @@ export function Footer() {
                 </div>
                 <div className="justify-self-center flex flex-col items-center gap-1">
                     <p className="text-center whitespace-nowrap">
-                        &copy; {new Date().getFullYear()} Stammtisch Dashboard. <span className="opacity-50 text-xs">v1.1.0</span>
+                        &copy; {new Date().getFullYear()} Stammtisch Dashboard. <span className="opacity-50 text-xs">v1.2.0</span> All rights reserved.
                     </p>
                     <button
                         onClick={handleForceUpdate}
