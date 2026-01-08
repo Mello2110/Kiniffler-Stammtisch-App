@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, Loader2, Camera, Check, AlertCircle, Trash2, RefreshCw, Ban } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -112,7 +112,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         });
     };
 
-    const uploadToCloudinary = async (file: Blob, fileName: string): Promise<string> => {
+    const uploadToCloudinary = async (file: Blob, fileName: string): Promise<{ url: string; publicId: string }> => {
         console.log("[Upload] Starting Cloudinary upload for:", fileName);
 
         const formData = new FormData();
@@ -137,8 +137,8 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         }
 
         const data = await response.json();
-        console.log("[Upload] Success! URL:", data.secure_url);
-        return data.secure_url;
+        console.log("[Upload] Success! URL:", data.secure_url, "public_id:", data.public_id);
+        return { url: data.secure_url, publicId: data.public_id };
     };
 
     // File validation - blocks videos and non-image files
@@ -219,14 +219,15 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
             setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 30 } : q));
 
             // Upload to Cloudinary
-            const downloadURL = await uploadToCloudinary(compressedBlob, item.file.name);
+            const cloudinaryResult = await uploadToCloudinary(compressedBlob, item.file.name);
             setQueue(prev => prev.map(q => q.id === item.id ? { ...q, progress: 80 } : q));
 
-            // Save metadata to Firestore
-            console.log("[StartUpload] Saving to Firestore...");
+            // Save metadata to Firestore (including publicId for future Cloudinary delete)
+            console.log("[StartUpload] Saving to Firestore with publicId:", cloudinaryResult.publicId);
             await addDoc(collection(db, "gallery"), {
                 year,
-                url: downloadURL,
+                url: cloudinaryResult.url,
+                publicId: cloudinaryResult.publicId,
                 description: description.trim(),
                 uploadedBy: user.uid,
                 uploaderName: user.displayName || user.email || "Unbekannt",
@@ -263,14 +264,9 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
         }
     };
 
-    // Main upload controller with concurrency limit
-    const startUpload = useCallback(async () => {
-        console.log("[StartUpload] Called", { user: !!user, queueLen: queue.length, isProcessing });
-
-        if (!user || queue.length === 0 || isProcessing) {
-            console.log("[StartUpload] Early return - conditions not met");
-            return;
-        }
+    // Main upload controller - just starts the process
+    const startUpload = () => {
+        if (!user || queue.length === 0) return;
 
         if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
             const msg = "Cloudinary nicht konfiguriert! Bitte NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME und NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env.local setzen.";
@@ -281,40 +277,51 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
 
         setConfigError(null);
         setIsProcessing(true);
-        console.log("[StartUpload] Processing queue with concurrency:", MAX_CONCURRENT_UPLOADS);
+    };
 
-        const processQueue = async () => {
-            while (true) {
-                // Get pending items
-                const pendingItems = queue.filter(q => q.status === 'pending');
-                if (pendingItems.length === 0 && activeUploadsRef.current.size === 0) {
-                    break;
+    // Effect to manage queue processing safely without infinite loops
+    useEffect(() => {
+        if (!isProcessing) return;
+
+        const processQueue = () => {
+            // Check if we're done
+            const pending = queue.filter(q => q.status === 'pending');
+            const uploading = queue.some(q => q.status === 'uploading');
+
+            // If nothing left to do and nothing currently running, we're done
+            if (pending.length === 0 && !uploading) {
+                console.log("[Queue] All uploads processed");
+                setIsProcessing(false);
+                // Verify if we actually completed some uploads successfully
+                const completed = queue.filter(q => q.status === 'completed').length;
+                if (completed > 0) {
+                    onUploadComplete();
                 }
+                return;
+            }
 
-                // Fill up to MAX_CONCURRENT_UPLOADS
-                const availableSlots = MAX_CONCURRENT_UPLOADS - activeUploadsRef.current.size;
-                const itemsToProcess = pendingItems.slice(0, availableSlots);
+            // Check if we can start more uploads
+            const activeCount = activeUploadsRef.current.size;
+            const slotsAvailable = MAX_CONCURRENT_UPLOADS - activeCount;
 
-                if (itemsToProcess.length > 0) {
-                    await Promise.all(itemsToProcess.map(item => processUpload(item)));
-                } else if (activeUploadsRef.current.size > 0) {
-                    // Wait a bit for active uploads to complete
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                } else {
-                    break;
+            if (slotsAvailable > 0 && pending.length > 0) {
+                // Find candidates that are NOT already in the active ref
+                // This is the crucial check to prevent double-processing
+                const candidates = pending
+                    .filter(p => !activeUploadsRef.current.has(p.id))
+                    .slice(0, slotsAvailable);
+
+                if (candidates.length > 0) {
+                    console.log(`[Queue] Starting ${candidates.length} new uploads`);
+                    candidates.forEach(item => {
+                        processUpload(item);
+                    });
                 }
-
-                // Re-fetch queue state
-                await new Promise(resolve => setTimeout(resolve, 100));
             }
         };
 
-        await processQueue();
-
-        console.log("[StartUpload] All uploads complete");
-        setIsProcessing(false);
-        onUploadComplete();
-    }, [user, queue, isProcessing, description, year, onUploadComplete]);
+        processQueue();
+    }, [queue, isProcessing]); // Re-run when queue changes (item finishes) or processing starts
 
     const pendingCount = queue.filter(q => q.status === 'pending').length;
     const uploadingCount = queue.filter(q => q.status === 'uploading').length;

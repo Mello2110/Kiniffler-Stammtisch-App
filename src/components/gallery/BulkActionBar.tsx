@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Trash2, X, Loader2, CheckSquare } from "lucide-react";
+import { Download, Trash2, X, Loader2, CheckSquare, Cloud } from "lucide-react";
 import JSZip from "jszip";
 import { doc, deleteDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, bulkDeleteCloudinaryImages } from "@/lib/firebase";
 import type { GalleryImage } from "@/types";
 
 interface BulkActionBarProps {
@@ -17,20 +17,20 @@ export function BulkActionBar({ selectedImages, onClearSelection, onDeleteComple
     const [isDownloading, setIsDownloading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [progress, setProgress] = useState({ current: 0, total: 0 });
+    const [progress, setProgress] = useState({ current: 0, total: 0, phase: "firestore" as "firestore" | "cloudinary" });
 
     const handleDownload = async () => {
         if (selectedImages.length === 0 || isDownloading) return;
 
         setIsDownloading(true);
-        setProgress({ current: 0, total: selectedImages.length });
+        setProgress({ current: 0, total: selectedImages.length, phase: "firestore" });
 
         try {
             const zip = new JSZip();
 
             for (let i = 0; i < selectedImages.length; i++) {
                 const img = selectedImages[i];
-                setProgress({ current: i + 1, total: selectedImages.length });
+                setProgress({ current: i + 1, total: selectedImages.length, phase: "firestore" });
 
                 try {
                     // Fetch image as blob
@@ -61,7 +61,7 @@ export function BulkActionBar({ selectedImages, onClearSelection, onDeleteComple
             console.error("[BulkDownload] Error:", err);
         } finally {
             setIsDownloading(false);
-            setProgress({ current: 0, total: 0 });
+            setProgress({ current: 0, total: 0, phase: "firestore" });
         }
     };
 
@@ -69,19 +69,41 @@ export function BulkActionBar({ selectedImages, onClearSelection, onDeleteComple
         if (selectedImages.length === 0 || isDeleting) return;
 
         setIsDeleting(true);
-        setProgress({ current: 0, total: selectedImages.length });
+        setProgress({ current: 0, total: selectedImages.length, phase: "firestore" });
 
         try {
+            // Phase 1: Delete from Firestore
+            console.log("[BulkDelete] Phase 1: Deleting from Firestore...");
             for (let i = 0; i < selectedImages.length; i++) {
                 const img = selectedImages[i];
-                setProgress({ current: i + 1, total: selectedImages.length });
+                setProgress({ current: i + 1, total: selectedImages.length, phase: "firestore" });
 
                 try {
                     await deleteDoc(doc(db, "gallery", img.id));
-                    console.log(`[BulkDelete] Deleted ${img.id}`);
+                    console.log(`[BulkDelete] Firestore deleted: ${img.id}`);
                 } catch (err) {
-                    console.error(`[BulkDelete] Failed to delete ${img.id}:`, err);
+                    console.error(`[BulkDelete] Failed to delete from Firestore: ${img.id}`, err);
                 }
+            }
+
+            // Phase 2: Delete from Cloudinary via Cloud Function
+            const publicIds = selectedImages
+                .filter(img => img.publicId)
+                .map(img => img.publicId!);
+
+            if (publicIds.length > 0) {
+                console.log(`[BulkDelete] Phase 2: Deleting ${publicIds.length} images from Cloudinary...`);
+                setProgress({ current: 0, total: publicIds.length, phase: "cloudinary" });
+
+                try {
+                    const result = await bulkDeleteCloudinaryImages({ publicIds });
+                    console.log("[BulkDelete] Cloudinary result:", result.data);
+                } catch (err) {
+                    console.error("[BulkDelete] Cloudinary bulk delete failed:", err);
+                    // Continue anyway - Firestore deletion was successful
+                }
+            } else {
+                console.log("[BulkDelete] No publicIds found, skipping Cloudinary delete");
             }
 
             console.log("[BulkDelete] Complete!");
@@ -92,7 +114,7 @@ export function BulkActionBar({ selectedImages, onClearSelection, onDeleteComple
         } finally {
             setIsDeleting(false);
             setShowDeleteConfirm(false);
-            setProgress({ current: 0, total: 0 });
+            setProgress({ current: 0, total: 0, phase: "firestore" });
         }
     };
 

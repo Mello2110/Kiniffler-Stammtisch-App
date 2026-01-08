@@ -96,5 +96,6 @@ export interface GalleryImage {
     description?: string;
     uploadedBy: string;
     uploaderName?: string;
+    publicId?: string; // Cloudinary public_id for deletion
     createdAt: any; // Firestore Timestamp
 }
