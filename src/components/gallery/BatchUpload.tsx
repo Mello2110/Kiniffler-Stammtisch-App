@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface BatchUploadProps {
-    year: number;
+    year?: number; // Optional - only used for default year in edge cases
     onUploadComplete: (stats: { [year: number]: number }) => void;
 }
 
@@ -39,6 +39,8 @@ console.log("[Cloudinary Config]", {
 });
 
 export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
+    // If no year provided, use current year as fallback (only for display/logging)
+    const displayYear = year || new Date().getFullYear();
     const { user } = useAuth();
     const [queue, setQueue] = useState<UploadQueueItem[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -234,9 +236,9 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
             console.log("[StartUpload] EXIF Date:", exifDate);
 
             // AUTO-DETECT YEAR
-            // Priority: 1. EXIF, 2. File Last Modified, 3. Currrent Year
-            let detectedYear = year; // Default to prop
-            let detectionMethod = "Default (Page Year)";
+            // Priority: 1. EXIF, 2. Filename Parse, 3. File Last Modified, 4. Current Year
+            let detectedYear = new Date().getFullYear(); // Default to current year
+            let detectionMethod = "Default (Current Year)";
 
             if (exifDate) {
                 const y = new Date(exifDate).getFullYear();
@@ -247,7 +249,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
             }
 
             // Fallback: Try to parse date from filename (e.g. IMG_20240512_...)
-            if (detectionMethod === "Default (Page Year)") {
+            if (detectionMethod === "Default (Current Year)") {
                 // Common formats: 
                 // IMG_20240512_... (Android/iOS)
                 // WhatsApp Image 2024-05-12...
@@ -265,7 +267,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
             }
 
             // Fallback: File Last Modified (only if nothing else found)
-            if (detectionMethod === "Default (Page Year)" && item.file.lastModified) {
+            if (detectionMethod === "Default (Current Year)" && item.file.lastModified) {
                 const d = new Date(item.file.lastModified);
                 const y = d.getFullYear();
                 if (!isNaN(y)) {
@@ -277,15 +279,11 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 }
             }
 
-            if (detectionMethod === "Default (Page Year)") {
-                detectionMethod = "Current Date (Fallback)";
-                detectedYear = new Date().getFullYear();
-            }
+            // No additional fallback needed - defaults already set above
 
             console.log(`[StartUpload] Year Decision for ${item.file.name}:
             - Output Year: ${detectedYear}
             - Method: ${detectionMethod}
-            - Original Page Year: ${year}
             - EXIF Date: ${exifDate || "None"}
             - Last Modified: ${new Date(item.file.lastModified).toISOString()}`);
 
@@ -431,10 +429,10 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 <div className="space-y-1">
                     <h2 className="text-2xl font-black outfit flex items-center gap-2">
                         <Camera className="h-6 w-6 text-primary" />
-                        Fotos für {year} hochladen
+                        Fotos hochladen
                     </h2>
                     <p className="text-muted-foreground text-sm">
-                        Max. {MAX_QUEUE_SIZE} Bilder gleichzeitig. {MAX_CONCURRENT_UPLOADS} parallele Uploads.
+                        Deine Fotos werden automatisch nach Jahr sortiert. Max. {MAX_QUEUE_SIZE} Bilder gleichzeitig.
                     </p>
                 </div>
                 {queue.length > 0 && (
