@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kp-stammtisch-v2';
+const CACHE_NAME = 'kp-stammtisch-v3'; // Updated for gallery restructure
 const URLS_TO_CACHE = [
     '/',
     '/manifest.json',
