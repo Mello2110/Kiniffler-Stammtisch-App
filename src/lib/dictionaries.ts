@@ -10,6 +10,7 @@ export const dictionaries = {
             gallery: "Gallery",
             members: "Members",
             hof: "Hall of Fame",
+            kniffel: "Kniffel",
             feedback: "Feedback",
             options: "Options"
         },
@@ -20,6 +21,7 @@ export const dictionaries = {
             cash: { title: "Cash", highlight: "Flow", badge: "Treasury", subtext: "Transparency is everything. Balance, penalties, and expenses in detail." },
             members: { title: "Stammtisch", highlight: "Crew", badge: "Community", subtext: "Manage the heads behind the table. Only true originals allowed!" },
             hof: { title: "Hall of", highlight: "Fame", badge: "Legends", subtext: "Honoring the top contributors, payers, and hosts of our community." },
+            kniffel: { title: "Kniffel", highlight: "Tracker", badge: "Dice Game", subtext: "Track your Kniffel games. Record scores, crown champions, and celebrate those lucky rolls!" },
             feedback: { title: "Feedback", highlight: "Improvement", badge: "Support", subtext: "Report issues or suggest new features. Let's make it better!" },
             options: { title: "App", highlight: "Options", badge: "Settings", subtext: "Customize your experience and manage data." }
         },
@@ -111,6 +113,40 @@ export const dictionaries = {
         },
         common: {
             loading: "Loading..."
+        },
+        kniffel: {
+            sheetCount: "Sheets",
+            addSheet: "Add New Game Sheet",
+            selectMonth: "Select Month",
+            createSheet: "Create Sheet",
+            cancel: "Cancel",
+            noSheets: "No game sheets yet. Create one to start tracking!",
+            createdOn: "Created on",
+            delete: "Delete",
+            confirmDelete: "Are you sure you want to delete this game sheet?",
+            sort: "Sort by Score",
+            sortAsc: "Lowest First",
+            sortDesc: "Highest First",
+            upperSection: "Upper Section",
+            lowerSection: "Lower Section",
+            ones: "Ones",
+            twos: "Twos",
+            threes: "Threes",
+            fours: "Fours",
+            fives: "Fives",
+            sixes: "Sixes",
+            upperSum: "Sum",
+            bonus: "Bonus (if ≥63)",
+            threeOfAKind: "Three of a Kind",
+            fourOfAKind: "Four of a Kind",
+            fullHouse: "Full House",
+            smallStraight: "Small Straight",
+            largeStraight: "Large Straight",
+            kniffelRow: "Kniffel",
+            chance: "Chance",
+            lowerSum: "Lower Sum",
+            total: "Total Score",
+            months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
         }
     },
     de: {
@@ -122,6 +158,7 @@ export const dictionaries = {
             gallery: "Galerie",
             members: "Mitglieder",
             hof: "Ruhmeshalle",
+            kniffel: "Kniffel",
             feedback: "Feedback",
             options: "Optionen"
         },
@@ -132,6 +169,7 @@ export const dictionaries = {
             cash: { title: "Cash", highlight: "Flow", badge: "Kasse", subtext: "Transparenz ist alles. Guthaben, Strafen und Ausgaben im Detail." },
             members: { title: "Stammtisch", highlight: "Crew", badge: "Community", subtext: "Verwalte die Köpfe hinter dem Tisch. Nur echte Originale erlaubt!" },
             hof: { title: "Hall of", highlight: "Fame", badge: "Legenden", subtext: "Ehre, wem Ehre gebührt. Hier feiern wir die Top-Performer." },
+            kniffel: { title: "Kniffel", highlight: "Tracker", badge: "Würfelspiel", subtext: "Verfolge eure Kniffel-Spiele. Punkte notieren, Champions krönen und glückliche Würfe feiern!" },
             feedback: { title: "Feedback", highlight: "Vorschläge", badge: "Support", subtext: "Melde Probleme oder schlage neue Features vor." },
             options: { title: "App", highlight: "Optionen", badge: "Einstellungen", subtext: "Passe deine Erfahrung an und verwalte Daten." }
         },
@@ -223,6 +261,40 @@ export const dictionaries = {
         },
         common: {
             loading: "Laden..."
+        },
+        kniffel: {
+            sheetCount: "Blätter",
+            addSheet: "Neues Spielblatt erstellen",
+            selectMonth: "Monat wählen",
+            createSheet: "Blatt erstellen",
+            cancel: "Abbrechen",
+            noSheets: "Noch keine Spielblätter. Erstelle eines, um zu starten!",
+            createdOn: "Erstellt am",
+            delete: "Löschen",
+            confirmDelete: "Möchtest du dieses Spielblatt wirklich löschen?",
+            sort: "Nach Punkten sortieren",
+            sortAsc: "Niedrigste zuerst",
+            sortDesc: "Höchste zuerst",
+            upperSection: "Oberer Bereich",
+            lowerSection: "Unterer Bereich",
+            ones: "Einser",
+            twos: "Zweier",
+            threes: "Dreier",
+            fours: "Vierer",
+            fives: "Fünfer",
+            sixes: "Sechser",
+            upperSum: "Summe",
+            bonus: "Bonus (wenn ≥63)",
+            threeOfAKind: "Dreierpasch",
+            fourOfAKind: "Viererpasch",
+            fullHouse: "Full House",
+            smallStraight: "Kleine Straße",
+            largeStraight: "Große Straße",
+            kniffelRow: "Kniffel",
+            chance: "Chance",
+            lowerSum: "Untere Summe",
+            total: "Gesamtpunktzahl",
+            months: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"]
         }
     },
     pl: {
@@ -234,6 +306,7 @@ export const dictionaries = {
             gallery: "Galeria",
             members: "Członkowie",
             hof: "Aleja Sław",
+            kniffel: "Kniffel",
             feedback: "Feedback",
             options: "Opcje"
         },
@@ -244,6 +317,7 @@ export const dictionaries = {
             cash: { title: "Przepływ", highlight: "Gotówki", badge: "Skarbiec", subtext: "Przejrzystość to podstawa. Saldo, kary i wydatki w szczegółach." },
             members: { title: "Ekipa", highlight: "Stammtisch", badge: "Społeczność", subtext: "Zarządzaj głowami przy stole. Tylko prawdziwe oryginały!" },
             hof: { title: "Aleja", highlight: "Sław", badge: "Legendy", subtext: "Honorujemy najlepszych darczyńców, płatników i gospodarzy." },
+            kniffel: { title: "Kniffel", highlight: "Tracker", badge: "Gra w Kości", subtext: "Śledź swoje gry w Kniffel. Zapisuj wyniki, koronuj mistrzów i ciesz się szczęśliwymi rzutami!" },
             feedback: { title: "Opinie", highlight: "Ulepszenia", badge: "Feedback", subtext: "Zgłoś błędy lub zasugeruj nowe funkcje. Bądźmy lepsi!" },
             options: { title: "Opcje", highlight: "Aplikacji", badge: "Ustawienia", subtext: "Dostosuj swoje doświadczenie i zarządzaj danymi." }
         },
@@ -335,6 +409,40 @@ export const dictionaries = {
         },
         common: {
             loading: "Ładowanie..."
+        },
+        kniffel: {
+            sheetCount: "Arkusze",
+            addSheet: "Dodaj Nowy Arkusz Gry",
+            selectMonth: "Wybierz Miesiąc",
+            createSheet: "Utwórz Arkusz",
+            cancel: "Anuluj",
+            noSheets: "Brak arkuszy gry. Utwórz jeden, aby zacząć śledzić!",
+            createdOn: "Utworzono",
+            delete: "Usuń",
+            confirmDelete: "Czy na pewno chcesz usunąć ten arkusz gry?",
+            sort: "Sortuj wg Wyniku",
+            sortAsc: "Najniższe najpierw",
+            sortDesc: "Najwyższe najpierw",
+            upperSection: "Górna Sekcja",
+            lowerSection: "Dolna Sekcja",
+            ones: "Jedynki",
+            twos: "Dwójki",
+            threes: "Trójki",
+            fours: "Czwórki",
+            fives: "Piątki",
+            sixes: "Szóstki",
+            upperSum: "Suma",
+            bonus: "Bonus (jeśli ≥63)",
+            threeOfAKind: "Trójka",
+            fourOfAKind: "Kareta",
+            fullHouse: "Full",
+            smallStraight: "Mały Strit",
+            largeStraight: "Duży Strit",
+            kniffelRow: "Kniffel",
+            chance: "Szansa",
+            lowerSum: "Suma Dolna",
+            total: "Wynik Końcowy",
+            months: ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"]
         }
     }
 };

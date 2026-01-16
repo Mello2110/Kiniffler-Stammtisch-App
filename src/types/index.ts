@@ -101,3 +101,30 @@ export interface GalleryImage {
     captureDate?: string; // ISO string 2024-01-01T12:00:00.000Z
     uploadDate?: string; // ISO string
 }
+
+export interface KniffelScores {
+    ones: number | null;
+    twos: number | null;
+    threes: number | null;
+    fours: number | null;
+    fives: number | null;
+    sixes: number | null;
+    threeOfAKind: number | null;
+    fourOfAKind: number | null;
+    fullHouse: number | null;
+    smallStraight: number | null;
+    largeStraight: number | null;
+    kniffel: number | null;
+    chance: number | null;
+}
+
+export interface KniffelSheet {
+    id: string;
+    year: number;
+    month: number; // 0-11
+    createdAt: any; // Firestore Timestamp
+    memberSnapshot: string[]; // Member IDs at creation time
+    scores: {
+        [memberId: string]: KniffelScores;
+    };
+}
