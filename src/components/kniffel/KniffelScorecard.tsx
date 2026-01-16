@@ -370,10 +370,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     )}
                 </div>
 
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-separate border-spacing-0">
                     <thead>
                         <tr>
-                            <th className="text-left p-2 font-semibold"></th>
+                            <th className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] min-w-[140px]"></th>
                             {sortedMembers.map(member => (
                                 <th key={member.id} className="text-center p-2 font-semibold min-w-[100px]">
                                     {member.name}
@@ -384,7 +384,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     <tbody>
                         {/* Upper Section Header */}
                         <tr className="bg-primary/10">
-                            <td colSpan={sortedMembers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider">
+                            <td colSpan={sortedMembers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
                                 {dict.kniffel.upperSection}
                             </td>
                         </tr>
@@ -392,9 +392,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         {/* Upper Section Fields */}
                         {UPPER_FIELDS.map(field => (
                             <tr key={field} className="border-b border-white/5">
-                                <td className="p-2 font-medium">{getFieldLabel(field)}</td>
+                                <td className="p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{getFieldLabel(field)}</td>
                                 {sortedMembers.map(member => (
-                                    <td key={member.id} className="p-1">
+                                    <td key={member.id} className="p-1 min-w-[100px]">
                                         {renderScoreInput(member.id, field)}
                                     </td>
                                 ))}
@@ -403,9 +403,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
                         {/* Upper Sum */}
                         <tr className="bg-white/5 font-semibold">
-                            <td className="p-2">{dict.kniffel.upperSum}</td>
+                            <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.upperSum}</td>
                             {sortedMembers.map(member => (
-                                <td key={member.id} className="p-2 text-center">
+                                <td key={member.id} className="p-2 text-center min-w-[100px]">
                                     {calculateUpperSum(member.id)}
                                 </td>
                             ))}
@@ -413,9 +413,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
                         {/* Bonus */}
                         <tr className="bg-white/5 font-semibold">
-                            <td className="p-2">{dict.kniffel.bonus}</td>
+                            <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.bonus}</td>
                             {sortedMembers.map(member => (
-                                <td key={member.id} className="p-2 text-center">
+                                <td key={member.id} className="p-2 text-center min-w-[100px]">
                                     <span className={cn(calculateBonus(member.id) > 0 && "text-green-400")}>
                                         {calculateBonus(member.id)}
                                     </span>
@@ -425,7 +425,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
                         {/* Lower Section Header */}
                         <tr className="bg-primary/10">
-                            <td colSpan={sortedMembers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider">
+                            <td colSpan={sortedMembers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
                                 {dict.kniffel.lowerSection}
                             </td>
                         </tr>
@@ -433,16 +433,16 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         {/* Lower Section Fields */}
                         {LOWER_FIELDS.map(field => (
                             <tr key={field} className="border-b border-white/5">
-                                <td className="p-2 font-medium">
+                                <td className="p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">
                                     {getFieldLabel(field)}
                                     {isFixedPointField(field) && (
-                                        <span className="text-xs text-muted-foreground ml-1">
+                                        <span className="text-xs text-muted-foreground ml-1 block sm:inline">
                                             ({FIXED_POINT_FIELDS[field]})
                                         </span>
                                     )}
                                 </td>
                                 {sortedMembers.map(member => (
-                                    <td key={member.id} className="p-1">
+                                    <td key={member.id} className="p-1 min-w-[100px]">
                                         {renderScoreInput(member.id, field)}
                                     </td>
                                 ))}
@@ -451,9 +451,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
                         {/* Lower Sum */}
                         <tr className="bg-white/5 font-semibold">
-                            <td className="p-2">{dict.kniffel.lowerSum}</td>
+                            <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.lowerSum}</td>
                             {sortedMembers.map(member => (
-                                <td key={member.id} className="p-2 text-center">
+                                <td key={member.id} className="p-2 text-center min-w-[100px]">
                                     {calculateLowerSum(member.id)}
                                 </td>
                             ))}
@@ -461,9 +461,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
                         {/* Total Score */}
                         <tr className="bg-primary/20 font-bold text-lg">
-                            <td className="p-3">{dict.kniffel.total}</td>
+                            <td className="p-3 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-primary/30">{dict.kniffel.total}</td>
                             {sortedMembers.map(member => (
-                                <td key={member.id} className="p-3 text-center text-primary">
+                                <td key={member.id} className="p-3 text-center text-primary min-w-[100px]">
                                     {calculateTotal(member.id)}
                                 </td>
                             ))}
@@ -471,15 +471,15 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
                         {/* Penalty Row */}
                         <tr className="bg-red-500/10 border-t-2 border-red-500/30">
-                            <td className="p-2 font-medium flex items-center gap-2">
+                            <td className="p-2 font-medium flex items-center gap-2 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-red-500/30">
                                 <AlertCircle className="h-4 w-4 text-red-400" />
                                 {dict.kniffel.penalty}
                             </td>
                             {sortedMembers.map(member => (
-                                <td key={member.id} className="p-2 text-center">
+                                <td key={member.id} className="p-2 text-center min-w-[100px]">
                                     <button
                                         onClick={() => createPenalty(member)}
-                                        className="px-3 py-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-lg transition-colors border border-red-500/30"
+                                        className="px-3 py-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-lg transition-colors border border-red-500/30 touch-target flex items-center justify-center w-full"
                                     >
                                         1€
                                     </button>

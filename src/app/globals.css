@@ -131,3 +131,39 @@ h6 {
   font-family: var(--font-heading);
   @apply tracking-tight;
 }
+
+@layer utilities {
+
+  /* Mobile Touch Targets */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Mobile Optimization */
+@media (max-width: 640px) {
+
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px !important;
+    /* Prevent iOS zoom */
+    min-height: 44px;
+    /* Minimum touch target */
+  }
+
+  /* Exception for small inline buttons if needed */
+  .btn-sm {
+    min-height: 32px;
+  }
+
+  /* Ensure form elements have spacing */
+  input,
+  select,
+  textarea {
+    margin-bottom: 0px;
+    /* Reset margins if needed, handled by gap usually */
+  }
+}
