@@ -24,13 +24,12 @@ export default function KniffelPage() {
     const qMembers = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
     const { data: members } = useFirestoreQuery<Member>(qMembers);
 
-    // Fetch Kniffel sheets for selected year/month
+    // Fetch Kniffel sheets for selected year/month (sorted client-side to avoid composite index)
     const qSheets = useMemo(() =>
         query(
             collection(db, "kniffelSheets"),
             where("year", "==", selectedYear),
-            where("month", "==", selectedMonth),
-            orderBy("createdAt", "desc")
+            where("month", "==", selectedMonth)
         ),
         [selectedYear, selectedMonth]
     );

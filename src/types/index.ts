@@ -102,20 +102,23 @@ export interface GalleryImage {
     uploadDate?: string; // ISO string
 }
 
+// Score value can be a number, null (empty), or "stroke" (passed/crossed out)
+export type ScoreValue = number | null | "stroke";
+
 export interface KniffelScores {
-    ones: number | null;
-    twos: number | null;
-    threes: number | null;
-    fours: number | null;
-    fives: number | null;
-    sixes: number | null;
-    threeOfAKind: number | null;
-    fourOfAKind: number | null;
-    fullHouse: number | null;
-    smallStraight: number | null;
-    largeStraight: number | null;
-    kniffel: number | null;
-    chance: number | null;
+    ones: ScoreValue;
+    twos: ScoreValue;
+    threes: ScoreValue;
+    fours: ScoreValue;
+    fives: ScoreValue;
+    sixes: ScoreValue;
+    threeOfAKind: ScoreValue;
+    fourOfAKind: ScoreValue;
+    fullHouse: ScoreValue;
+    smallStraight: ScoreValue;
+    largeStraight: ScoreValue;
+    kniffel: ScoreValue;
+    chance: ScoreValue;
 }
 
 export interface KniffelSheet {

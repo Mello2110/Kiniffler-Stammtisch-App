@@ -82,12 +82,12 @@ export function Sidebar({ className }: { className?: string }) {
     const navItems = [
         { icon: LayoutDashboard, label: dict.sidebar.dashboard, href: "/dashboard" },
         { icon: Calendar, label: dict.sidebar.events, href: "/events" },
+        { icon: Dice5, label: dict.sidebar.kniffel, href: "/kniffel" },
         { icon: Trophy, label: dict.sidebar.stats, href: "/stats" },
         { icon: DollarSign, label: dict.sidebar.finances, href: "/cash" },
         { icon: ImageIcon, label: dict.sidebar.gallery, href: "/gallery" },
         { icon: Users, label: dict.sidebar.members, href: "/members" },
         { icon: Crown, label: dict.sidebar.hof, href: "/hall-of-fame" },
-        { icon: Dice5, label: dict.sidebar.kniffel, href: "/kniffel" },
         { icon: MessageSquarePlus, label: dict.sidebar.feedback, href: "/feedback" },
         { icon: Settings, label: dict.sidebar.options, href: "/options" },
     ];
