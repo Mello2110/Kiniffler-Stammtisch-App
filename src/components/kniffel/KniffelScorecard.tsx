@@ -177,7 +177,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const createPenalty = async (member: Member) => {
         try {
             await addDoc(collection(db, "penalties"), {
-                oderId: member.id,
+                userId: member.id,
                 amount: 1,
                 reason: dict.kniffel.penaltyReason,
                 date: new Date().toISOString().split("T")[0],
