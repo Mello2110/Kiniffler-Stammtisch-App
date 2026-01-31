@@ -104,13 +104,16 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                                             return (
                                                 <div
                                                     key={`${dateStr}-voter-${v.userId}-${i}`}
-                                                    className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted shrink-0 z-10 hover:z-20 transition-all flex items-center justify-center"
+                                                    className={cn(
+                                                        "relative h-6 w-6 rounded-full border-2 border-background overflow-hidden shrink-0 z-10 hover:z-20 transition-all flex items-center justify-center",
+                                                        m?.avatarUrl ? "bg-muted" : "bg-destructive/10"
+                                                    )}
                                                     title={m?.name || "Unknown Voter"}
                                                 >
                                                     {m?.avatarUrl ? (
                                                         <img src={m.avatarUrl} alt={m.name} className="h-full w-full object-cover" />
                                                     ) : (
-                                                        <span className="text-[8px] font-bold text-muted-foreground">
+                                                        <span className={cn("text-[8px] font-bold", m?.name ? "text-muted-foreground" : "text-destructive")}>
                                                             {m?.name ? m.name.substring(0, 2).toUpperCase() : "?"}
                                                         </span>
                                                     )}

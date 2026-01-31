@@ -141,7 +141,7 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                                             </div>
 
                                             {/* Voters Avatars */}
-                                            {voters.length > 0 && (
+                                            {itemVotes.length > 0 && (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{dict.events.modal.summary.votedBy}</span>
                                                     <div className="flex -space-x-2">
