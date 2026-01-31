@@ -369,7 +369,7 @@ export function PlayerSelectionModal({
                                         <select
                                             value={guestHostMemberId}
                                             onChange={(e) => setGuestHostMemberId(e.target.value)}
-                                            className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
+                                            className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors [&>option]:text-black [&>option]:bg-white"
                                         >
                                             <option value="">{dict.kniffel.selectHostMember}</option>
                                             {sortedMembers.map(member => (

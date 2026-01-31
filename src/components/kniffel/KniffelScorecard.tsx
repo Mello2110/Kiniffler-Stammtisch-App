@@ -438,7 +438,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
             <div id="kniffel-scorecard-container" className={cn("overflow-x-auto", isFullscreen && "p-6 bg-background")}>
                 {/* Sort and Reorder Controls */}
-                <div className="flex justify-end gap-2 mb-3 relative">
+                <div className={cn("flex justify-end gap-2 mb-3 relative", isFullscreen && "w-full max-w-[1400px] mx-auto mb-8 px-4")}>
                     {/* Reorder Columns Button */}
                     <button
                         onClick={() => setIsReorderMode(!isReorderMode)}
@@ -451,54 +451,63 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         title={isReorderMode ? dict.kniffel.reorderMode : dict.kniffel.reorderColumns}
                     >
                         <GripVertical className="h-4 w-4" />
-                        <span>{dict.kniffel.reorderColumns}</span>
+                        <span className="hidden sm:inline">{dict.kniffel.reorderColumns}</span>
                     </button>
 
-                    {/* Fullscreen Toggle Button */}
+                    {/* Sort Dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowSortDropdown(!showSortDropdown)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all h-full"
+                        >
+                            {getSortIcon()}
+                            <span className="hidden sm:inline">{dict.kniffel.sort}: {getSortLabel()}</span>
+                            <span className="sm:hidden">{getSortLabel()}</span>
+                            <ChevronDown className={cn("h-4 w-4 transition-transform", showSortDropdown && "rotate-180")} />
+                        </button>
+
+                        {showSortDropdown && (
+                            <div className="absolute top-full right-0 mt-1 z-10 bg-secondary border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[180px]">
+                                {(["scoreHigh", "scoreLow", "alphabet", "manual"] as SortMethod[]).map(method => (
+                                    <button
+                                        key={method}
+                                        onClick={() => {
+                                            setSortMethod(method);
+                                            setShowSortDropdown(false);
+                                        }}
+                                        className={cn(
+                                            "w-full px-4 py-2 text-left text-sm hover:bg-white/10 transition-colors",
+                                            sortMethod === method && "bg-primary/20 text-primary"
+                                        )}
+                                    >
+                                        {method === "scoreHigh" && dict.kniffel.sortScoreHigh}
+                                        {method === "scoreLow" && dict.kniffel.sortScoreLow}
+                                        {method === "alphabet" && dict.kniffel.sortAlphabet}
+                                        {method === "manual" && dict.kniffel.sortManual}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Fullscreen Toggle Button - Now on the far right */}
                     <button
                         onClick={toggleFullscreen}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all bg-white/5 hover:bg-white/10 border-white/10"
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all bg-white/5 hover:bg-white/10 border-white/10",
+                            isFullscreen && "bg-primary/10 border-primary/30 text-primary"
+                        )}
                         title={isFullscreen ? dict.kniffel.exitFullscreen : dict.kniffel.enterFullscreen}
                     >
                         {isFullscreen ? (
-                            <Minimize className="h-4 w-4" />
+                            <>
+                                <Minimize className="h-4 w-4" />
+                                <span className="hidden sm:inline">{dict.kniffel.exitFullscreen}</span>
+                            </>
                         ) : (
                             <Maximize className="h-4 w-4" />
                         )}
                     </button>
-
-                    {/* Sort Dropdown */}
-                    <button
-                        onClick={() => setShowSortDropdown(!showSortDropdown)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
-                    >
-                        {getSortIcon()}
-                        <span>{dict.kniffel.sort}: {getSortLabel()}</span>
-                        <ChevronDown className={cn("h-4 w-4 transition-transform", showSortDropdown && "rotate-180")} />
-                    </button>
-
-                    {showSortDropdown && (
-                        <div className="absolute top-full right-0 mt-1 z-10 bg-secondary border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[180px]">
-                            {(["scoreHigh", "scoreLow", "alphabet", "manual"] as SortMethod[]).map(method => (
-                                <button
-                                    key={method}
-                                    onClick={() => {
-                                        setSortMethod(method);
-                                        setShowSortDropdown(false);
-                                    }}
-                                    className={cn(
-                                        "w-full px-4 py-2 text-left text-sm hover:bg-white/10 transition-colors",
-                                        sortMethod === method && "bg-primary/20 text-primary"
-                                    )}
-                                >
-                                    {method === "scoreHigh" && dict.kniffel.sortScoreHigh}
-                                    {method === "scoreLow" && dict.kniffel.sortScoreLow}
-                                    {method === "alphabet" && dict.kniffel.sortAlphabet}
-                                    {method === "manual" && dict.kniffel.sortManual}
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
 
                 <table className="w-full text-sm border-separate border-spacing-0">
