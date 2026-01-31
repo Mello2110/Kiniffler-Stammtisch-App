@@ -4,10 +4,26 @@ import { useState, useMemo, useCallback } from "react";
 import { doc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toast, useToast } from "@/components/common/Toast";
-import type { Member, KniffelSheet, KniffelScores, ScoreValue } from "@/types";
+import type { Member, KniffelSheet, KniffelScores, ScoreValue, Player, GuestPlayer } from "@/types";
+import { isMember, isGuest } from "@/types";
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    horizontalListSortingStrategy,
+    useSortable
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface KniffelScorecardProps {
     sheet: KniffelSheet;
@@ -33,12 +49,81 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const [localScores, setLocalScores] = useState(sheet.scores);
     const [sortMethod, setSortMethod] = useState<SortMethod>("manual");
     const [showSortDropdown, setShowSortDropdown] = useState(false);
+    const [isReorderMode, setIsReorderMode] = useState(false);
+    const [localPlayerOrder, setLocalPlayerOrder] = useState(sheet.playerOrder || sheet.memberSnapshot);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const { toast, showToast, hideToast } = useToast();
 
-    // Get members that were part of this sheet
-    const sheetMembers = useMemo(() => {
-        return members.filter(m => sheet.memberSnapshot.includes(m.id));
-    }, [members, sheet.memberSnapshot]);
+    // Drag and drop sensors for column reordering
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
+
+    // Handle column reorder
+    const handleColumnReorder = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = localPlayerOrder.indexOf(active.id as string);
+            const newIndex = localPlayerOrder.indexOf(over.id as string);
+            const newOrder = arrayMove(localPlayerOrder, oldIndex, newIndex);
+
+            setLocalPlayerOrder(newOrder);
+
+            // Save to Firestore
+            try {
+                await updateDoc(doc(db, "kniffelSheets", sheet.id), {
+                    playerOrder: newOrder
+                });
+                showToast(dict.kniffel.orderSaved);
+                setIsReorderMode(false);
+            } catch (error) {
+                console.error("Error saving column order:", error);
+            }
+        }
+    };
+
+    // Fullscreen toggle handler
+    const toggleFullscreen = useCallback(async () => {
+        const container = document.getElementById('kniffel-scorecard-container');
+        if (!container) return;
+
+        try {
+            if (!document.fullscreenElement) {
+                if (container.requestFullscreen) {
+                    await container.requestFullscreen();
+                } else if ((container as any).webkitRequestFullscreen) {
+                    await (container as any).webkitRequestFullscreen();
+                }
+                setIsFullscreen(true);
+            } else {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if ((document as any).webkitExitFullscreen) {
+                    await (document as any).webkitExitFullscreen();
+                }
+                setIsFullscreen(false);
+            }
+        } catch (error) {
+            console.error("Fullscreen error:", error);
+        }
+    }, []);
+
+    // Get players (members + guests) that were part of this sheet, in selection order
+    const sheetPlayers = useMemo(() => {
+        // Preserve the order from playerOrder (or fallback to memberSnapshot)
+        const orderedIds = localPlayerOrder;
+        const memberMap = new Map(members.map(m => [m.id, m]));
+        const guestMap = new Map((sheet.guests || []).map(g => [g.id, g]));
+
+        return orderedIds
+            .map(id => memberMap.get(id) || guestMap.get(id))
+            .filter((p): p is Player => p !== undefined);
+    }, [localPlayerOrder, members, sheet.guests]);
 
     // Helper to get numeric value (strokes count as 0)
     const getNumericValue = (value: ScoreValue): number => {
@@ -80,20 +165,20 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         return calculateUpperSum(memberId) + calculateBonus(memberId) + calculateLowerSum(memberId);
     }, [calculateUpperSum, calculateBonus, calculateLowerSum]);
 
-    // Sort members based on selected method
-    const sortedMembers = useMemo(() => {
+    // Sort players based on selected method
+    const sortedPlayers = useMemo(() => {
         switch (sortMethod) {
             case "scoreHigh":
-                return [...sheetMembers].sort((a, b) => calculateTotal(b.id) - calculateTotal(a.id));
+                return [...sheetPlayers].sort((a, b) => calculateTotal(b.id) - calculateTotal(a.id));
             case "scoreLow":
-                return [...sheetMembers].sort((a, b) => calculateTotal(a.id) - calculateTotal(b.id));
+                return [...sheetPlayers].sort((a, b) => calculateTotal(a.id) - calculateTotal(b.id));
             case "alphabet":
-                return [...sheetMembers].sort((a, b) => a.name.localeCompare(b.name));
+                return [...sheetPlayers].sort((a, b) => a.name.localeCompare(b.name));
             case "manual":
             default:
-                return sheetMembers;
+                return sheetPlayers;
         }
-    }, [sheetMembers, sortMethod, calculateTotal]);
+    }, [sheetPlayers, sortMethod, calculateTotal]);
 
     // Get sort icon
     const getSortIcon = () => {
@@ -173,18 +258,35 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         updateScore(memberId, field, newValue);
     };
 
-    // Create penalty for a player (NO confirmation dialog, just toast)
-    const createPenalty = async (member: Member) => {
+    // Create penalty for a player (members or guests)
+    const createPenalty = async (player: Player) => {
+        // Determine the ID to charge (member ID or guest's host member ID)
+        let chargeUserId = player.id;
+        let isGuestPenalty = false;
+
+        if (isGuest(player)) {
+            if (!player.hostMemberId) {
+                showToast("Error: No host member assigned to guest");
+                return;
+            }
+            chargeUserId = player.hostMemberId;
+            isGuestPenalty = true;
+        }
+
         try {
             await addDoc(collection(db, "penalties"), {
-                userId: member.id,
+                userId: chargeUserId,
                 amount: 1,
-                reason: dict.kniffel.penaltyReason,
+                reason: isGuestPenalty ? `${dict.kniffel.penaltyReason} (${player.name})` : dict.kniffel.penaltyReason,
                 date: new Date().toISOString().split("T")[0],
                 isPaid: false,
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
+                // Guest metadata
+                isGuestPenalty: isGuestPenalty,
+                guestId: isGuestPenalty ? player.id : null,
+                guestName: isGuestPenalty ? player.name : null
             });
-            showToast(`✓ 1€ ${dict.kniffel.penalty} - ${member.name}`);
+            showToast(`✓ 1€ ${dict.kniffel.penalty} - ${player.name}`);
         } catch (error) {
             console.error("Error creating penalty:", error);
         }
@@ -201,7 +303,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const getChanceHighlight = (memberId: string): "highest" | "lowest" | null => {
         const filledChanceValues: { memberId: string; value: number }[] = [];
 
-        sortedMembers.forEach(m => {
+        sortedPlayers.forEach(m => {
             const scores = localScores[m.id];
             const value = scores?.chance;
             if (typeof value === "number") {
@@ -334,9 +436,38 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         <>
             <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />
 
-            <div className="overflow-x-auto">
-                {/* Sort Dropdown */}
-                <div className="flex justify-end mb-3 relative">
+            <div id="kniffel-scorecard-container" className={cn("overflow-x-auto", isFullscreen && "p-6 bg-background")}>
+                {/* Sort and Reorder Controls */}
+                <div className="flex justify-end gap-2 mb-3 relative">
+                    {/* Reorder Columns Button */}
+                    <button
+                        onClick={() => setIsReorderMode(!isReorderMode)}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all",
+                            isReorderMode
+                                ? "bg-primary/20 border-primary text-primary"
+                                : "bg-white/5 hover:bg-white/10 border-white/10"
+                        )}
+                        title={isReorderMode ? dict.kniffel.reorderMode : dict.kniffel.reorderColumns}
+                    >
+                        <GripVertical className="h-4 w-4" />
+                        <span>{dict.kniffel.reorderColumns}</span>
+                    </button>
+
+                    {/* Fullscreen Toggle Button */}
+                    <button
+                        onClick={toggleFullscreen}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all bg-white/5 hover:bg-white/10 border-white/10"
+                        title={isFullscreen ? dict.kniffel.exitFullscreen : dict.kniffel.enterFullscreen}
+                    >
+                        {isFullscreen ? (
+                            <Minimize className="h-4 w-4" />
+                        ) : (
+                            <Maximize className="h-4 w-4" />
+                        )}
+                    </button>
+
+                    {/* Sort Dropdown */}
                     <button
                         onClick={() => setShowSortDropdown(!showSortDropdown)}
                         className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
@@ -371,20 +502,72 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 </div>
 
                 <table className="w-full text-sm border-separate border-spacing-0">
-                    <thead>
-                        <tr>
-                            <th className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] min-w-[140px]"></th>
-                            {sortedMembers.map(member => (
-                                <th key={member.id} className="text-center p-2 font-semibold min-w-[100px]">
-                                    {member.name}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleColumnReorder}
+                    >
+                        <thead>
+                            <tr>
+                                <th className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] min-w-[140px]"></th>
+                                <SortableContext
+                                    items={localPlayerOrder}
+                                    strategy={horizontalListSortingStrategy}
+                                    disabled={!isReorderMode}
+                                >
+                                    {sortedPlayers.map((player) => {
+                                        const {
+                                            attributes,
+                                            listeners,
+                                            setNodeRef,
+                                            transform,
+                                            transition,
+                                            isDragging
+                                        } = useSortable({ id: player.id, disabled: !isReorderMode });
+
+                                        const style = {
+                                            transform: CSS.Transform.toString(transform),
+                                            transition,
+                                        };
+
+                                        return (
+                                            <th
+                                                key={player.id}
+                                                ref={setNodeRef}
+                                                style={style}
+                                                className={cn(
+                                                    "text-center p-2 font-semibold min-w-[100px]",
+                                                    isDragging && "opacity-50 z-50"
+                                                )}
+                                            >
+                                                <div className="flex flex-col items-center gap-1">
+                                                    {isReorderMode && (
+                                                        <div
+                                                            {...attributes}
+                                                            {...listeners}
+                                                            className="cursor-grab active:cursor-grabbing p-1 hover:bg-white/10 rounded transition-colors"
+                                                        >
+                                                            <GripVertical className="h-4 w-4 text-primary" />
+                                                        </div>
+                                                    )}
+                                                    <span>{player.name}</span>
+                                                    {isGuest(player) && (
+                                                        <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
+                                                            {dict.kniffel.guestLabel}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </th>
+                                        );
+                                    })}
+                                </SortableContext>
+                            </tr>
+                        </thead>
+                    </DndContext>
                     <tbody>
                         {/* Upper Section Header */}
                         <tr className="bg-primary/10">
-                            <td colSpan={sortedMembers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
+                            <td colSpan={sortedPlayers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
                                 {dict.kniffel.upperSection}
                             </td>
                         </tr>
@@ -393,9 +576,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         {UPPER_FIELDS.map(field => (
                             <tr key={field} className="border-b border-white/5">
                                 <td className="p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{getFieldLabel(field)}</td>
-                                {sortedMembers.map(member => (
-                                    <td key={member.id} className="p-1 min-w-[100px]">
-                                        {renderScoreInput(member.id, field)}
+                                {sortedPlayers.map((player: Player) => (
+                                    <td key={player.id} className="p-1 min-w-[100px]">
+                                        {renderScoreInput(player.id, field)}
                                     </td>
                                 ))}
                             </tr>
@@ -404,9 +587,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         {/* Upper Sum */}
                         <tr className="bg-white/5 font-semibold">
                             <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.upperSum}</td>
-                            {sortedMembers.map(member => (
-                                <td key={member.id} className="p-2 text-center min-w-[100px]">
-                                    {calculateUpperSum(member.id)}
+                            {sortedPlayers.map((player: Player) => (
+                                <td key={player.id} className="p-2 text-center min-w-[100px]">
+                                    {calculateUpperSum(player.id)}
                                 </td>
                             ))}
                         </tr>
@@ -414,10 +597,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         {/* Bonus */}
                         <tr className="bg-white/5 font-semibold">
                             <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.bonus}</td>
-                            {sortedMembers.map(member => (
-                                <td key={member.id} className="p-2 text-center min-w-[100px]">
-                                    <span className={cn(calculateBonus(member.id) > 0 && "text-green-400")}>
-                                        {calculateBonus(member.id)}
+                            {sortedPlayers.map((player: Player) => (
+                                <td key={player.id} className="p-2 text-center min-w-[100px]">
+                                    <span className={cn(calculateBonus(player.id) > 0 && "text-green-400")}>
+                                        {calculateBonus(player.id)}
                                     </span>
                                 </td>
                             ))}
@@ -425,7 +608,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
                         {/* Lower Section Header */}
                         <tr className="bg-primary/10">
-                            <td colSpan={sortedMembers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
+                            <td colSpan={sortedPlayers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
                                 {dict.kniffel.lowerSection}
                             </td>
                         </tr>
@@ -441,9 +624,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                                         </span>
                                     )}
                                 </td>
-                                {sortedMembers.map(member => (
-                                    <td key={member.id} className="p-1 min-w-[100px]">
-                                        {renderScoreInput(member.id, field)}
+                                {sortedPlayers.map((player: Player) => (
+                                    <td key={player.id} className="p-1 min-w-[100px]">
+                                        {renderScoreInput(player.id, field)}
                                     </td>
                                 ))}
                             </tr>
@@ -452,9 +635,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         {/* Lower Sum */}
                         <tr className="bg-white/5 font-semibold">
                             <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.lowerSum}</td>
-                            {sortedMembers.map(member => (
-                                <td key={member.id} className="p-2 text-center min-w-[100px]">
-                                    {calculateLowerSum(member.id)}
+                            {sortedPlayers.map((player: Player) => (
+                                <td key={player.id} className="p-2 text-center min-w-[100px]">
+                                    {calculateLowerSum(player.id)}
                                 </td>
                             ))}
                         </tr>
@@ -462,9 +645,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         {/* Total Score */}
                         <tr className="bg-primary/20 font-bold text-lg">
                             <td className="p-3 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-primary/30">{dict.kniffel.total}</td>
-                            {sortedMembers.map(member => (
-                                <td key={member.id} className="p-3 text-center text-primary min-w-[100px]">
-                                    {calculateTotal(member.id)}
+                            {sortedPlayers.map((player: Player) => (
+                                <td key={player.id} className="p-3 text-center text-primary min-w-[100px]">
+                                    {calculateTotal(player.id)}
                                 </td>
                             ))}
                         </tr>
@@ -475,10 +658,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                                 <AlertCircle className="h-4 w-4 text-red-400" />
                                 {dict.kniffel.penalty}
                             </td>
-                            {sortedMembers.map(member => (
-                                <td key={member.id} className="p-2 text-center min-w-[100px]">
+                            {sortedPlayers.map((player: Player) => (
+                                <td key={player.id} className="p-2 text-center min-w-[100px]">
                                     <button
-                                        onClick={() => createPenalty(member)}
+                                        onClick={() => createPenalty(player)}
                                         className="px-3 py-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-lg transition-colors border border-red-500/30 touch-target flex items-center justify-center w-full"
                                     >
                                         1€
@@ -492,3 +675,5 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         </>
     );
 }
+
+

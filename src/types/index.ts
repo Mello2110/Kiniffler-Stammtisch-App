@@ -121,13 +121,35 @@ export interface KniffelScores {
     chance: ScoreValue;
 }
 
+// Guest Player Support
+export interface GuestPlayer {
+    id: string; // Format: guest_[timestamp]_[random]
+    name: string;
+    isGuest: true; // Explicit flag for type checking
+    hostMemberId: string; // Member ID responsible for this guest's penalties
+}
+
+// Union type for player selection
+export type Player = Member | GuestPlayer;
+
+// Type guard functions
+export function isMember(player: Player): player is Member {
+    return !('isGuest' in player);
+}
+
+export function isGuest(player: Player): player is GuestPlayer {
+    return 'isGuest' in player && player.isGuest === true;
+}
+
 export interface KniffelSheet {
     id: string;
     year: number;
     month: number; // 0-11
     createdAt: any; // Firestore Timestamp
-    memberSnapshot: string[]; // Member IDs at creation time
+    memberSnapshot: string[]; // Member IDs in selection order
+    playerOrder?: string[]; // ALL player IDs (members + guests) in selection order
+    guests?: GuestPlayer[]; // Guest player data (stored in sheet since they're not in members collection)
     scores: {
-        [memberId: string]: KniffelScores;
+        [memberId: string]: KniffelScores; // Now includes guest IDs
     };
 }

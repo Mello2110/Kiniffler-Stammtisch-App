@@ -153,7 +153,39 @@ export const dictionaries = {
             chance: "Chance",
             lowerSum: "Lower Sum",
             total: "Total Score",
-            months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+            months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+            // Player Selection Modal
+            selectPlayers: "Select Players",
+            selectPlayersDesc: "Choose who will play this game",
+            playersSelected: "players selected",
+            playerSelected: "player selected",
+            selectAll: "Select All",
+            deselectAll: "Deselect All",
+            createGame: "Create Game",
+            minPlayersError: "Select at least 2 players",
+            selectionOrder: "Selection order determines column order",
+            // Guest Players
+            addGuest: "Add Guest",
+            guestNamePlaceholder: "Enter guest name...",
+            guestBadge: "GUEST",
+            guestLabel: "Guest",
+            guestAdded: "Guest added successfully",
+            guestNameTooShort: "Guest name must be at least 2 characters",
+            removeGuest: "Remove guest",
+            hostMember: "Brought by",
+            selectHostMember: "Select host member",
+            hostMemberRequired: "Please select who brought this guest",
+            // Drag and Drop Reordering
+            reorderColumns: "Reorder Columns",
+            reorderMode: "Reorder Mode Active",
+            dragToReorder: "Drag to reorder",
+            orderSaved: "Column order saved",
+            selectedPlayers: "Selected Players",
+            dragToReorderPlayers: "Drag to change player order",
+            // Fullscreen Mode
+            enterFullscreen: "Enter Fullscreen",
+            exitFullscreen: "Exit Fullscreen",
+            fullscreenMode: "Fullscreen Mode"
         }
     },
     de: {
@@ -308,7 +340,39 @@ export const dictionaries = {
             chance: "Chance",
             lowerSum: "Untere Summe",
             total: "Gesamtpunktzahl",
-            months: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"]
+            months: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+            // Player Selection Modal
+            selectPlayers: "Spieler auswählen",
+            selectPlayersDesc: "Wähle aus, wer mitspielen wird",
+            playersSelected: "Spieler ausgewählt",
+            playerSelected: "Spieler ausgewählt",
+            selectAll: "Alle auswählen",
+            deselectAll: "Alle abwählen",
+            createGame: "Spiel erstellen",
+            minPlayersError: "Mindestens 2 Spieler auswählen",
+            selectionOrder: "Auswahlreihenfolge bestimmt Spaltenreihenfolge",
+            // Guest Players
+            addGuest: "Gast hinzufügen",
+            guestNamePlaceholder: "Gastname eingeben...",
+            guestBadge: "GAST",
+            guestLabel: "Gast",
+            guestAdded: "Gast erfolgreich hinzugefügt",
+            guestNameTooShort: "Gastname muss mindestens 2 Zeichen haben",
+            removeGuest: "Gast entfernen",
+            hostMember: "Mitgebracht von",
+            selectHostMember: "Gastgeber wählen",
+            hostMemberRequired: "Bitte wählen Sie, wer diesen Gast mitgebracht hat",
+            // Ziehen und Ablegen zum Neuordnen
+            reorderColumns: "Spalten neu ordnen",
+            reorderMode: "Sortiermodus aktiv",
+            dragToReorder: "Ziehen zum Neuordnen",
+            orderSaved: "Spaltenreihenfolge gespeichert",
+            selectedPlayers: "Ausgewählte Spieler",
+            dragToReorderPlayers: "Ziehen zum Ändern der Spielerreihenfolge",
+            // Vollbildmodus
+            enterFullscreen: "Vollbild aktivieren",
+            exitFullscreen: "Vollbild verlassen",
+            fullscreenMode: "Vollbildmodus"
         }
     },
     pl: {
@@ -463,7 +527,30 @@ export const dictionaries = {
             chance: "Szansa",
             lowerSum: "Suma Dolna",
             total: "Wynik Końcowy",
-            months: ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"]
+            months: ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"],
+            // Player Selection Modal
+            selectPlayers: "Wybierz Graczy",
+            selectPlayersDesc: "Wybierz, kto zagra",
+            playersSelected: "graczy wybrano",
+            playerSelected: "gracz wybrany",
+            selectAll: "Wybierz Wszystkich",
+            deselectAll: "Odznacz Wszystkich",
+            createGame: "Utwórz Grę",
+            minPlayersError: "Wybierz co najmniej 2 graczy",
+            selectionOrder: "Kolejność wyboru określa kolejność kolumn",
+            // Guest Players
+            addGuest: "Dodaj Gościa",
+            guestNamePlaceholder: "Wprowadź imię gościa...",
+            guestBadge: "GOŚĆ",
+            guestLabel: "Gość",
+            guestAdded: "Gość dodany pomyślnie",
+            guestNameTooShort: "Imię gościa musi mieć co najmniej 2 znaki",
+            removeGuest: "Usuń gościa",
+            hostMember: "Przyprowadzony przez",
+            selectHostMember: "Wybierz gospodarza",
+            hostMemberRequired: "Proszę wybrać, kto przyprowadził tego gościa"
         }
     }
 };
+
+
