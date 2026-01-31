@@ -129,7 +129,7 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                                                     )}
                                                     <button
                                                         onClick={() => onCreateEvent(parseISO(item.dateStr))}
-                                                        className="p-1.5 rounded-full bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 transition-colors"
+                                                        className="p-1.5 rounded-full hover:bg-muted text-muted-foreground/50 hover:text-foreground transition-colors"
                                                         title={dict.events.modal.summary.createStammtisch}
                                                     >
                                                         <CalendarPlus className="h-4 w-4" />
