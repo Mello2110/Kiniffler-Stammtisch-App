@@ -173,6 +173,7 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                     </div>
                 ) : (
                     <EventForm
+                        initialData={{ date: dateStr }}
                         members={members}
                         onSubmit={handleAddEvent}
                         onCancel={() => setMode("select")}
