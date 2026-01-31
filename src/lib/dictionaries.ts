@@ -49,6 +49,13 @@ export const dictionaries = {
                     time: "Time", location: "Location", venuePlaceholder: "Venue...",
                     desc: "Description", descPlaceholder: "Details...",
                     back: "Back", create: "Create Event", saving: "Saving..."
+                },
+                summary: {
+                    votedBy: "Voted by:",
+                    createStammtisch: "Create Stammtisch Event",
+                    votingProgress: "Voting Progress",
+                    votes: "Votes",
+                    membersVoted: "members voted"
                 }
             }
         },
@@ -236,6 +243,13 @@ export const dictionaries = {
                     time: "Uhrzeit", location: "Ort", venuePlaceholder: "Lokal...",
                     desc: "Beschreibung", descPlaceholder: "Details...",
                     back: "Zurück", create: "Event erstellen", saving: "Speichere..."
+                },
+                summary: {
+                    votedBy: "Abgestimmt von:",
+                    createStammtisch: "Stammtisch erstellen",
+                    votingProgress: "Abstimmungsfortschritt",
+                    votes: "Stimmen",
+                    membersVoted: "Mitglieder haben abgestimmt"
                 }
             }
         },
@@ -423,6 +437,13 @@ export const dictionaries = {
                     time: "Godzina", location: "Lokalizacja", venuePlaceholder: "Miejsce...",
                     desc: "Opis", descPlaceholder: "Szczegóły...",
                     back: "Wstecz", create: "Utwórz Wydarzenie", saving: "Zapisywanie..."
+                },
+                summary: {
+                    votedBy: "Głosowali:",
+                    createStammtisch: "Utwórz Stammtisch",
+                    votingProgress: "Postęp głosowania",
+                    votes: "głosy",
+                    membersVoted: "członków zagłosowało"
                 }
             }
         },

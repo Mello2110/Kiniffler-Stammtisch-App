@@ -16,13 +16,14 @@ interface DateInteractionModalProps {
     currentUserId?: string;
     existingVotes?: StammtischVote[];
     members?: import("@/types").Member[];
+    initialMode?: "select" | "add-event";
 }
 
-export function DateInteractionModal({ date, onClose, currentUserId, existingVotes = [], members = [] }: DateInteractionModalProps) {
+export function DateInteractionModal({ date, onClose, currentUserId, existingVotes = [], members = [], initialMode = "select" }: DateInteractionModalProps) {
     const { dict, language } = useLanguage();
     const locales: any = { en: enUS, de: de, pl: pl };
 
-    const [mode, setMode] = useState<"select" | "add-event">("select");
+    const [mode, setMode] = useState<"select" | "add-event">(initialMode);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const dateStr = format(date, "yyyy-MM-dd");

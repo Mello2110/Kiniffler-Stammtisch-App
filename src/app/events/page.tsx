@@ -18,6 +18,17 @@ export default function EventsPage() {
     const { dict } = useLanguage();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [modalInitialMode, setModalInitialMode] = useState<"select" | "add-event">("select");
+
+    const handleDateSelect = (date: Date) => {
+        setModalInitialMode("select");
+        setSelectedDate(date);
+    };
+
+    const handleCreateEvent = (date: Date) => {
+        setModalInitialMode("add-event");
+        setSelectedDate(date);
+    };
 
     const [loading, setLoading] = useState(true);
 
@@ -87,6 +98,8 @@ export default function EventsPage() {
                     currentUserId={user?.uid || ""}
                     totalMembers={members.length}
                     members={members}
+                    dict={dict}
+                    onCreateEvent={handleCreateEvent}
                 />
             </section>
 
@@ -95,7 +108,7 @@ export default function EventsPage() {
                 <CalendarView
                     votes={votes} // Pass all, let calendar filter by day or optimize inside
                     setEvents={setEvents}
-                    onDateClick={setSelectedDate}
+                    onDateClick={handleDateSelect}
                     currentMonth={currentMonth}
                     onMonthChange={setCurrentMonth}
                 />
@@ -111,6 +124,7 @@ export default function EventsPage() {
                     existingVotes={votes.filter(v =>
                         format(new Date(v.date), "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd")
                     )}
+                    initialMode={modalInitialMode}
                 />
             )}
         </div>
