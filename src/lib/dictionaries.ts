@@ -548,7 +548,18 @@ export const dictionaries = {
             removeGuest: "Usuń gościa",
             hostMember: "Przyprowadzony przez",
             selectHostMember: "Wybierz gospodarza",
-            hostMemberRequired: "Proszę wybrać, kto przyprowadził tego gościa"
+            hostMemberRequired: "Proszę wybrać, kto przyprowadził tego gościa",
+            // Drag and Drop Reordering
+            reorderColumns: "Zmień kolejność kolumn",
+            reorderMode: "Tryb zmiany kolejności",
+            dragToReorder: "Przeciągnij, aby zmienić kolejność",
+            orderSaved: "Kolejność kolumn zapisana",
+            selectedPlayers: "Wybrani Gracze",
+            dragToReorderPlayers: "Przeciągnij, aby zmienić kolejność graczy",
+            // Fullscreen Mode
+            enterFullscreen: "Włącz pełny ekran",
+            exitFullscreen: "Wyłącz pełny ekran",
+            fullscreenMode: "Tryb pełnoekranowy"
         }
     }
 };
