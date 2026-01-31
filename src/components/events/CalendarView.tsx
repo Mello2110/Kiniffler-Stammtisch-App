@@ -12,9 +12,10 @@ interface CalendarViewProps {
     onDateClick: (date: Date) => void;
     currentMonth: Date;
     onMonthChange: (date: Date) => void;
+    members: import("@/types").Member[];
 }
 
-export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMonthChange }: CalendarViewProps) {
+export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMonthChange, members }: CalendarViewProps) {
     const firstDayOfMonth = startOfMonth(currentMonth);
     const lastDayOfMonth = endOfMonth(currentMonth);
     const startDate = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 }); // Monday start
@@ -67,6 +68,9 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                         const dayVotes = votes.filter(v => v.date === dateStr);
                         const dayEvents = setEvents.filter(e => e.date === dateStr);
 
+                        // Get voters for this day
+                        const voters = dayVotes.map(v => members.find(m => m.id === v.userId)).filter(Boolean);
+
                         const isCurrentMonth = isSameMonth(day, firstDayOfMonth);
                         const isToday = isSameDay(day, new Date());
 
@@ -83,23 +87,33 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                                     isLastInRow && "border-r-0"
                                 )}
                             >
-                                <div className="flex justify-between items-start">
+                                <div className="flex justify-between items-start mb-1">
                                     <span className={cn(
                                         "flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium",
                                         isToday && "bg-primary text-primary-foreground"
                                     )}>
                                         {format(day, dateFormat)}
                                     </span>
-                                    {dayVotes.length > 0 && (
-                                        <div className="flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-bold text-yellow-600 dark:text-yellow-400">
-                                            {dayVotes.length} {dayVotes.length === 1 ? 'vote' : 'votes'}
-                                        </div>
-                                    )}
                                 </div>
+
+                                {/* Voters Avatars */}
+                                {voters.length > 0 && (
+                                    <div className="flex -space-x-2 overflow-hidden pl-1">
+                                        {voters.map((m, i) => (
+                                            <div
+                                                key={`${dateStr}-${m?.id || i}`}
+                                                className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted shrink-0 z-10 hover:z-20 transition-all"
+                                                title={m?.name}
+                                            >
+                                                <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
 
                                 {/* Event Indicators */}
-                                <div className="mt-1 flex flex-col gap-1">
+                                <div className="mt-auto flex flex-col gap-1">
                                     {dayEvents.map(event => (
                                         <div key={event.id} className="rounded-sm bg-purple-500/10 px-1.5 py-0.5 text-[10px] text-purple-600 dark:text-purple-300 font-medium truncate border border-purple-500/20">
                                             {event.title}

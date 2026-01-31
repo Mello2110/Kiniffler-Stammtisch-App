@@ -111,6 +111,7 @@ export default function EventsPage() {
                     onDateClick={handleDateSelect}
                     currentMonth={currentMonth}
                     onMonthChange={setCurrentMonth}
+                    members={members}
                 />
             </section>
 

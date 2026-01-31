@@ -141,16 +141,18 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                                             </div>
 
                                             {/* Voters Avatars */}
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{dict.events.modal.summary.votedBy}</span>
-                                                <div className="flex -space-x-2">
-                                                    {voters.map(m => (
-                                                        <div key={m?.id} className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted" title={m?.name}>
-                                                            <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
-                                                        </div>
-                                                    ))}
+                                            {voters.length > 0 && (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{dict.events.modal.summary.votedBy}</span>
+                                                    <div className="flex -space-x-2">
+                                                        {voters.map((m, i) => (
+                                                            <div key={`${item.dateStr}-voter-${m?.id || i}`} className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted" title={m?.name}>
+                                                                <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
                                     );
                                 })}
