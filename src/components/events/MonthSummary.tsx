@@ -249,3 +249,5 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
         </div>
     );
 }
+   
+ 
