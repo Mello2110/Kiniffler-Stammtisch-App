@@ -72,8 +72,6 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                             createdBy: currentUserId,
                             createdAt: serverTimestamp()
                         });
-                        // We don't need to alert, it will just appear.
-                        // Maybe show a toast optionally, but standard behavior is silent auto-creation.
                     } catch (err) {
                         console.error("Failed to auto-create event", err);
                     }
@@ -118,7 +116,6 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                             <div className="space-y-3">
                                 {topDates.map((item) => {
                                     const itemVotes = votes.filter(v => v.date === item.dateStr);
-                                    const voters = itemVotes.map(v => members.find(m => m.id === v.userId)).filter(Boolean);
 
                                     return (
                                         <div key={item.dateStr} className="flex flex-col gap-2 border-b border-yellow-500/10 pb-3 last:border-0 last:pb-0">
@@ -249,5 +246,3 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
         </div>
     );
 }
-   
- 
