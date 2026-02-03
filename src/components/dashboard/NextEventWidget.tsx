@@ -9,6 +9,7 @@ import { collection, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { cn } from "@/lib/utils";
+import { MemberAvatar } from "@/components/common/MemberAvatar";
 
 interface NextEventWidgetProps {
     event?: {
@@ -194,9 +195,9 @@ function EventVoterList({ eventId, members, currentUserId }: { eventId: string, 
                 {/* Attendees */}
                 {attendees.length > 0 ? (
                     <div className="flex -space-x-2">
-                        {attendees.map(m => (
-                            <div key={m?.id} className="relative h-8 w-8 rounded-full border-2 border-background overflow-hidden bg-muted" title={m?.name}>
-                                <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
+                        {attendees.map(m => m && (
+                            <div key={m.id} className="relative" title={m.name}>
+                                <MemberAvatar member={m} size="sm" className="h-8 w-8 border-2 border-background" />
                             </div>
                         ))}
                     </div>
@@ -212,9 +213,9 @@ function EventVoterList({ eventId, members, currentUserId }: { eventId: string, 
                 {/* Decliners */}
                 {declined.length > 0 && (
                     <div className="flex -space-x-2 opacity-50 grayscale hover:grayscale-0 transition-all">
-                        {declined.map(m => (
-                            <div key={m?.id} className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted" title={m?.name + " (Declined)"}>
-                                <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
+                        {declined.map(m => m && (
+                            <div key={m.id} className="relative" title={m.name + " (Declined)"}>
+                                <MemberAvatar member={m} size="sm" className="h-6 w-6 text-[10px] border-2 border-background" />
                             </div>
                         ))}
                     </div>

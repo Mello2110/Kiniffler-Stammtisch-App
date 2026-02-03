@@ -10,6 +10,8 @@ interface LeaderboardProps {
     members: Member[]; // Needed to map userId to name/avatar
 }
 
+import { MemberAvatar } from "@/components/common/MemberAvatar";
+
 export function Leaderboard({ penalties, members }: LeaderboardProps) {
     const leaderData = useMemo(() => {
         const stats: Record<string, number> = {};
@@ -26,7 +28,7 @@ export function Leaderboard({ penalties, members }: LeaderboardProps) {
                 return {
                     userId,
                     name: member?.name || "Unknown",
-                    avatarUrl: member?.avatarUrl,
+                    member, // Pass full member for avatar
                     totalAmount
                 };
             })
@@ -60,9 +62,12 @@ export function Leaderboard({ penalties, members }: LeaderboardProps) {
                             </div>
                         )}
 
-                        <div className={cn("mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2", rankColor)}>
-                            {/* Placeholder Avatar if no URL */}
-                            <span className="text-2xl font-bold">{data.name.substring(0, 2).toUpperCase()}</span>
+                        <div className={cn("mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 p-1", rankColor)}>
+                            {data.member ? (
+                                <MemberAvatar member={data.member} size="lg" className="w-full h-full" />
+                            ) : (
+                                <span className="text-2xl font-bold">{data.name.substring(0, 2).toUpperCase()}</span>
+                            )}
                         </div>
 
                         <div className="text-center">

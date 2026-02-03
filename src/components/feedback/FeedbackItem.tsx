@@ -6,6 +6,7 @@ import { Check, Trash2, Pencil, Smartphone, Monitor, ThumbsUp, ThumbsDown } from
 import { cn } from "@/lib/utils";
 import { Member } from "@/types";
 import { FeedbackData, Category, Platform } from "@/components/feedback/FeedbackForm";
+import { MemberAvatar } from "@/components/common/MemberAvatar";
 
 export interface FeedbackItemProps {
     id: string;
@@ -74,13 +75,11 @@ export function FeedbackItem({
             {/* User Icon Column */}
             <div className="flex sm:flex-col items-center gap-2 sm:w-16 shrink-0">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden border-2 border-background shadow-sm bg-muted flex items-center justify-center">
-                    {member?.avatarUrl ? (
-                        <img src={member.avatarUrl} alt={member.name} className="h-full w-full object-cover" />
+                    {member ? (
+                        <MemberAvatar member={member} size="md" className="h-full w-full" />
                     ) : (
                         <div className="h-full w-full bg-primary/10 flex items-center justify-center">
-                            <span className="font-bold text-primary text-xs sm:text-sm">
-                                {member?.name?.substring(0, 2).toUpperCase() || "??"}
-                            </span>
+                            <span className="font-bold text-primary text-xs sm:text-sm">??</span>
                         </div>
                     )}
                 </div>
