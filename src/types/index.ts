@@ -15,6 +15,10 @@ export interface Member {
     role: string; // Changed to string for free text input
     joinYear?: number; // Added joinYear
     avatarUrl?: string;
+    avatar?: {
+        icon: string;      // Lucide icon name, e.g., "Beer", "Dog", "Star"
+        bgColor: string;   // Tailwind color class, e.g., "bg-purple-500"
+    };
     points: number;
     isAdmin?: boolean;
     email?: string; // Added for linking Auth User to Member

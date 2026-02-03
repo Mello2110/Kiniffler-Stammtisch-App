@@ -4,7 +4,6 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -46,7 +45,6 @@ export default function RootLayout({
             </ClientLayout>
           </AuthProvider>
         </LanguageProvider>
-        <SpeedInsights />
       </body>
     </html>
   );

@@ -10,6 +10,7 @@ import type { Member } from "@/types";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { EditMemberModal } from "./EditMemberModal";
 import { EditableHeader } from "@/components/common/EditableHeader";
+import { MemberAvatar } from "@/components/common/MemberAvatar";
 
 export function MemberManager() {
     const { user } = useAuth();
@@ -131,9 +132,7 @@ export function MemberManager() {
                         members.map((member) => (
                             <div key={member.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors group">
                                 <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-bold text-primary">
-                                        {member.name.charAt(0)}
-                                    </div>
+                                    <MemberAvatar member={member} size="md" />
                                     <div>
                                         <p className="font-semibold text-lg">{member.name}</p>
                                         <div className="flex items-center gap-3 text-xs text-muted-foreground uppercase tracking-wider font-bold">

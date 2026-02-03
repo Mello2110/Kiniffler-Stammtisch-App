@@ -20,9 +20,11 @@ import {
     Crown,
     MessageSquarePlus,
     Dice5,
-    X
+    X,
+    User
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ProfileModal } from "@/components/profile/ProfileModal";
 
 interface MobileSidebarProps {
     isOpen: boolean;
@@ -34,6 +36,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     const { logout, user } = useAuth();
     const { dict } = useLanguage();
     const [memberName, setMemberName] = useState<string>("");
+    const [showProfileModal, setShowProfileModal] = useState(false);
 
     useEffect(() => {
         const fetchMemberData = async () => {
@@ -143,6 +146,17 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
                     <button
                         onClick={() => {
+                            setShowProfileModal(true);
+                            onClose();
+                        }}
+                        className="flex w-full items-center gap-4 rounded-xl px-5 min-h-[56px] text-base font-medium text-foreground/80 hover:bg-white/10 active:bg-primary/10 transition-colors"
+                    >
+                        <User className="h-6 w-6" />
+                        Mein Profil
+                    </button>
+
+                    <button
+                        onClick={() => {
                             logout();
                             onClose();
                         }}
@@ -153,6 +167,12 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                     </button>
                 </div>
             </div>
+
+            {/* Profile Modal */}
+            <ProfileModal
+                isOpen={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+            />
         </>
     );
 }

@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KANPAI - Stammtisch Web App
+
+Eine Web-App für deinen regelmäßigen Stammtisch mit Kniffel-Spielen, Event-Management, Mitgliederverwaltung und mehr.
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router, Static Export)
+- **Styling:** TailwindCSS 4
+- **Backend:** Firebase (Firestore, Auth, Functions, Hosting)
+- **Sprache:** TypeScript
 
 ## Getting Started
 
-First, run the development server:
+### Voraussetzungen
+
+- Node.js 20+
+- Firebase CLI: `npm install -g firebase-tools`
+
+### Installation
+
+```bash
+npm install
+cd functions && npm install && cd ..
+```
+
+### Entwicklung
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Öffne [http://localhost:3000](http://localhost:3000) im Browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Build & Deploy zu Firebase
 
-## Learn More
+```bash
+npm run build
+firebase deploy
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Nur Hosting deployen
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+firebase deploy --only hosting
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Nur Functions deployen
 
-## Deploy on Vercel
+```bash
+firebase deploy --only functions
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Projektstruktur
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+├── src/
+│   ├── app/           # Next.js App Router Pages
+│   ├── components/    # React-Komponenten
+│   ├── contexts/      # React Contexts (Auth, Language)
+│   ├── lib/           # Utilities, Firebase Config
+│   └── types/         # TypeScript Typen
+├── functions/         # Firebase Cloud Functions
+├── public/            # Statische Assets
+└── out/               # Build Output für Firebase Hosting
+```

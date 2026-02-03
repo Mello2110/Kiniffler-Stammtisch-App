@@ -20,12 +20,14 @@ import {
     Crown,
     Beer,
     MessageSquarePlus,
-    Dice5
+    Dice5,
+    User
 } from "lucide-react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
 
 import { useTitle } from "@/contexts/TitleContext";
+import { ProfileModal } from "@/components/profile/ProfileModal";
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
@@ -38,6 +40,7 @@ export function Sidebar({ className }: { className?: string }) {
     const [isEditing, setIsEditing] = useState(false);
     const [memberName, setMemberName] = useState<string>("");
     const [showEmail, setShowEmail] = useState(true);
+    const [showProfileModal, setShowProfileModal] = useState(false);
 
     const [isAdmin, setIsAdmin] = useState(false);
 
@@ -164,6 +167,14 @@ export function Sidebar({ className }: { className?: string }) {
                 )}
 
                 <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+                >
+                    <User className="h-4 w-4" />
+                    Mein Profil
+                </button>
+
+                <button
                     onClick={() => logout()}
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-500/80 transition-all hover:bg-red-500/10 hover:text-red-500"
                 >
@@ -171,6 +182,12 @@ export function Sidebar({ className }: { className?: string }) {
                     Log out
                 </button>
             </div>
+
+            {/* Profile Modal */}
+            <ProfileModal
+                isOpen={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+            />
         </div>
     );
 }
