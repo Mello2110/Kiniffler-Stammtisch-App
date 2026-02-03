@@ -27,7 +27,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.monthlyOverview = exports.votingReminder = exports.dailyEventReminderCheck = exports.bulkDeleteCloudinaryImages = exports.deleteCloudinaryImage = void 0;
-const functions = __importStar(require("firebase-functions/v1"));
+const https_1 = require("firebase-functions/v2/https");
+const scheduler_1 = require("firebase-functions/v2/scheduler");
 const admin = __importStar(require("firebase-admin"));
 const cloudinary = __importStar(require("cloudinary"));
 const date_fns_1 = require("date-fns");
@@ -43,14 +44,14 @@ const CLOUDINARY_CONFIG = {
     api_secret: "Q6EA3q2rGrJ1glAMF4_koOoqAiA"
 };
 cloudinary.v2.config(CLOUDINARY_CONFIG);
-// --- Cloudinary Functions (Migrated) ---
-exports.deleteCloudinaryImage = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Login erforderlich");
+// --- Cloudinary Functions (Migrated to V2) ---
+exports.deleteCloudinaryImage = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Login erforderlich");
     }
-    const { publicId } = data;
+    const { publicId } = request.data;
     if (!publicId) {
-        throw new functions.https.HttpsError("invalid-argument", "publicId fehlt");
+        throw new https_1.HttpsError("invalid-argument", "publicId fehlt");
     }
     try {
         const result = await cloudinary.v2.uploader.destroy(publicId, {
@@ -65,16 +66,16 @@ exports.deleteCloudinaryImage = functions.https.onCall(async (data, context) => 
         }
     }
     catch (error) {
-        throw new functions.https.HttpsError("internal", `Cloudinary Fehler: ${error.message}`);
+        throw new https_1.HttpsError("internal", `Cloudinary Fehler: ${error.message}`);
     }
 });
-exports.bulkDeleteCloudinaryImages = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Login erforderlich");
+exports.bulkDeleteCloudinaryImages = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Login erforderlich");
     }
-    const { publicIds } = data;
+    const { publicIds } = request.data;
     if (!publicIds || !Array.isArray(publicIds) || publicIds.length === 0) {
-        throw new functions.https.HttpsError("invalid-argument", "publicIds Array fehlt oder leer");
+        throw new https_1.HttpsError("invalid-argument", "publicIds Array fehlt oder leer");
     }
     const results = [];
     for (const publicId of publicIds) {
@@ -92,12 +93,12 @@ exports.bulkDeleteCloudinaryImages = functions.https.onCall(async (data, context
     const successCount = results.filter(r => r.success).length;
     return { results, successCount, totalCount: publicIds.length };
 });
-// --- Scheduled Notification Functions ---
+// --- Scheduled Notification Functions (Migrated to V2) ---
 // 1. Daily Event Reminder Check (09:00 Europe/Berlin)
-exports.dailyEventReminderCheck = functions.pubsub
-    .schedule('0 9 * * *')
-    .timeZone('Europe/Berlin')
-    .onRun(async (context) => {
+exports.dailyEventReminderCheck = (0, scheduler_1.onSchedule)({
+    schedule: "0 9 * * *",
+    timeZone: "Europe/Berlin"
+}, async (event) => {
     const today = new Date();
     const in7Days = (0, date_fns_1.addDays)(today, 7);
     const tomorrow = (0, date_fns_1.addDays)(today, 1);
@@ -115,15 +116,15 @@ exports.dailyEventReminderCheck = functions.pubsub
     if (!events7DaysSnap.empty) {
         const users = await (0, notificationHelpers_1.getMembersWithPreference)('eventReminder7Days');
         for (const doc of events7DaysSnap.docs) {
-            const event = doc.data();
-            const dateStr = new Date(event.date).toLocaleDateString('de-DE');
-            const timeStr = event.time || 'Ganztägig';
+            const eventData = doc.data();
+            const dateStr = new Date(eventData.date).toLocaleDateString('de-DE');
+            const timeStr = eventData.time || 'Ganztägig';
             const pushPayload = {
-                title: `In einer Woche: ${event.title}`,
-                body: `Am ${dateStr} ist ${event.title} in ${event.location || 'Location tbd'}.`,
+                title: `In einer Woche: ${eventData.title}`,
+                body: `Am ${dateStr} ist ${eventData.title} in ${eventData.location || 'Location tbd'}.`,
                 url: '/events'
             };
-            const emailContent = (0, emailTemplates_1.eventReminderTemplate)(event.title, dateStr, timeStr, 7, 'https://stammtisch-web-app.web.app/events');
+            const emailContent = (0, emailTemplates_1.eventReminderTemplate)(eventData.title, dateStr, timeStr, 7, 'https://stammtisch-web-app.web.app/events');
             // Send Pushes
             const pushTokens = users.filter(u => u.pushEnabled && u.fcmToken).map(u => u.fcmToken);
             if (pushTokens.length > 0)
@@ -138,15 +139,15 @@ exports.dailyEventReminderCheck = functions.pubsub
     if (!events1DaySnap.empty) {
         const users = await (0, notificationHelpers_1.getMembersWithPreference)('eventReminder1Day');
         for (const doc of events1DaySnap.docs) {
-            const event = doc.data();
-            const dateStr = new Date(event.date).toLocaleDateString('de-DE');
-            const timeStr = event.time || 'Ganztägig';
+            const eventData = doc.data();
+            const dateStr = new Date(eventData.date).toLocaleDateString('de-DE');
+            const timeStr = eventData.time || 'Ganztägig';
             const pushPayload = {
-                title: `Morgen: ${event.title}`,
-                body: `Vergiss nicht, morgen ist ${event.title}!`,
+                title: `Morgen: ${eventData.title}`,
+                body: `Vergiss nicht, morgen ist ${eventData.title}!`,
                 url: '/events'
             };
-            const emailContent = (0, emailTemplates_1.eventReminderTemplate)(event.title, dateStr, timeStr, 1, 'https://stammtisch-web-app.web.app/events');
+            const emailContent = (0, emailTemplates_1.eventReminderTemplate)(eventData.title, dateStr, timeStr, 1, 'https://stammtisch-web-app.web.app/events');
             // Send Pushes
             const pushTokens = users.filter(u => u.pushEnabled && u.fcmToken).map(u => u.fcmToken);
             if (pushTokens.length > 0)
@@ -157,33 +158,20 @@ exports.dailyEventReminderCheck = functions.pubsub
             }
         }
     }
-    return null;
 });
 // 2. Voting Reminder (24th of month, 10:00 Europe/Berlin)
-exports.votingReminder = functions.pubsub
-    .schedule('0 10 24 * *')
-    .timeZone('Europe/Berlin')
-    .onRun(async (context) => {
+exports.votingReminder = (0, scheduler_1.onSchedule)({
+    schedule: "0 10 24 * *",
+    timeZone: "Europe/Berlin"
+}, async (event) => {
     const today = new Date();
     // Calculate next month
-    let targetMonth = today.getMonth() + 1; // 0-based index, so +1 is next month real index (1-12) if we consider 0 as Jan. 
-    // Logic: if today is Jan 24, we vote for Feb. 
-    // If we store votes by year-month string e.g. "2024-02", we need to construct that.
+    let targetMonth = today.getMonth() + 1;
     let targetYear = today.getFullYear();
-    if (targetMonth > 11) { // If Dec (11) -> Jan (0)
+    if (targetMonth > 11) {
         targetMonth = 0;
         targetYear++;
     }
-    // Construct ID like "2024-02" or however it is stored.
-    // Assuming votes are at `stammtisch_votes` or handling logic. 
-    // Based on user prompt: "votes/{year-month}/responses/{memberId}"? 
-    // Wait, looking at types, `StammtischVote` has `month` and `year`.
-    // BUT user prompt said "Check voting collection/document for next month's Stammtisch".
-    // Let's assume standard logic: Members vote for dates.
-    // If there is no dedicated "voted" flag on member, we need to check votes.
-    // Let's assume there is a collection where votes are stored. 
-    // Based on `StammtischVote` type: it has `userId`, `month`, `year`.
-    // So we can query `stammtisch_votes` where month == targetMonth+1 (human) and year == targetYear. (Wait, type says month is number).
     const nextMonthIndex = targetMonth; // 0-11
     const nextMonthName = (0, date_fns_1.format)(new Date(targetYear, nextMonthIndex, 1), 'MMMM', { locale: locale_1.de });
     // Get all votes for that month/year
@@ -212,13 +200,12 @@ exports.votingReminder = functions.pubsub
             await (0, notificationHelpers_1.queueEmail)(user.email, emailContent.subject, emailContent.html, emailContent.text);
         }
     }
-    return null;
 });
 // 3. Monthly Overview (1st of month, 09:00 Europe/Berlin)
-exports.monthlyOverview = functions.pubsub
-    .schedule('0 9 1 * *')
-    .timeZone('Europe/Berlin')
-    .onRun(async (context) => {
+exports.monthlyOverview = (0, scheduler_1.onSchedule)({
+    schedule: "0 9 1 * *",
+    timeZone: "Europe/Berlin"
+}, async (event) => {
     const today = new Date();
     const startOfMonthDate = (0, date_fns_1.startOfDay)(new Date(today.getFullYear(), today.getMonth(), 1));
     const endOfMonthDate = (0, date_fns_1.endOfDay)(new Date(today.getFullYear(), today.getMonth() + 1, 0));
@@ -230,7 +217,7 @@ exports.monthlyOverview = functions.pubsub
         .orderBy('date', 'asc')
         .get();
     if (eventsSnap.empty)
-        return null;
+        return;
     const events = eventsSnap.docs.map(doc => {
         const d = doc.data();
         return {
@@ -254,6 +241,5 @@ exports.monthlyOverview = functions.pubsub
     for (const user of users.filter(u => u.emailEnabled && u.email)) {
         await (0, notificationHelpers_1.queueEmail)(user.email, emailContent.subject, emailContent.html, emailContent.text);
     }
-    return null;
 });
 //# sourceMappingURL=index.js.map
