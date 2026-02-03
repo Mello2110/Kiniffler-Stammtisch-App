@@ -24,7 +24,28 @@ export interface Member {
     isAdmin?: boolean;
     email?: string; // Added for linking Auth User to Member
     birthday?: string; // YYYY-MM-DD
+    notificationPreferences?: NotificationPreferences;
 }
+
+export interface NotificationPreferences {
+    // Channels
+    emailEnabled: boolean;
+    pushEnabled: boolean;
+
+    // FCM token for push
+    fcmToken?: string;
+
+    // Event Reminders
+    eventReminder7Days: boolean;    // 1 week before events
+    eventReminder1Day: boolean;     // 1 day before events
+
+    // Voting Reminder
+    votingReminder: boolean;        // Remind on 24th if not voted for next month
+
+    // Monthly Overview
+    monthlyOverview: boolean;       // Send overview on 1st of each month
+}
+
 
 export interface StammtischVote {
     id: string; // usually composite userId_date

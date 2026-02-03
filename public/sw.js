@@ -79,3 +79,24 @@ self.addEventListener('fetch', (event) => {
             })
     );
 });
+
+// Listen for push events
+self.addEventListener('push', function (event) {
+    const data = event.data?.json() ?? {};
+    const title = data.title || 'Stammtisch Benachrichtigung';
+    const options = {
+        body: data.body || '',
+        icon: '/kanpai-logo.png',
+        badge: '/kanpai-logo.png',
+        data: data.url ? { url: data.url } : undefined
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', function (event) {
+    event.notification.close();
+    if (event.notification.data?.url) {
+        event.waitUntil(clients.openWindow(event.notification.data.url));
+    }
+});

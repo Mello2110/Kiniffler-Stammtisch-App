@@ -34,12 +34,23 @@ if (typeof window !== "undefined") {
     });
 }
 
+
 let analytics;
+let messaging: any = null;
 if (typeof window !== "undefined") {
     // Only import analytics on the client side
     import("firebase/analytics").then(({ getAnalytics }) => {
         analytics = getAnalytics(app);
     });
+
+    // Initialize Messaging
+    import("firebase/messaging").then(({ getMessaging }) => {
+        try {
+            messaging = getMessaging(app);
+        } catch (e) {
+            console.log("Firebase Messaging failed to initialize", e);
+        }
+    });
 }
 
-export { analytics };
+export { analytics, messaging };

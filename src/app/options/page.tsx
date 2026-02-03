@@ -7,6 +7,7 @@ import { Trash2, AlertTriangle, Settings, Languages, Database, Users } from "luc
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import NotificationSettings from "@/components/settings/NotificationSettings";
 
 const COLLECTIONS_TO_RESET = [
     "members",
@@ -231,6 +232,10 @@ export default function OptionsPage() {
                             </button>
                         </div>
                     </div>
+                </section>
+
+                <section className="flex flex-col space-y-4">
+                    <NotificationSettings />
                 </section>
 
                 {/* Data Management */}
