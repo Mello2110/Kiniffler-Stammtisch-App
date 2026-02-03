@@ -27,7 +27,6 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 
 import { useTitle } from "@/contexts/TitleContext";
-import { ProfileModal } from "@/components/profile/ProfileModal";
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
@@ -40,7 +39,6 @@ export function Sidebar({ className }: { className?: string }) {
     const [isEditing, setIsEditing] = useState(false);
     const [memberName, setMemberName] = useState<string>("");
     const [showEmail, setShowEmail] = useState(true);
-    const [showProfileModal, setShowProfileModal] = useState(false);
 
     const [isAdmin, setIsAdmin] = useState(false);
 
@@ -166,13 +164,13 @@ export function Sidebar({ className }: { className?: string }) {
                     </div>
                 )}
 
-                <button
-                    onClick={() => setShowProfileModal(true)}
+                <Link
+                    href="/profile"
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
                 >
                     <User className="h-4 w-4" />
                     Mein Profil
-                </button>
+                </Link>
 
                 <button
                     onClick={() => logout()}
@@ -183,11 +181,6 @@ export function Sidebar({ className }: { className?: string }) {
                 </button>
             </div>
 
-            {/* Profile Modal */}
-            <ProfileModal
-                isOpen={showProfileModal}
-                onClose={() => setShowProfileModal(false)}
-            />
         </div>
     );
 }

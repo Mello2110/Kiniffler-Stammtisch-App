@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -24,7 +24,6 @@ import {
     User
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ProfileModal } from "@/components/profile/ProfileModal";
 
 interface MobileSidebarProps {
     isOpen: boolean;
@@ -35,8 +34,8 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     const pathname = usePathname();
     const { logout, user } = useAuth();
     const { dict } = useLanguage();
+    const router = useRouter();
     const [memberName, setMemberName] = useState<string>("");
-    const [showProfileModal, setShowProfileModal] = useState(false);
 
     useEffect(() => {
         const fetchMemberData = async () => {
@@ -144,16 +143,14 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                         </div>
                     )}
 
-                    <button
-                        onClick={() => {
-                            setShowProfileModal(true);
-                            onClose();
-                        }}
+                    <Link
+                        href="/profile"
+                        onClick={onClose}
                         className="flex w-full items-center gap-4 rounded-xl px-5 min-h-[56px] text-base font-medium text-foreground/80 hover:bg-white/10 active:bg-primary/10 transition-colors"
                     >
                         <User className="h-6 w-6" />
                         Mein Profil
-                    </button>
+                    </Link>
 
                     <button
                         onClick={() => {
@@ -167,12 +164,6 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                     </button>
                 </div>
             </div>
-
-            {/* Profile Modal */}
-            <ProfileModal
-                isOpen={showProfileModal}
-                onClose={() => setShowProfileModal(false)}
-            />
         </>
     );
 }
