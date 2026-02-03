@@ -4,8 +4,9 @@ import { Pencil, Trash2, Check, X, Users } from "lucide-react";
 import { collection, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { db } from "@/lib/firebase";
-import type { SetEvent } from "@/types";
+import type { SetEvent, Member } from "@/types";
 import { cn } from "@/lib/utils";
+import { MemberAvatar } from "@/components/common/MemberAvatar";
 
 interface SetEventItemProps {
     event: SetEvent;
@@ -81,9 +82,9 @@ export function SetEventItem({ event, currentUserId, totalMembers, members, onEd
                     {/* Attendees */}
                     {attendees.length > 0 && (
                         <div className="flex -space-x-2">
-                            {attendees.map(m => (
-                                <div key={m?.id} className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted" title={m?.name}>
-                                    <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
+                            {attendees.map(m => m && (
+                                <div key={m.id} className="relative" title={m.name}>
+                                    <MemberAvatar member={m} size="sm" className="h-6 w-6 border-2 border-background" />
                                 </div>
                             ))}
                         </div>
@@ -97,9 +98,9 @@ export function SetEventItem({ event, currentUserId, totalMembers, members, onEd
                     {/* Decliners */}
                     {declined.length > 0 && (
                         <div className="flex -space-x-2 opacity-50 grayscale hover:grayscale-0 transition-all">
-                            {declined.map(m => (
-                                <div key={m?.id} className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted" title={m?.name + " (Declined)"}>
-                                    <img src={m?.avatarUrl} alt={m?.name} className="h-full w-full object-cover" />
+                            {declined.map(m => m && (
+                                <div key={m.id} className="relative" title={m.name + " (Declined)"}>
+                                    <MemberAvatar member={m} size="sm" className="h-6 w-6 border-2 border-background" />
                                 </div>
                             ))}
                         </div>

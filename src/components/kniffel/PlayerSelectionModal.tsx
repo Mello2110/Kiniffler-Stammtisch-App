@@ -6,6 +6,7 @@ import { X, Users, Check, UserPlus, Trash2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Member, GuestPlayer, Player } from "@/types";
 import { Toast, useToast } from "@/components/common/Toast";
+import { MemberAvatar } from "@/components/common/MemberAvatar";
 import {
     DndContext,
     closestCenter,
@@ -301,25 +302,15 @@ export function PlayerSelectionModal({
                                             </div>
                                         )}
 
-                                        {/* Avatar or Initials */}
-                                        <div
+                                        {/* Avatar */}
+                                        <MemberAvatar
+                                            member={member}
+                                            size="lg"
                                             className={cn(
-                                                "w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold outfit",
-                                                selected
-                                                    ? "bg-primary/20 text-primary"
-                                                    : "bg-white/10 text-muted-foreground"
+                                                "w-16 h-16",
+                                                selected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
                                             )}
-                                        >
-                                            {member.avatarUrl ? (
-                                                <img
-                                                    src={member.avatarUrl}
-                                                    alt={member.name}
-                                                    className="w-full h-full rounded-full object-cover"
-                                                />
-                                            ) : (
-                                                member.name.charAt(0).toUpperCase()
-                                            )}
-                                        </div>
+                                        />
 
                                         {/* Name */}
                                         <div className="text-center">

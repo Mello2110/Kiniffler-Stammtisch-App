@@ -8,6 +8,7 @@ import { EditEventModal } from "@/components/events/EditEventModal";
 import { SetEventItem } from "@/components/events/SetEventItem";
 import type { StammtischVote, SetEvent, Member } from "@/types";
 import { cn } from "@/lib/utils";
+import { MemberAvatar } from "@/components/common/MemberAvatar";
 
 interface MonthSummaryProps {
     currentMonth: Date;
@@ -144,19 +145,13 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                                                     <div className="flex -space-x-2">
                                                         {itemVotes.map((v, i) => {
                                                             const m = members.find(mem => mem.id === v.userId);
+                                                            if (!m) return null;
                                                             return (
                                                                 <div
                                                                     key={`${item.dateStr}-voter-${v.userId}-${i}`}
-                                                                    className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted flex items-center justify-center"
-                                                                    title={m?.name || "Unknown Voter"}
+                                                                    title={m.name}
                                                                 >
-                                                                    {m?.avatarUrl ? (
-                                                                        <img src={m.avatarUrl} alt={m.name} className="h-full w-full object-cover" />
-                                                                    ) : (
-                                                                        <span className="text-[8px] font-bold text-muted-foreground">
-                                                                            {m?.name ? m.name.substring(0, 2).toUpperCase() : "?"}
-                                                                        </span>
-                                                                    )}
+                                                                    <MemberAvatar member={m} size="sm" className="h-6 w-6 border-2 border-background" />
                                                                 </div>
                                                             );
                                                         })}

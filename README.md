@@ -66,3 +66,11 @@ firebase deploy --only functions
 ├── public/            # Statische Assets
 └── out/               # Build Output für Firebase Hosting
 ```
+
+## Change Log
+
+### 2026-02-03
+- **Profile System:** Replaced `ProfileModal` with dedicated `/profile` page for better UX.
+- **Avatar System:** Unified avatar display using `MemberAvatar` component across Events, Calendar, and Player Selection.
+- **Deployment:** Fixed Firebase Hosting deployment workflow.
+- **Admin Tools:** Added temporary "Random Avatars" tool for testing.

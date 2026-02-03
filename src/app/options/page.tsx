@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, deleteDoc, doc, writeBatch, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Trash2, AlertTriangle, Settings, Languages, Database } from "lucide-react";
+import { Trash2, AlertTriangle, Settings, Languages, Database, Users } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -86,6 +86,73 @@ export default function OptionsPage() {
                 addLog(`✅ Cleared ${colName}`);
             }
             setStatus(dict.options.resetSuccess);
+        } catch (error: any) {
+            console.error(error);
+            setStatus(`Error: ${error.message}`);
+            addLog(`❌ Error: ${error.message}`);
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
+    // --- RANDOM AVATAR UTILITY (Temporary/Admin) ---
+    const AVATAR_ICONS = [
+        "Dog", "Cat", "Bird", "Fish", "Bug", "Squirrel", "Rabbit",
+        "Beer", "Coffee", "Gamepad2", "Music", "Camera", "Palette", "Book", "Bike", "Car",
+        "Dumbbell", "Trophy", "Target", "Dice5", "Plane", "Mountain",
+        "Star", "Heart", "Zap", "Flame", "Sun", "Moon", "Sparkles",
+        "User", "UserCircle", "Smile", "Ghost"
+    ];
+
+    const AVATAR_COLORS = [
+        "bg-purple-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-red-500",
+        "bg-pink-500", "bg-indigo-500", "bg-teal-500", "bg-orange-500"
+    ];
+
+    const assignRandomAvatars = async () => {
+        if (!confirm("Dies wird allen Mitgliedern ein zufälliges Avatar (Icon & Farbe) zuweisen. Fortfahren?")) return;
+
+        setIsResetting(true);
+        setStatus("Assigning random avatars...");
+        setLogs([]);
+        addLog("Starting avatar randomization...");
+
+        try {
+            const membersSnap = await getDocs(collection(db, "members"));
+            addLog(`Found ${membersSnap.size} members.`);
+
+            let updatedCount = 0;
+            const chunks = [];
+            let currentChunk = writeBatch(db);
+            let chunkCount = 0;
+
+            membersSnap.docs.forEach((docSnap) => {
+                const randomIcon = AVATAR_ICONS[Math.floor(Math.random() * AVATAR_ICONS.length)];
+                const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+
+                currentChunk.update(doc(db, "members", docSnap.id), {
+                    avatar: {
+                        icon: randomIcon,
+                        bgColor: randomColor
+                    }
+                });
+
+                updatedCount++;
+                chunkCount++;
+
+                if (chunkCount === 499) {
+                    chunks.push(currentChunk);
+                    currentChunk = writeBatch(db);
+                    chunkCount = 0;
+                }
+            });
+
+            if (chunkCount > 0) chunks.push(currentChunk);
+
+            await Promise.all(chunks.map(chunk => chunk.commit()));
+
+            addLog(`✅ Successfully updated ${updatedCount} members with random avatars.`);
+            setStatus("Avatars updated successfully!");
         } catch (error: any) {
             console.error(error);
             setStatus(`Error: ${error.message}`);
@@ -199,6 +266,20 @@ export default function OptionsPage() {
                             >
                                 <Trash2 className="w-5 h-5" />
                                 {isResetting ? dict.options.resetProcessing : dict.options.resetBtn}
+                            </button>
+
+                            <button
+                                onClick={assignRandomAvatars}
+                                disabled={isResetting || !isAdmin}
+                                className={cn(
+                                    "w-full py-4 font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg",
+                                    isAdmin
+                                        ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-900/20"
+                                        : "bg-muted text-muted-foreground cursor-not-allowed"
+                                )}
+                            >
+                                <Users className="w-5 h-5" />
+                                Random Avatars (Test)
                             </button>
 
                             {/* Mini Logs */}

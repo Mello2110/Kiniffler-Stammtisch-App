@@ -4,8 +4,8 @@ import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { StammtischVote, SetEvent } from "@/types";
-
+import type { StammtischVote, SetEvent, Member } from "@/types";
+import { MemberAvatar } from "@/components/common/MemberAvatar";
 interface CalendarViewProps {
     votes: StammtischVote[];
     setEvents: SetEvent[];
@@ -101,19 +101,14 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                                     <div className="flex -space-x-2 overflow-hidden pl-1 mt-1 empty:hidden">
                                         {dayVotes.map((v, i) => {
                                             const m = members.find(mem => mem.id === v.userId);
+                                            if (!m) return null;
                                             return (
                                                 <div
                                                     key={`${dateStr}-voter-${v.userId}-${i}`}
-                                                    className="relative h-6 w-6 rounded-full border-2 border-background overflow-hidden bg-muted shrink-0 z-10 hover:z-20 transition-all flex items-center justify-center"
-                                                    title={m?.name || "Unknown Voter"}
+                                                    className="relative z-10 hover:z-20 transition-all"
+                                                    title={m.name}
                                                 >
-                                                    {m?.avatarUrl ? (
-                                                        <img src={m.avatarUrl} alt={m.name} className="h-full w-full object-cover" />
-                                                    ) : (
-                                                        <span className="text-[8px] font-bold text-muted-foreground">
-                                                            {m?.name ? m.name.substring(0, 2).toUpperCase() : "?"}
-                                                        </span>
-                                                    )}
+                                                    <MemberAvatar member={m} size="sm" className="h-6 w-6 border-2 border-background" />
                                                 </div>
                                             );
                                         })}
