@@ -1,5 +1,6 @@
-import { messaging, db } from "./firebase";
-import { getToken, onMessage, deleteToken } from "firebase/messaging";
+import { db } from "./firebase";
+import { getMessaging, getToken, deleteToken } from "firebase/messaging";
+import { getApp } from "firebase/app";
 import { doc, updateDoc } from "firebase/firestore";
 
 // Check if notifications are supported
@@ -18,7 +19,8 @@ export async function requestNotificationPermission(): Promise<string | null> {
     try {
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
-            if (!messaging) return null;
+            const app = getApp();
+            const messaging = getMessaging(app);
 
             const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
             if (!vapidKey) {
@@ -72,8 +74,9 @@ export async function unsubscribeFromPush(userId: string): Promise<void> {
         });
 
         // Delete token from Messaging if valid
+        const app = getApp();
+        const messaging = getMessaging(app);
         if (messaging) {
-            // Note: deleteToken needs the messaging instance
             await deleteToken(messaging);
         }
     } catch (error) {
