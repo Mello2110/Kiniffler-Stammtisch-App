@@ -121,29 +121,40 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                             Rolle/Titel
                         </label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 border rounded-xl bg-background/50">
+                        <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto px-1 py-2 custom-scrollbar">
                             {ROLES.map((r) => {
                                 const isSelected = selectedRoles.includes(r);
                                 const isTakenAdmin = r === "Admin" && members.some(m => m.id !== member.id && (m.roles?.includes("Admin") || m.role === "Admin"));
 
                                 return (
-                                    <label
+                                    <button
                                         key={r}
-                                        className={`flex items-center gap-2 p-2 rounded-lg border transition-all cursor-pointer select-none ${isSelected
-                                                ? "bg-primary/10 border-primary text-primary"
-                                                : "bg-card border-transparent hover:bg-muted"
-                                            } ${isTakenAdmin ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}
+                                        type="button"
+                                        onClick={() => !isTakenAdmin && toggleRole(r)}
+                                        disabled={isTakenAdmin}
+                                        className={`group relative flex items-center justify-between p-3 rounded-xl border transition-all duration-200 ${isSelected
+                                                ? "bg-primary/10 border-primary shadow-sm"
+                                                : "bg-card border-border hover:border-primary/50 hover:bg-muted/50"
+                                            } ${isTakenAdmin ? "opacity-50 cursor-not-allowed bg-muted/30 grayscale" : ""}`}
                                     >
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={() => !isTakenAdmin && toggleRole(r)}
-                                            disabled={isTakenAdmin}
-                                            className="w-4 h-4 rounded border-primary text-primary focus:ring-primary/20"
-                                        />
-                                        <span className="text-sm font-medium">{r}</span>
-                                        {isTakenAdmin && <span className="text-[10px] text-red-500">(Vergeben)</span>}
-                                    </label>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`h-5 w-5 rounded-md flex items-center justify-center border transition-colors ${isSelected
+                                                    ? "bg-primary border-primary text-primary-foreground"
+                                                    : "border-muted-foreground/30 bg-background group-hover:border-primary/50"
+                                                }`}>
+                                                {isSelected && <Award className="h-3 w-3" />}
+                                            </div>
+                                            <span className={`text-sm font-semibold transition-colors ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
+                                                {r}
+                                            </span>
+                                        </div>
+
+                                        {isTakenAdmin && (
+                                            <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-1 rounded-full uppercase tracking-wider">
+                                                Vergeben
+                                            </span>
+                                        )}
+                                    </button>
                                 );
                             })}
                         </div>
