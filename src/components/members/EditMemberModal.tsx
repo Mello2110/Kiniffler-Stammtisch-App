@@ -31,27 +31,32 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
 
     // Form State
     const [name, setName] = useState(member.name);
-    // Use existing role if valid, else default to "Fußvolk" or empty if user prefers custom handling
-    // User requested "Ansonsten Standard-Auswahl (z. B. keine Rolle oder Fußvolk)."
-    // Let's check if the current role is in the list.
-    const currentMemberRole = member.role || "";
-    // If current role is loosely matching one of the ROLES (case insensitive?), better safe than sorry.
-    // Let's keep member.role if strictly in list, otherwise default to "Fußvolk" IF member.role is weird.
-    // Actually, user said: "Wenn ein Member aktuell eine Rolle als Freitext hat, versuche diese auf eine der neuen Rollen abzubilden... Ansonsten Standard-Auswahl"
 
-    // Simple matching or just let them pick.
-    const initialRole = ROLES.find(r => r === currentMemberRole) || "Fußvolk";
+    // Initialize roles from member.roles if available, else fallback to member.role
+    const initialRoles = member.roles && member.roles.length > 0
+        ? member.roles
+        : (member.role ? [member.role] : ["Fußvolk"]);
 
-    const [role, setRole] = useState(initialRole);
+    const [selectedRoles, setSelectedRoles] = useState<string[]>(initialRoles);
     const [joinYear, setJoinYear] = useState(member.joinYear?.toString() || new Date().getFullYear().toString());
     const [birthday, setBirthday] = useState(member.birthday || "");
-    const [email, setEmail] = useState(member.email || "");
 
-    // Uniqueness Checks
-    const isRoleTaken = (roleName: string) => {
-        if (roleName !== "Admin" && roleName !== "Kassenwart") return false;
-        // Check if ANY OTHER member has this role
-        return members.some(m => m.id !== member.id && m.role === roleName);
+    // Toggle Role
+    const toggleRole = (roleToCheck: string) => {
+        if (roleToCheck === "Admin") {
+            // Admin check: Only check if TAKEN by OTHERS.
+            const isAdminTaken = members.some(m => m.id !== member.id && (m.roles?.includes("Admin") || m.role === "Admin"));
+            if (isAdminTaken && !selectedRoles.includes("Admin")) {
+                alert("Es gibt bereits einen Admin. Die Rolle kann nur einmal vergeben werden.");
+                return;
+            }
+        }
+
+        setSelectedRoles(prev =>
+            prev.includes(roleToCheck)
+                ? prev.filter(r => r !== roleToCheck)
+                : [...prev, roleToCheck]
+        );
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -61,18 +66,12 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
         try {
             const ref = doc(db, "members", member.id);
             await updateDoc(ref, {
-                name: name.trim(),
-                role: role,
+                // Name is read-only in UI, so we don't update it to avoid accidents
+                role: selectedRoles[0] || "Fußvolk", // Primary role for legacy compatibility
+                roles: selectedRoles,
                 joinYear: parseInt(joinYear),
                 birthday: birthday,
-                email: email.trim(),
-                // If role is Admin, we might need to set isAdmin flag too or keep it synced?
-                // The prompt says "Sobald ein Member die Rolle "Admin" hat" implying the string role triggers stuff
-                // But previously distinct isAdmin flag existed.
-                // "Keine zusätzlichen komplexen Berechtigungslogiken anlegen"
-                // However, conversation 3 implemented isAdmin flag.
-                // Ideally, role="Admin" should correspond to isAdmin=true
-                isAdmin: role === "Admin" // Auto-sync isAdmin flag for consistency
+                isAdmin: selectedRoles.includes("Admin")
             });
 
             // Sync calendar events
@@ -112,33 +111,41 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                         <input
                             type="text"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all font-semibold"
-                            required
+                            readOnly
+                            className="w-full p-3 rounded-xl border bg-muted text-muted-foreground text-sm outline-none cursor-not-allowed font-semibold"
                         />
+                        <p className="text-xs text-muted-foreground mt-1">Name kann nicht geändert werden.</p>
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                             Rolle/Titel
                         </label>
-                        <div className="relative">
-                            <Award className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
-                            <select
-                                value={role}
-                                onChange={(e) => setRole(e.target.value as typeof ROLES[number])}
-                                className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
-                            >
-                                {ROLES.map((r) => {
-                                    const taken = isRoleTaken(r);
-                                    return (
-                                        <option key={r} value={r} disabled={taken} className={taken ? "text-muted-foreground bg-muted/50" : ""}>
-                                            {r} {taken ? "(Vergeben)" : ""}
-                                        </option>
-                                    );
-                                })}
-                            </select>
-                            {/* Custom arrow for styling consistency if needed, but native select is fine for MVP */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 border rounded-xl bg-background/50">
+                            {ROLES.map((r) => {
+                                const isSelected = selectedRoles.includes(r);
+                                const isTakenAdmin = r === "Admin" && members.some(m => m.id !== member.id && (m.roles?.includes("Admin") || m.role === "Admin"));
+
+                                return (
+                                    <label
+                                        key={r}
+                                        className={`flex items-center gap-2 p-2 rounded-lg border transition-all cursor-pointer select-none ${isSelected
+                                                ? "bg-primary/10 border-primary text-primary"
+                                                : "bg-card border-transparent hover:bg-muted"
+                                            } ${isTakenAdmin ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => !isTakenAdmin && toggleRole(r)}
+                                            disabled={isTakenAdmin}
+                                            className="w-4 h-4 rounded border-primary text-primary focus:ring-primary/20"
+                                        />
+                                        <span className="text-sm font-medium">{r}</span>
+                                        {isTakenAdmin && <span className="text-[10px] text-red-500">(Vergeben)</span>}
+                                    </label>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -160,7 +167,6 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                         </div>
                     </div>
 
-
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                             Geburtstag
@@ -172,24 +178,6 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                                 value={birthday}
                                 onChange={(e) => setBirthday(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                            />
-                        </div>
-                    </div>
-
-
-
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                            Verknüpfte E-Mail (für Admin-Rechte)
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="user@exmaple.com"
-                                className="w-full p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                             />
                         </div>
                     </div>

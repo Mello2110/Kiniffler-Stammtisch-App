@@ -12,7 +12,8 @@ export interface Event {
 export interface Member {
     id: string;
     name: string;
-    role: string; // Changed to string for free text input
+    role: string; // Deprecated, keep for backward compat but rely on roles
+    roles: string[]; // List of assigned roles
     joinYear?: number; // Added joinYear
     avatarUrl?: string;
     avatar?: {

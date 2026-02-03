@@ -138,7 +138,14 @@ export function MemberManager() {
                                         <div className="flex items-center gap-3 text-xs text-muted-foreground uppercase tracking-wider font-bold">
                                             <span className="flex items-center gap-1">
                                                 <Award className="h-3 w-3" />
-                                                {member.role || "Mitglied"}
+                                                {(() => {
+                                                    const displayRoles = member.roles && member.roles.length > 0 ? member.roles : [member.role || "Mitglied"];
+                                                    return displayRoles.map(r => (
+                                                        <span key={r} className="bg-primary/10 px-2 py-0.5 rounded text-[10px] font-bold">
+                                                            {r}
+                                                        </span>
+                                                    ));
+                                                })()}
                                             </span>
                                             <span className="flex items-center gap-1">
                                                 <Calendar className="h-3 w-3" />
