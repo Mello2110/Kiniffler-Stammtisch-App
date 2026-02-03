@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, deleteDoc, doc, writeBatch, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, writeBatch, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Trash2, AlertTriangle, Settings, Languages, Database, Users } from "lucide-react";
+import { Trash2, AlertTriangle, Settings, Languages, Database, Users, ShieldAlert } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -164,9 +164,9 @@ export default function OptionsPage() {
     };
 
     return (
-        <div className="space-y-8 pb-10">
+        <div className="space-y-8 pb-10 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12 shadow-sm">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
@@ -180,135 +180,132 @@ export default function OptionsPage() {
                             {dict.headers.options.subtext}
                         </p>
                     </div>
-
-                    <div className="flex items-center gap-4 text-muted-foreground">
-                        <Settings className="h-8 w-8 opacity-20" />
-                    </div>
                 </div>
-
                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-2 items-stretch">
-                {/* Language Settings */}
-                <section className="flex flex-col space-y-4">
-                    <div className="flex items-center gap-2 text-xl font-bold">
+            {/* Grid Layout - 3 Columns on Large Screens */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+
+                {/* 1. Language Settings */}
+                <div className="flex flex-col h-full space-y-4">
+                    <div className="flex items-center gap-2 text-xl font-bold px-2">
                         <Languages className="w-6 h-6 text-primary" />
                         {dict.options.language}
                     </div>
-                    <p className="text-muted-foreground min-h-[3rem] hidden md:block">{dict.options.languageDesc}</p>
+                    <div className="flex-1 bg-card/50 backdrop-blur-sm border border-border p-6 rounded-3xl flex flex-col gap-6 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-muted-foreground">{dict.options.languageDesc}</p>
 
-                    <div className="flex-1 border border-border bg-card/30 p-8 rounded-3xl flex flex-col justify-center gap-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-                            <button
-                                onClick={() => setLanguage('de')}
-                                className={cn(
-                                    "aspect-square p-4 rounded-2xl border-2 transition-all hover:border-primary/50 flex flex-col items-center justify-center gap-3",
-                                    language === 'de' ? "border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/10" : "border-border bg-card hover:bg-muted/50"
-                                )}
-                            >
-                                <span className="text-4xl">🇩🇪</span>
-                                <span className="font-bold">Deutsch</span>
-                            </button>
-                            <button
-                                onClick={() => setLanguage('en')}
-                                className={cn(
-                                    "aspect-square p-4 rounded-2xl border-2 transition-all hover:border-primary/50 flex flex-col items-center justify-center gap-3",
-                                    language === 'en' ? "border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/10" : "border-border bg-card hover:bg-muted/50"
-                                )}
-                            >
-                                <span className="text-4xl">🇺🇸</span>
-                                <span className="font-bold">English</span>
-                            </button>
-                            <button
-                                onClick={() => setLanguage('pl')}
-                                className={cn(
-                                    "aspect-square p-4 rounded-2xl border-2 transition-all hover:border-primary/50 flex flex-col items-center justify-center gap-3",
-                                    language === 'pl' ? "border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/10" : "border-border bg-card hover:bg-muted/50"
-                                )}
-                            >
-                                <span className="text-4xl">🇵🇱</span>
-                                <span className="font-bold">Polski</span>
-                            </button>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-auto">
+                            {[
+                                { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
+                                { code: 'en', flag: '🇺🇸', label: 'English' },
+                                { code: 'pl', flag: '🇵🇱', label: 'Polski' }
+                            ].map((lang) => (
+                                <button
+                                    key={lang.code}
+                                    onClick={() => setLanguage(lang.code as any)}
+                                    className={cn(
+                                        "aspect-square p-2 rounded-2xl border-2 transition-all hover:border-primary/50 flex flex-col items-center justify-center gap-2",
+                                        language === lang.code
+                                            ? "border-primary bg-primary/10 scale-105 shadow-md shadow-primary/10 ring-2 ring-primary/20"
+                                            : "border-border bg-card/50 hover:bg-muted/50"
+                                    )}
+                                >
+                                    <span className="text-3xl filter drop-shadow-sm">{lang.flag}</span>
+                                    <span className="font-bold text-sm text-foreground/80">{lang.label}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
-                </section>
+                </div>
 
-                <section className="flex flex-col space-y-4">
+                {/* 2. Notification Settings - Spans 2 cols on XL if needed or just 1 */}
+                <div className="flex flex-col h-full space-y-4 xl:col-span-2">
                     <NotificationSettings />
-                </section>
+                </div>
 
-                {/* Data Management */}
-                <section className="flex flex-col space-y-4">
-                    <div className="flex items-center gap-2 text-xl font-bold">
-                        <Database className="w-6 h-6 text-red-500" />
-                        {dict.options.data}
+                {/* 3. Data Management (Admin) */}
+                <div className="flex flex-col h-full space-y-4 xl:col-span-3"> {/* Full width on very large screens for admin stuff, or adapt */}
+                    {/* Actually, let's put it back to normal grid flow for better responsiveness */}
+                </div>
+
+            </div>
+
+            {/* Admin Section Separated for Safety */}
+            {isAdmin && (
+                <div className="mt-12 pt-8 border-t border-dashed border-border/50">
+                    <div className="flex items-center gap-2 text-xl font-bold px-2 mb-6 text-red-500">
+                        <ShieldAlert className="w-6 h-6" />
+                        Admin Zone
                     </div>
-                    <p className="text-muted-foreground min-h-[3rem] hidden md:block">{dict.options.dataDesc}</p>
 
-                    <div className="flex-1 border border-red-500/50 bg-red-500/5 p-8 rounded-3xl flex flex-col justify-between space-y-6">
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-red-500 flex items-center gap-2 text-lg">
-                                <AlertTriangle className="w-6 h-6" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Data Reset Card */}
+                        <div className="bg-red-500/5 border-red-500/20 border p-6 rounded-3xl flex flex-col gap-4">
+                            <div className="flex items-center gap-3 text-red-600 font-bold text-lg">
+                                <Database className="w-5 h-5" />
                                 {dict.options.resetTitle}
-                            </h3>
-                            <p className="text-muted-foreground leading-relaxed">
+                            </div>
+                            <p className="text-sm text-muted-foreground flex-1">
                                 {dict.options.resetDesc}
                             </p>
-                        </div>
-
-                        <div className="space-y-4 mt-auto">
                             <button
                                 onClick={handleReset}
-                                disabled={isResetting || !isAdmin}
-                                title={!isAdmin ? "Only admins can perform this action" : undefined}
+                                disabled={isResetting}
                                 className={cn(
-                                    "w-full py-4 font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg",
-                                    isAdmin
-                                        ? "bg-red-600 hover:bg-red-700 text-white shadow-red-900/20"
-                                        : "bg-muted text-muted-foreground cursor-not-allowed"
+                                    "w-full py-3 font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm",
+                                    "bg-red-600 hover:bg-red-700 text-white shadow-red-900/10"
                                 )}
                             >
-                                <Trash2 className="w-5 h-5" />
+                                <Trash2 className="w-4 h-4" />
                                 {isResetting ? dict.options.resetProcessing : dict.options.resetBtn}
                             </button>
+                        </div>
 
+                        {/* Random Avatars Card */}
+                        <div className="bg-indigo-500/5 border-indigo-500/20 border p-6 rounded-3xl flex flex-col gap-4">
+                            <div className="flex items-center gap-3 text-indigo-600 font-bold text-lg">
+                                <Users className="w-5 h-5" />
+                                Avatar Generator
+                            </div>
+                            <p className="text-sm text-muted-foreground flex-1">
+                                Assigns random avatars to all users. Useful for testing.
+                            </p>
                             <button
                                 onClick={assignRandomAvatars}
-                                disabled={isResetting || !isAdmin}
+                                disabled={isResetting}
                                 className={cn(
-                                    "w-full py-4 font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg",
-                                    isAdmin
-                                        ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-900/20"
-                                        : "bg-muted text-muted-foreground cursor-not-allowed"
+                                    "w-full py-3 font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm",
+                                    "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-900/10"
                                 )}
                             >
-                                <Users className="w-5 h-5" />
-                                Random Avatars (Test)
+                                <Users className="w-4 h-4" />
+                                Random Avatars
                             </button>
+                        </div>
 
-                            {/* Mini Logs */}
-                            {logs.length > 0 && (
-                                <div className="bg-black/40 p-3 rounded-lg border font-mono text-xs h-32 overflow-y-auto">
+                        {/* Console Card */}
+                        {(logs.length > 0 || status) && (
+                            <div className="bg-card border border-border p-4 rounded-3xl font-mono text-xs overflow-hidden flex flex-col h-full max-h-[300px]">
+                                <div className="font-bold text-muted-foreground mb-2 flex justify-between">
+                                    <span>Console Log</span>
+                                    {status && <span className={status.includes("Error") ? "text-red-500" : "text-green-500"}>{status}</span>}
+                                </div>
+                                <div className="overflow-y-auto flex-1 space-y-1 pr-2 custom-scrollbar">
                                     {logs.map((log, i) => (
-                                        <div key={i} className="py-0.5">
-                                            {log.startsWith("✅") ? <span className="text-green-400">{log}</span> :
-                                                log.startsWith("❌") ? <span className="text-red-400">{log}</span> :
+                                        <div key={i} className="break-all">
+                                            {log.startsWith("✅") ? <span className="text-green-600 dark:text-green-400">{log}</span> :
+                                                log.startsWith("❌") ? <span className="text-red-600 dark:text-red-400">{log}</span> :
                                                     <span className="text-muted-foreground">{log}</span>}
                                         </div>
                                     ))}
                                 </div>
-                            )}
-
-                            {status && (
-                                <div className={`text-center font-bold text-sm ${status.includes("Error") ? "text-red-500" : "text-green-500"}`}>
-                                    {status}
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
-                </section>
-            </div>
+                </div>
+            )}
         </div>
     );
 }

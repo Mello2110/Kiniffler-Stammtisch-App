@@ -100,7 +100,7 @@ export default function NotificationSettings() {
     if (loading) return <div className="p-4 text-muted-foreground">Lade Einstellungen...</div>;
 
     return (
-        <div className="flex-1 border border-border bg-card/30 p-8 rounded-3xl space-y-8">
+        <div className="bg-card/50 backdrop-blur-sm border border-border p-6 rounded-3xl space-y-6 h-full shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 text-xl font-bold">
                 <Bell className="w-6 h-6 text-primary" />
                 Benachrichtigungen
