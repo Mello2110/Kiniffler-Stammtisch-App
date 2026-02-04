@@ -2,6 +2,7 @@
     "name": "KANPAI",
     "short_name": "KANPAI",
     "description": "Die App für deinen Stammtisch",
+    "gcm_sender_id": "103953800507",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",

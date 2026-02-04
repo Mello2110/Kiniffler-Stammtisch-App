@@ -9,28 +9,43 @@ export function isNotificationSupported(): boolean {
     return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
 }
 
-// Request permission and get FCM token
 export async function requestNotificationPermission(): Promise<string | null> {
+    console.log("requestNotificationPermission started");
     if (!isNotificationSupported()) {
         console.log("Notifications not supported");
         return null;
     }
 
     try {
+        console.log("Requesting Notification.requestPermission...");
         const permission = await Notification.requestPermission();
+        console.log("Permission status:", permission);
+
         if (permission === "granted") {
             const app = getApp();
             const messaging = getMessaging(app);
 
             const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+            console.log("VAPID Key present:", !!vapidKey);
+
             if (!vapidKey) {
                 console.error("Missing NEXT_PUBLIC_FIREBASE_VAPID_KEY");
                 return null;
             }
 
+            console.log("Fetching token...");
+
+            // Wait for Service Worker to be ready
+            const registration = await navigator.serviceWorker.ready;
+            console.log("Service Worker ready:", registration.scope);
+
+            // Pass the registration to getToken to avoid "no active Service Worker" errors
             const currentToken = await getToken(messaging, {
-                vapidKey
+                vapidKey,
+                serviceWorkerRegistration: registration
             });
+
+            console.log("Token retrieved:", !!currentToken);
 
             if (currentToken) {
                 return currentToken;
@@ -43,10 +58,11 @@ export async function requestNotificationPermission(): Promise<string | null> {
             return null;
         }
     } catch (err) {
-        console.log("An error occurred while retrieving token. ", err);
+        console.error("An error occurred while retrieving token: ", err);
         return null;
     }
 }
+
 
 // Subscribe to push notifications (save token to Firestore)
 export async function subscribeToPush(userId: string, token: string): Promise<boolean> {

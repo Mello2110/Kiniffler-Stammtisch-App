@@ -7,6 +7,12 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "!/@(_next|static|images)/**",
+        "destination": "/index.html"
+      }
     ]
   },
   "functions": [

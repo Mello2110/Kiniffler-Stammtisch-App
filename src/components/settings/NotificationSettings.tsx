@@ -72,20 +72,33 @@ export default function NotificationSettings() {
     };
 
     const handlePushToggle = async (checked: boolean) => {
+        console.log("Toggle clicked. Checked:", checked);
         if (checked) {
-            const token = await requestNotificationPermission();
-            if (token) {
-                setPushPermissionStatus("granted");
-                await subscribeToPush(user!.uid, token);
-                updatePreferences({ pushEnabled: true, fcmToken: token });
-            } else {
-                setPushPermissionStatus("denied");
-                // Don't enable toggle if permission denied
-                alert("Push-Benachrichtigungen wurden blockiert. Bitte aktiviere sie in deinen Browsereinstellungen.");
+            console.log("Requesting permission...");
+            try {
+                const token = await requestNotificationPermission();
+                console.log("Permission result token:", token);
+
+                if (token) {
+                    setPushPermissionStatus("granted");
+                    await subscribeToPush(user!.uid, token);
+                    updatePreferences({ pushEnabled: true, fcmToken: token });
+                    console.log("Push enabled successfully.");
+                } else {
+                    console.warn("Token was null.");
+                    setPushPermissionStatus("denied");
+                    // Don't enable toggle if permission denied
+                    alert("Push-Benachrichtigungen wurden blockiert. Bitte aktiviere sie in deinen Browsereinstellungen.");
+                }
+            } catch (error) {
+                console.error("Error in handlePushToggle:", error);
+                alert("Ein Fehler ist aufgetreten: " + error);
             }
         } else {
+            console.log("Unsubscribing...");
             await unsubscribeFromPush(user!.uid);
             updatePreferences({ pushEnabled: false, fcmToken: undefined });
+            console.log("Unsubscribed.");
         }
     };
 

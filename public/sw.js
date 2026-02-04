@@ -1,4 +1,22 @@
-const CACHE_NAME = 'kp-stammtisch-v3'; // Updated for gallery restructure
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+
+// Initialize the Firebase app in the service worker
+firebase.initializeApp({
+    apiKey: "AIzaSyCFa09-8DVF8o2OQssr15lZJ-aCIvh21HM",
+    authDomain: "webapp-stammtisch.firebaseapp.com",
+    projectId: "webapp-stammtisch",
+    storageBucket: "webapp-stammtisch.firebasestorage.app",
+    messagingSenderId: "112239637478",
+    appId: "1:112239637478:web:78a18a3671f33605801c27",
+    measurementId: "G-HGCS3PGQDY"
+});
+
+// Retrieve an instance of Firebase Messaging so that it can handle background messages.
+// This is required for valid getToken() retrieval when passing this SW registration.
+const messaging = firebase.messaging();
+
+const CACHE_NAME = 'kp-stammtisch-v4'; // Bump version
 const URLS_TO_CACHE = [
     '/',
     '/manifest.json',

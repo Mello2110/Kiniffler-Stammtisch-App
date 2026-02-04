@@ -285,6 +285,42 @@ export default function OptionsPage() {
                             </button>
                         </div>
 
+                        {/* Temporary Fix Button */}
+                        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl space-y-4">
+                            <div className="font-bold text-red-500 flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5" />
+                                Troubleshooting
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                Klicke hier, falls Push-Benachrichtigungen nicht funktionieren (löscht Cache & SW).
+                            </p>
+                            <button
+                                onClick={async () => {
+                                    if (!confirm("Dies wird die App neustarten und dich ausloggen. Fortfahren?")) return;
+
+                                    try {
+                                        // Unregister SW
+                                        const registrations = await navigator.serviceWorker.getRegistrations();
+                                        for (const registration of registrations) {
+                                            await registration.unregister();
+                                        }
+
+                                        // Clear Cache
+                                        const cacheKeys = await caches.keys();
+                                        await Promise.all(cacheKeys.map(key => caches.delete(key)));
+
+                                        alert("Reset erfolgreich! Die Seite lädt jetzt neu.");
+                                        window.location.reload();
+                                    } catch (e) {
+                                        alert("Fehler: " + e);
+                                    }
+                                }}
+                                className="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors"
+                            >
+                                App Reparieren (Reset)
+                            </button>
+                        </div>
+
                         {/* Console Card */}
                         {(logs.length > 0 || status) && (
                             <div className="bg-card border border-border p-4 rounded-3xl font-mono text-xs overflow-hidden flex flex-col h-full max-h-[300px]">
