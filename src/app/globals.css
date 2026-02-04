@@ -174,119 +174,198 @@ h6 {
 
 .kniffel-fullscreen {
   position: fixed !important;
-  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
   height: 100dvh !important;
-  /* Dynamic viewport height for mobile browsers */
-  z-index: 50 !important;
+  z-index: 9999 !important;
   background: hsl(var(--background)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 8px !important;
+  box-sizing: border-box !important;
   overflow: hidden !important;
+}
+
+/* Ensure controls are always visible and clickable */
+.kniffel-fullscreen .fullscreen-controls {
+  position: relative !important;
+  z-index: 10000 !important;
+  flex-shrink: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Fullscreen table container - fills remaining space, no scroll */
+.kniffel-fullscreen .kniffel-table-wrapper {
+  flex: 1 !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
 }
 
-/* Webkit/Safari Fullscreen Support */
-.kniffel-fullscreen:-webkit-full-screen {
-  width: 100vw !important;
-  height: 100vh !important;
-}
-
-/* Fullscreen table container */
-.kniffel-fullscreen .kniffel-table-wrapper {
-  flex: 1;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Fullscreen table styles */
+/* Base fullscreen table - fits viewport width */
 .kniffel-fullscreen table {
-  width: 100%;
-  table-layout: fixed;
+  width: 100% !important;
+  height: 100% !important;
+  table-layout: fixed !important;
+  font-size: clamp(8px, 1.5vw, 14px) !important;
 }
 
-/* Compact mode for many players (7-9) */
+.kniffel-fullscreen th,
+.kniffel-fullscreen td {
+  padding: 2px 1px !important;
+  text-align: center !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* First column (field names) - minimal but readable */
+.kniffel-fullscreen .sticky-col {
+  width: 15% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  text-align: left !important;
+  padding-left: 4px !important;
+}
+
+/* Score input cells - make them as small as possible */
+.kniffel-fullscreen input {
+  width: 100% !important;
+  padding: 1px 2px !important;
+  font-size: inherit !important;
+  min-height: 20px !important;
+  height: auto !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+}
+
+/* Buttons in fullscreen */
+.kniffel-fullscreen button {
+  padding: 1px 2px !important;
+  font-size: inherit !important;
+  min-height: 20px !important;
+}
+
+/* Compact mode for 7-9 players */
 .kniffel-fullscreen.compact-mode table {
-  font-size: 12px;
+  font-size: clamp(7px, 1.3vw, 12px) !important;
 }
 
-.kniffel-fullscreen.compact-mode th,
-.kniffel-fullscreen.compact-mode td {
-  padding: 4px 2px;
+.kniffel-fullscreen.compact-mode .sticky-col {
+  width: 12% !important;
 }
 
-.kniffel-fullscreen.compact-mode input {
-  padding: 2px 4px;
-  font-size: 12px;
-  min-height: 28px;
-}
-
-/* Ultra-compact mode for many players (10-12) */
+/* Ultra-compact mode for 10-12 players */
 .kniffel-fullscreen.ultra-compact-mode table {
-  font-size: 10px;
+  font-size: clamp(6px, 1.1vw, 10px) !important;
+}
+
+.kniffel-fullscreen.ultra-compact-mode .sticky-col {
+  width: 10% !important;
 }
 
 .kniffel-fullscreen.ultra-compact-mode th,
 .kniffel-fullscreen.ultra-compact-mode td {
-  padding: 2px 1px;
+  padding: 1px 0 !important;
 }
 
 .kniffel-fullscreen.ultra-compact-mode input {
-  padding: 1px 2px;
-  font-size: 10px;
-  min-height: 24px;
+  min-height: 16px !important;
+  padding: 0 1px !important;
 }
 
-.kniffel-fullscreen.ultra-compact-mode button {
-  padding: 1px 2px;
-  min-height: 24px;
-  min-width: 24px;
-}
-
-/* Mobile-specific fullscreen optimizations */
+/* ========== MOBILE OPTIMIZATIONS ========== */
 @media (max-width: 768px) {
   .kniffel-fullscreen {
-    padding: 8px;
+    padding: 4px !important;
   }
 
   .kniffel-fullscreen .fullscreen-controls {
-    margin-bottom: 8px;
+    margin-bottom: 2px !important;
+    gap: 4px !important;
+  }
+
+  .kniffel-fullscreen .fullscreen-controls button {
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+  }
+
+  .kniffel-fullscreen .fullscreen-controls span {
+    display: none !important;
   }
 
   .kniffel-fullscreen table {
-    font-size: 11px;
+    font-size: clamp(7px, 2.5vw, 11px) !important;
+  }
+
+  .kniffel-fullscreen .sticky-col {
+    width: 18% !important;
+    font-size: clamp(6px, 2vw, 10px) !important;
   }
 
   .kniffel-fullscreen th,
   .kniffel-fullscreen td {
-    padding: 4px 2px;
+    padding: 1px !important;
   }
 
   .kniffel-fullscreen input {
-    font-size: 14px !important;
-    /* Keep readable for touch */
-    min-height: 32px;
-    padding: 2px 4px;
+    min-height: 18px !important;
+    font-size: 12px !important;
   }
 
-  .kniffel-fullscreen .sticky-col {
-    min-width: 80px !important;
-    max-width: 100px !important;
+  /* Mobile compact mode */
+  .kniffel-fullscreen.compact-mode table {
+    font-size: clamp(6px, 2vw, 9px) !important;
+  }
+
+  .kniffel-fullscreen.compact-mode .sticky-col {
+    width: 15% !important;
+  }
+
+  /* Mobile ultra-compact mode */
+  .kniffel-fullscreen.ultra-compact-mode table {
+    font-size: clamp(5px, 1.8vw, 8px) !important;
+  }
+
+  .kniffel-fullscreen.ultra-compact-mode .sticky-col {
+    width: 12% !important;
+  }
+
+  .kniffel-fullscreen.ultra-compact-mode input {
+    min-height: 14px !important;
+    font-size: 10px !important;
   }
 }
 
-/* Landscape optimization for mobile */
-@media (max-width: 768px) and (orientation: landscape) {
+/* ========== LANDSCAPE MOBILE ========== */
+@media (max-width: 900px) and (orientation: landscape) {
   .kniffel-fullscreen {
-    padding: 4px;
+    padding: 2px 4px !important;
   }
 
   .kniffel-fullscreen .fullscreen-controls {
-    margin-bottom: 4px;
+    margin-bottom: 1px !important;
   }
 
   .kniffel-fullscreen table {
-    font-size: 10px;
+    font-size: clamp(6px, 1.5vh, 10px) !important;
+  }
+
+  .kniffel-fullscreen .sticky-col {
+    width: 12% !important;
+  }
+
+  .kniffel-fullscreen th,
+  .kniffel-fullscreen td {
+    padding: 0px 1px !important;
+  }
+
+  .kniffel-fullscreen input {
+    min-height: 14px !important;
   }
 }

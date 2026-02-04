@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { doc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -24,6 +25,7 @@ import {
     useSortable
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { DiceCountEntryModal, UPPER_FIELD_MULTIPLIERS } from "./DiceCountEntryModal";
 
 interface KniffelScorecardProps {
     sheet: KniffelSheet;
@@ -73,7 +75,7 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, dict }: Sor
             style={style}
             className={cn(
                 "text-center p-2 font-semibold",
-                isFullscreen ? "min-w-[50px]" : "min-w-[100px]",
+                !isFullscreen && "min-w-[100px]",
                 isDragging && "opacity-50 z-50"
             )}
         >
@@ -107,6 +109,21 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const [localPlayerOrder, setLocalPlayerOrder] = useState(sheet.playerOrder || sheet.memberSnapshot);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const { toast, showToast, hideToast } = useToast();
+
+    // State for dice count entry modal (upper section fields)
+    const [diceCountModal, setDiceCountModal] = useState<{
+        isOpen: boolean;
+        playerId: string;
+        playerName: string;
+        field: ScoreField;
+        currentValue: number | null;
+    }>({
+        isOpen: false,
+        playerId: "",
+        playerName: "",
+        field: "ones",
+        currentValue: null,
+    });
 
     // Drag and drop sensors for column reordering
     const sensors = useSensors(
@@ -428,6 +445,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         const isFixed = isFixedPointField(field);
         const fixedValue = FIXED_POINT_FIELDS[field];
         const isFilled = isFixed && value === fixedValue;
+        const isUpperField = UPPER_FIELDS.includes(field);
 
         let highlightClass = "";
         if (isStrokeValue) {
@@ -444,6 +462,12 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 highlightClass = "bg-orange-500/30 border-orange-400/50";
             }
         }
+
+        // Find player name for modal
+        const getPlayerName = () => {
+            const player = sortedPlayers.find(p => p.id === memberId);
+            return player?.name || "";
+        };
 
         // Fixed-point fields: toggle-click behavior
         if (isFixed) {
@@ -476,7 +500,47 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
             );
         }
 
-        // Non-fixed fields: regular input
+        // Upper section fields: clickable button that opens dice count modal
+        if (isUpperField) {
+            const hasValue = !isStrokeValue && value !== undefined && value !== null;
+            return (
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => setDiceCountModal({
+                            isOpen: true,
+                            playerId: memberId,
+                            playerName: getPlayerName(),
+                            field: field,
+                            currentValue: isStrokeValue ? null : (typeof value === 'number' ? value : null),
+                        })}
+                        className={cn(
+                            "w-full text-center px-1 py-1.5 rounded-lg border transition-all duration-200 text-sm cursor-pointer",
+                            isStrokeValue
+                                ? "bg-gray-500/20 border-gray-400/30 text-gray-400"
+                                : hasValue
+                                    ? "bg-primary/20 border-primary/40 text-primary font-semibold"
+                                    : "bg-white/5 border-white/10 hover:bg-white/10 text-muted-foreground"
+                        )}
+                    >
+                        {isStrokeValue ? "-" : (hasValue ? value : "")}
+                    </button>
+                    <button
+                        onClick={() => toggleStroke(memberId, field)}
+                        className={cn(
+                            "p-1 rounded transition-colors shrink-0",
+                            isStrokeValue
+                                ? "bg-gray-500/30 text-gray-300"
+                                : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                        )}
+                        title={dict.kniffel.stroke}
+                    >
+                        <X className="h-3 w-3" />
+                    </button>
+                </div>
+            );
+        }
+
+        // Lower section non-fixed fields: regular input (threeOfAKind, fourOfAKind, chance)
         return (
             <div className="flex items-center gap-1">
                 <input
@@ -505,233 +569,264 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         );
     };
 
+    // Content to render - extracted so it can be used in portal or inline
+    const scorecardContent = (
+        <div
+            id="kniffel-scorecard-container"
+            className={cn(
+                "overflow-x-auto",
+                isFullscreen && "kniffel-fullscreen",
+                isFullscreen && compactMode
+            )}
+        >
+            {/* Sort and Reorder Controls */}
+            <div className={cn(
+                "flex justify-end gap-2 mb-3 relative fullscreen-controls",
+                isFullscreen && "p-4 pb-0"
+            )}>
+                {/* Reorder Columns Button */}
+                <button
+                    onClick={() => setIsReorderMode(!isReorderMode)}
+                    className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all",
+                        isReorderMode
+                            ? "bg-primary/20 border-primary text-primary"
+                            : "bg-white/5 hover:bg-white/10 border-white/10"
+                    )}
+                    title={isReorderMode ? dict.kniffel.reorderMode : dict.kniffel.reorderColumns}
+                >
+                    <GripVertical className="h-4 w-4" />
+                    <span className="hidden sm:inline">{dict.kniffel.reorderColumns}</span>
+                </button>
+
+                {/* Sort Dropdown */}
+                <div className="relative">
+                    <button
+                        onClick={() => setShowSortDropdown(!showSortDropdown)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all h-full"
+                    >
+                        {getSortIcon()}
+                        <span className="hidden sm:inline">{dict.kniffel.sort}: {getSortLabel()}</span>
+                        <span className="sm:hidden">{getSortLabel()}</span>
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", showSortDropdown && "rotate-180")} />
+                    </button>
+
+                    {showSortDropdown && (
+                        <div className="absolute top-full right-0 mt-1 z-10 bg-secondary border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[180px]">
+                            {(["scoreHigh", "scoreLow", "alphabet", "manual"] as SortMethod[]).map(method => (
+                                <button
+                                    key={method}
+                                    onClick={() => {
+                                        setSortMethod(method);
+                                        setShowSortDropdown(false);
+                                    }}
+                                    className={cn(
+                                        "w-full px-4 py-2 text-left text-sm hover:bg-white/10 transition-colors",
+                                        sortMethod === method && "bg-primary/20 text-primary"
+                                    )}
+                                >
+                                    {method === "scoreHigh" && dict.kniffel.sortScoreHigh}
+                                    {method === "scoreLow" && dict.kniffel.sortScoreLow}
+                                    {method === "alphabet" && dict.kniffel.sortAlphabet}
+                                    {method === "manual" && dict.kniffel.sortManual}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Fullscreen Toggle Button - Now on the far right */}
+                <button
+                    onClick={toggleFullscreen}
+                    className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all touch-target",
+                        isFullscreen
+                            ? "bg-red-500/20 hover:bg-red-500/30 border-red-500/40 text-red-300"
+                            : "bg-white/5 hover:bg-white/10 border-white/10"
+                    )}
+                    title={isFullscreen ? dict.kniffel.exitFullscreen : dict.kniffel.enterFullscreen}
+                >
+                    {isFullscreen ? (
+                        <>
+                            <X className="h-5 w-5" />
+                            <span className="hidden sm:inline">{dict.kniffel.exitFullscreen}</span>
+                        </>
+                    ) : (
+                        <Maximize className="h-4 w-4" />
+                    )}
+                </button>
+            </div>
+
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleColumnReorder}
+            >
+                <div className={cn("kniffel-table-wrapper", isFullscreen && "flex-1 overflow-auto px-4 pb-4")}>
+                    <table className={cn("w-full text-sm border-separate border-spacing-0")}>
+                        <thead>
+                            <tr>
+                                <th className={cn("text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col", !isFullscreen && "min-w-[140px]")}></th>
+                                <SortableContext
+                                    items={localPlayerOrder}
+                                    strategy={horizontalListSortingStrategy}
+                                    disabled={!isReorderMode}
+                                >
+                                    {sortedPlayers.map((player) => (
+                                        <SortablePlayerHeader
+                                            key={player.id}
+                                            player={player}
+                                            isReorderMode={isReorderMode}
+                                            isFullscreen={isFullscreen}
+                                            dict={dict}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {/* Upper Section Header */}
+                            <tr className="bg-primary/10">
+                                <td colSpan={sortedPlayers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
+                                    {dict.kniffel.upperSection}
+                                </td>
+                            </tr>
+
+                            {/* Upper Section Fields */}
+                            {UPPER_FIELDS.map(field => (
+                                <tr key={field} className="border-b border-white/5">
+                                    <td className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col", isFullscreen && "whitespace-nowrap")}>{isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}</td>
+                                    {sortedPlayers.map((player: Player) => (
+                                        <td key={player.id} className={cn("p-1", !isFullscreen && "min-w-[100px]")}>
+                                            {renderScoreInput(player.id, field)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+
+                            {/* Upper Sum */}
+                            <tr className="bg-white/5 font-semibold">
+                                <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.upperSum}</td>
+                                {sortedPlayers.map((player: Player) => (
+                                    <td key={player.id} className={cn("p-2 text-center", !isFullscreen && "min-w-[100px]")}>
+                                        {calculateUpperSum(player.id)}
+                                    </td>
+                                ))}
+                            </tr>
+
+                            {/* Bonus */}
+                            <tr className="bg-white/5 font-semibold">
+                                <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.bonus}</td>
+                                {sortedPlayers.map((player: Player) => (
+                                    <td key={player.id} className={cn("p-2 text-center", !isFullscreen && "min-w-[100px]")}>
+                                        <span className={cn(calculateBonus(player.id) > 0 && "text-green-400")}>
+                                            {calculateBonus(player.id)}
+                                        </span>
+                                    </td>
+                                ))}
+                            </tr>
+
+                            {/* Lower Section Header */}
+                            <tr className="bg-primary/10">
+                                <td colSpan={sortedPlayers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
+                                    {dict.kniffel.lowerSection}
+                                </td>
+                            </tr>
+
+                            {/* Lower Section Fields */}
+                            {LOWER_FIELDS.map(field => (
+                                <tr key={field} className="border-b border-white/5">
+                                    <td className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col", isFullscreen && "whitespace-nowrap")}>
+                                        {isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}
+                                        {isFixedPointField(field) && !isFullscreen && (
+                                            <span className="text-xs text-muted-foreground ml-1 block sm:inline">
+                                                ({FIXED_POINT_FIELDS[field]})
+                                            </span>
+                                        )}
+                                    </td>
+                                    {sortedPlayers.map((player: Player) => (
+                                        <td key={player.id} className={cn("p-1", !isFullscreen && "min-w-[100px]")}>
+                                            {renderScoreInput(player.id, field)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+
+                            {/* Lower Sum */}
+                            <tr className="bg-white/5 font-semibold">
+                                <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.lowerSum}</td>
+                                {sortedPlayers.map((player: Player) => (
+                                    <td key={player.id} className={cn("p-2 text-center", !isFullscreen && "min-w-[100px]")}>
+                                        {calculateLowerSum(player.id)}
+                                    </td>
+                                ))}
+                            </tr>
+
+                            {/* Total Score */}
+                            <tr className="bg-primary/20 font-bold text-lg">
+                                <td className="p-3 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-primary/30">{dict.kniffel.total}</td>
+                                {sortedPlayers.map((player: Player) => (
+                                    <td key={player.id} className={cn("p-3 text-center text-primary", !isFullscreen && "min-w-[100px]")}>
+                                        {calculateTotal(player.id)}
+                                    </td>
+                                ))}
+                            </tr>
+
+                            {/* Penalty Row */}
+                            <tr className="bg-red-500/10 border-t-2 border-red-500/30">
+                                <td className="p-2 font-medium flex items-center gap-2 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-red-500/30">
+                                    <AlertCircle className="h-4 w-4 text-red-400" />
+                                    {dict.kniffel.penalty}
+                                </td>
+                                {sortedPlayers.map((player: Player) => (
+                                    <td key={player.id} className={cn("p-2 text-center", !isFullscreen && "min-w-[100px]")}>
+                                        <button
+                                            onClick={() => createPenalty(player)}
+                                            className="px-3 py-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-lg transition-colors border border-red-500/30 touch-target flex items-center justify-center w-full"
+                                        >
+                                            1€
+                                        </button>
+                                    </td>
+                                ))}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </DndContext>
+        </div>
+    );
+
+    // Modal element - needs to be portalled in fullscreen mode
+    const modalElement = (
+        <DiceCountEntryModal
+            isOpen={diceCountModal.isOpen}
+            onClose={() => setDiceCountModal(prev => ({ ...prev, isOpen: false }))}
+            onSave={(score) => {
+                handleScoreChange(diceCountModal.playerId, diceCountModal.field, String(score));
+            }}
+            onStroke={() => {
+                toggleStroke(diceCountModal.playerId, diceCountModal.field);
+            }}
+            fieldLabel={getFieldLabel(diceCountModal.field)}
+            multiplier={UPPER_FIELD_MULTIPLIERS[diceCountModal.field] || 1}
+            playerName={diceCountModal.playerName}
+            currentValue={diceCountModal.currentValue}
+        />
+    );
+
     return (
         <>
             <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />
+            {isFullscreen && typeof document !== 'undefined'
+                ? createPortal(scorecardContent, document.body)
+                : scorecardContent
+            }
 
-            <div
-                id="kniffel-scorecard-container"
-                className={cn(
-                    "overflow-x-auto",
-                    isFullscreen && "kniffel-fullscreen",
-                    isFullscreen && compactMode
-                )}
-            >
-                {/* Sort and Reorder Controls */}
-                <div className={cn(
-                    "flex justify-end gap-2 mb-3 relative fullscreen-controls",
-                    isFullscreen && "p-4 pb-0"
-                )}>
-                    {/* Reorder Columns Button */}
-                    <button
-                        onClick={() => setIsReorderMode(!isReorderMode)}
-                        className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all",
-                            isReorderMode
-                                ? "bg-primary/20 border-primary text-primary"
-                                : "bg-white/5 hover:bg-white/10 border-white/10"
-                        )}
-                        title={isReorderMode ? dict.kniffel.reorderMode : dict.kniffel.reorderColumns}
-                    >
-                        <GripVertical className="h-4 w-4" />
-                        <span className="hidden sm:inline">{dict.kniffel.reorderColumns}</span>
-                    </button>
-
-                    {/* Sort Dropdown */}
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowSortDropdown(!showSortDropdown)}
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all h-full"
-                        >
-                            {getSortIcon()}
-                            <span className="hidden sm:inline">{dict.kniffel.sort}: {getSortLabel()}</span>
-                            <span className="sm:hidden">{getSortLabel()}</span>
-                            <ChevronDown className={cn("h-4 w-4 transition-transform", showSortDropdown && "rotate-180")} />
-                        </button>
-
-                        {showSortDropdown && (
-                            <div className="absolute top-full right-0 mt-1 z-10 bg-secondary border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[180px]">
-                                {(["scoreHigh", "scoreLow", "alphabet", "manual"] as SortMethod[]).map(method => (
-                                    <button
-                                        key={method}
-                                        onClick={() => {
-                                            setSortMethod(method);
-                                            setShowSortDropdown(false);
-                                        }}
-                                        className={cn(
-                                            "w-full px-4 py-2 text-left text-sm hover:bg-white/10 transition-colors",
-                                            sortMethod === method && "bg-primary/20 text-primary"
-                                        )}
-                                    >
-                                        {method === "scoreHigh" && dict.kniffel.sortScoreHigh}
-                                        {method === "scoreLow" && dict.kniffel.sortScoreLow}
-                                        {method === "alphabet" && dict.kniffel.sortAlphabet}
-                                        {method === "manual" && dict.kniffel.sortManual}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Fullscreen Toggle Button - Now on the far right */}
-                    <button
-                        onClick={toggleFullscreen}
-                        className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all touch-target",
-                            isFullscreen
-                                ? "bg-red-500/20 hover:bg-red-500/30 border-red-500/40 text-red-300"
-                                : "bg-white/5 hover:bg-white/10 border-white/10"
-                        )}
-                        title={isFullscreen ? dict.kniffel.exitFullscreen : dict.kniffel.enterFullscreen}
-                    >
-                        {isFullscreen ? (
-                            <>
-                                <X className="h-5 w-5" />
-                                <span className="hidden sm:inline">{dict.kniffel.exitFullscreen}</span>
-                            </>
-                        ) : (
-                            <Maximize className="h-4 w-4" />
-                        )}
-                    </button>
-                </div>
-
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleColumnReorder}
-                >
-                    <div className={cn("kniffel-table-wrapper", isFullscreen && "flex-1 overflow-auto px-4 pb-4")}>
-                        <table className={cn("w-full text-sm border-separate border-spacing-0", isFullscreen && "table-fixed")}>
-                            <thead>
-                                <tr>
-                                    <th className={cn("text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col", isFullscreen ? "min-w-[80px] max-w-[120px]" : "min-w-[140px]")}></th>
-                                    <SortableContext
-                                        items={localPlayerOrder}
-                                        strategy={horizontalListSortingStrategy}
-                                        disabled={!isReorderMode}
-                                    >
-                                        {sortedPlayers.map((player) => (
-                                            <SortablePlayerHeader
-                                                key={player.id}
-                                                player={player}
-                                                isReorderMode={isReorderMode}
-                                                isFullscreen={isFullscreen}
-                                                dict={dict}
-                                            />
-                                        ))}
-                                    </SortableContext>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {/* Upper Section Header */}
-                                <tr className="bg-primary/10">
-                                    <td colSpan={sortedPlayers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
-                                        {dict.kniffel.upperSection}
-                                    </td>
-                                </tr>
-
-                                {/* Upper Section Fields */}
-                                {UPPER_FIELDS.map(field => (
-                                    <tr key={field} className="border-b border-white/5">
-                                        <td className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col", isFullscreen && "whitespace-nowrap")}>{isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}</td>
-                                        {sortedPlayers.map((player: Player) => (
-                                            <td key={player.id} className={cn("p-1", isFullscreen ? "min-w-[50px]" : "min-w-[100px]")}>
-                                                {renderScoreInput(player.id, field)}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))}
-
-                                {/* Upper Sum */}
-                                <tr className="bg-white/5 font-semibold">
-                                    <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.upperSum}</td>
-                                    {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-2 text-center", isFullscreen ? "min-w-[50px]" : "min-w-[100px]")}>
-                                            {calculateUpperSum(player.id)}
-                                        </td>
-                                    ))}
-                                </tr>
-
-                                {/* Bonus */}
-                                <tr className="bg-white/5 font-semibold">
-                                    <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.bonus}</td>
-                                    {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-2 text-center", isFullscreen ? "min-w-[50px]" : "min-w-[100px]")}>
-                                            <span className={cn(calculateBonus(player.id) > 0 && "text-green-400")}>
-                                                {calculateBonus(player.id)}
-                                            </span>
-                                        </td>
-                                    ))}
-                                </tr>
-
-                                {/* Lower Section Header */}
-                                <tr className="bg-primary/10">
-                                    <td colSpan={sortedPlayers.length + 1} className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-primary/10">
-                                        {dict.kniffel.lowerSection}
-                                    </td>
-                                </tr>
-
-                                {/* Lower Section Fields */}
-                                {LOWER_FIELDS.map(field => (
-                                    <tr key={field} className="border-b border-white/5">
-                                        <td className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col", isFullscreen && "whitespace-nowrap")}>
-                                            {isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}
-                                            {isFixedPointField(field) && !isFullscreen && (
-                                                <span className="text-xs text-muted-foreground ml-1 block sm:inline">
-                                                    ({FIXED_POINT_FIELDS[field]})
-                                                </span>
-                                            )}
-                                        </td>
-                                        {sortedPlayers.map((player: Player) => (
-                                            <td key={player.id} className={cn("p-1", isFullscreen ? "min-w-[50px]" : "min-w-[100px]")}>
-                                                {renderScoreInput(player.id, field)}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))}
-
-                                {/* Lower Sum */}
-                                <tr className="bg-white/5 font-semibold">
-                                    <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.lowerSum}</td>
-                                    {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-2 text-center", isFullscreen ? "min-w-[50px]" : "min-w-[100px]")}>
-                                            {calculateLowerSum(player.id)}
-                                        </td>
-                                    ))}
-                                </tr>
-
-                                {/* Total Score */}
-                                <tr className="bg-primary/20 font-bold text-lg">
-                                    <td className="p-3 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-primary/30">{dict.kniffel.total}</td>
-                                    {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-3 text-center text-primary", isFullscreen ? "min-w-[50px]" : "min-w-[100px]")}>
-                                            {calculateTotal(player.id)}
-                                        </td>
-                                    ))}
-                                </tr>
-
-                                {/* Penalty Row */}
-                                <tr className="bg-red-500/10 border-t-2 border-red-500/30">
-                                    <td className="p-2 font-medium flex items-center gap-2 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-red-500/30">
-                                        <AlertCircle className="h-4 w-4 text-red-400" />
-                                        {dict.kniffel.penalty}
-                                    </td>
-                                    {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-2 text-center", isFullscreen ? "min-w-[50px]" : "min-w-[100px]")}>
-                                            <button
-                                                onClick={() => createPenalty(player)}
-                                                className="px-3 py-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-lg transition-colors border border-red-500/30 touch-target flex items-center justify-center w-full"
-                                            >
-                                                1€
-                                            </button>
-                                        </td>
-                                    ))}
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </DndContext>
-            </div>
+            {/* Dice Count Entry Modal - render via portal if in fullscreen */}
+            {isFullscreen && typeof document !== 'undefined'
+                ? createPortal(modalElement, document.body)
+                : modalElement
+            }
         </>
     );
 }

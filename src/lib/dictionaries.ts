@@ -189,10 +189,14 @@ export const dictionaries = {
             orderSaved: "Column order saved",
             selectedPlayers: "Selected Players",
             dragToReorderPlayers: "Drag to change player order",
-            // Fullscreen Mode
             enterFullscreen: "Enter Fullscreen",
             exitFullscreen: "Exit Fullscreen",
-            fullscreenMode: "Fullscreen Mode"
+            fullscreenMode: "Fullscreen Mode",
+            // Dice Count Entry Modal
+            howManyDice: "How many {field} rolled?",
+            points: "Points",
+            selectDiceCount: "Select dice count",
+            enter: "Enter"
         }
     },
     de: {
@@ -383,10 +387,14 @@ export const dictionaries = {
             orderSaved: "Spaltenreihenfolge gespeichert",
             selectedPlayers: "Ausgewählte Spieler",
             dragToReorderPlayers: "Ziehen zum Ändern der Spielerreihenfolge",
-            // Vollbildmodus
             enterFullscreen: "Vollbild aktivieren",
             exitFullscreen: "Vollbild verlassen",
-            fullscreenMode: "Vollbildmodus"
+            fullscreenMode: "Vollbildmodus",
+            // Würfelzahl-Eingabe Modal
+            howManyDice: "Wie viele {field} gewürfelt?",
+            points: "Punkte",
+            selectDiceCount: "Anzahl auswählen",
+            enter: "Eintragen"
         }
     },
     pl: {
@@ -577,10 +585,14 @@ export const dictionaries = {
             orderSaved: "Kolejność kolumn zapisana",
             selectedPlayers: "Wybrani Gracze",
             dragToReorderPlayers: "Przeciągnij, aby zmienić kolejność graczy",
-            // Fullscreen Mode
             enterFullscreen: "Włącz pełny ekran",
             exitFullscreen: "Wyłącz pełny ekran",
-            fullscreenMode: "Tryb pełnoekranowy"
+            fullscreenMode: "Tryb pełnoekranowy",
+            // Dice Count Entry Modal
+            howManyDice: "Ile {field} wyrzucono?",
+            points: "Punkty",
+            selectDiceCount: "Wybierz liczbę",
+            enter: "Wprowadź"
         }
     }
 };
