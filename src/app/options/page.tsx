@@ -188,15 +188,15 @@ export default function OptionsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
 
                 {/* 1. Language Settings */}
-                <div className="flex flex-col h-full space-y-4">
-                    <div className="flex items-center gap-2 text-xl font-bold px-2">
-                        <Languages className="w-6 h-6 text-primary" />
-                        {dict.options.language}
-                    </div>
-                    <div className="flex-1 bg-card/50 backdrop-blur-sm border border-border p-6 rounded-3xl flex flex-col gap-6 shadow-sm hover:shadow-md transition-shadow">
-                        <p className="text-muted-foreground">{dict.options.languageDesc}</p>
+                <div className="flex flex-col h-full">
+                    <div className="flex-1 bg-card/50 backdrop-blur-sm border border-border p-6 rounded-3xl flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-2 text-xl font-bold">
+                            <Languages className="w-6 h-6 text-primary" />
+                            {dict.options.language}
+                        </div>
+                        <p className="text-sm text-muted-foreground flex-1">{dict.options.languageDesc}</p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-auto">
+                        <div className="grid grid-cols-3 gap-3">
                             {[
                                 { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
                                 { code: 'en', flag: '🇺🇸', label: 'English' },
@@ -285,13 +285,13 @@ export default function OptionsPage() {
                             </button>
                         </div>
 
-                        {/* Temporary Fix Button */}
-                        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl space-y-4">
-                            <div className="font-bold text-red-500 flex items-center gap-2">
+                        {/* Troubleshooting Card */}
+                        <div className="bg-orange-500/5 border-orange-500/20 border p-6 rounded-3xl flex flex-col gap-4">
+                            <div className="flex items-center gap-3 text-orange-600 font-bold text-lg">
                                 <AlertTriangle className="w-5 h-5" />
                                 Troubleshooting
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground flex-1">
                                 Klicke hier, falls Push-Benachrichtigungen nicht funktionieren (löscht Cache & SW).
                             </p>
                             <button
@@ -315,8 +315,12 @@ export default function OptionsPage() {
                                         alert("Fehler: " + e);
                                     }
                                 }}
-                                className="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors"
+                                className={cn(
+                                    "w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm",
+                                    "bg-orange-600 hover:bg-orange-700 text-white shadow-orange-900/10"
+                                )}
                             >
+                                <AlertTriangle className="w-4 h-4" />
                                 App Reparieren (Reset)
                             </button>
                         </div>
