@@ -178,4 +178,8 @@ export interface KniffelSheet {
     scores: {
         [memberId: string]: KniffelScores; // Now includes guest IDs
     };
+    // Timestamps for chance entries (first-come-first-served highlighting)
+    chanceTimestamps?: {
+        [memberId: string]: number; // Date.now() timestamp when chance was entered
+    };
 }

@@ -103,6 +103,7 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, dict }: Sor
 export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const { dict } = useLanguage();
     const [localScores, setLocalScores] = useState(sheet.scores);
+    const [localChanceTimestamps, setLocalChanceTimestamps] = useState<Record<string, number>>(sheet.chanceTimestamps || {});
     const [sortMethod, setSortMethod] = useState<SortMethod>("manual");
     const [showSortDropdown, setShowSortDropdown] = useState(false);
     const [isReorderMode, setIsReorderMode] = useState(false);
@@ -299,10 +300,31 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
             }
         }));
 
+        // --- Chance timestamp tracking (first-come-first-served highlighting) ---
+        const firestoreUpdates: Record<string, unknown> = {
+            [`scores.${memberId}.${field}`]: newValue
+        };
+
+        if (field === "chance") {
+            if (typeof newValue === "number") {
+                // Only set timestamp if the player doesn't already have one,
+                // or if the value changed (new entry replaces old timestamp)
+                const now = Date.now();
+                setLocalChanceTimestamps(prev => ({ ...prev, [memberId]: now }));
+                firestoreUpdates[`chanceTimestamps.${memberId}`] = now;
+            } else {
+                // Cleared or stroked → remove timestamp
+                setLocalChanceTimestamps(prev => {
+                    const next = { ...prev };
+                    delete next[memberId];
+                    return next;
+                });
+                firestoreUpdates[`chanceTimestamps.${memberId}`] = null;
+            }
+        }
+
         try {
-            await updateDoc(doc(db, "kniffelSheets", sheet.id), {
-                [`scores.${memberId}.${field}`]: newValue
-            });
+            await updateDoc(doc(db, "kniffelSheets", sheet.id), firestoreUpdates);
         } catch (error) {
             console.error("Error updating score:", error);
         }
@@ -390,14 +412,20 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     };
 
     // Determine Chance row highlighting (exclude strokes)
+    // First-come-first-served: if multiple players share the same highest/lowest
+    // value, only the one who entered it first gets highlighted.
     const getChanceHighlight = (memberId: string): "highest" | "lowest" | null => {
-        const filledChanceValues: { memberId: string; value: number }[] = [];
+        const filledChanceValues: { memberId: string; value: number; timestamp: number }[] = [];
 
         sortedPlayers.forEach(m => {
             const scores = localScores[m.id];
             const value = scores?.chance;
             if (typeof value === "number") {
-                filledChanceValues.push({ memberId: m.id, value });
+                filledChanceValues.push({
+                    memberId: m.id,
+                    value,
+                    timestamp: localChanceTimestamps[m.id] ?? Infinity,
+                });
             }
         });
 
@@ -411,8 +439,20 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         const maxValue = Math.max(...values);
         const minValue = Math.min(...values);
 
-        if (currentValue === maxValue) return "highest";
-        if (currentValue === minValue) return "lowest";
+        // --- Highest: only the earliest entry among tied players ---
+        if (currentValue === maxValue) {
+            const tiedForMax = filledChanceValues.filter(v => v.value === maxValue);
+            const earliest = tiedForMax.reduce((a, b) => a.timestamp <= b.timestamp ? a : b);
+            if (earliest.memberId === memberId) return "highest";
+        }
+
+        // --- Lowest: only the earliest entry among tied players ---
+        if (currentValue === minValue) {
+            const tiedForMin = filledChanceValues.filter(v => v.value === minValue);
+            const earliest = tiedForMin.reduce((a, b) => a.timestamp <= b.timestamp ? a : b);
+            if (earliest.memberId === memberId) return "lowest";
+        }
+
         return null;
     };
 
@@ -663,7 +703,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 onDragEnd={handleColumnReorder}
             >
                 <div className={cn("kniffel-table-wrapper", isFullscreen && "flex-1 overflow-auto px-4 pb-4")}>
-                    <table className={cn("w-full text-sm border-separate border-spacing-0")}>
+                    <table className={cn("w-full text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.08)]")}>
                         <thead>
                             <tr>
                                 <th className={cn("text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col", !isFullscreen && "min-w-[140px]")}></th>
