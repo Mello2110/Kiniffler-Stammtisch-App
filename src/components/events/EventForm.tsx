@@ -90,8 +90,8 @@ export function EventForm({ initialData, members, onSubmit, onCancel, isSubmitti
                 </div>
             </div>
 
-            <div className="grid grid-cols-[2fr_3fr] md:grid-cols-2 gap-2 md:gap-4">
-                <div className="min-w-0 overflow-hidden space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
                     <label className="text-sm font-medium">{dict.events.modal.form.time}</label>
                     <div className="relative">
                         <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -100,10 +100,11 @@ export function EventForm({ initialData, members, onSubmit, onCancel, isSubmitti
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
                             className="w-full h-10 appearance-none rounded-md border border-input bg-background pl-9 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            style={{ borderRadius: "0.5rem" }} // Force radius on iOS
                         />
                     </div>
                 </div>
-                <div className="min-w-0 overflow-hidden space-y-2">
+                <div className="space-y-2">
                     <label className="text-sm font-medium">{dict.events.modal.form.location}</label>
                     <div className="relative">
                         <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -113,6 +114,7 @@ export function EventForm({ initialData, members, onSubmit, onCancel, isSubmitti
                             onChange={(e) => setLocation(e.target.value)}
                             placeholder="Ort (z.B. Musterbar)"
                             className="w-full h-10 rounded-md border border-input bg-background pl-9 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            style={{ borderRadius: "0.5rem" }} // Force radius on iOS
                         />
                     </div>
                 </div>
