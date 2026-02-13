@@ -285,45 +285,7 @@ export default function OptionsPage() {
                             </button>
                         </div>
 
-                        {/* Troubleshooting Card */}
-                        <div className="bg-orange-500/5 border-orange-500/20 border p-6 rounded-3xl flex flex-col gap-4">
-                            <div className="flex items-center gap-3 text-orange-600 font-bold text-lg">
-                                <AlertTriangle className="w-5 h-5" />
-                                Troubleshooting
-                            </div>
-                            <p className="text-sm text-muted-foreground flex-1">
-                                Klicke hier, falls Push-Benachrichtigungen nicht funktionieren (löscht Cache & SW).
-                            </p>
-                            <button
-                                onClick={async () => {
-                                    if (!confirm("Dies wird die App neustarten und dich ausloggen. Fortfahren?")) return;
 
-                                    try {
-                                        // Unregister SW
-                                        const registrations = await navigator.serviceWorker.getRegistrations();
-                                        for (const registration of registrations) {
-                                            await registration.unregister();
-                                        }
-
-                                        // Clear Cache
-                                        const cacheKeys = await caches.keys();
-                                        await Promise.all(cacheKeys.map(key => caches.delete(key)));
-
-                                        alert("Reset erfolgreich! Die Seite lädt jetzt neu.");
-                                        window.location.reload();
-                                    } catch (e) {
-                                        alert("Fehler: " + e);
-                                    }
-                                }}
-                                className={cn(
-                                    "w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm",
-                                    "bg-orange-600 hover:bg-orange-700 text-white shadow-orange-900/10"
-                                )}
-                            >
-                                <AlertTriangle className="w-4 h-4" />
-                                App Reparieren (Reset)
-                            </button>
-                        </div>
 
                         {/* Console Card */}
                         {(logs.length > 0 || status) && (
@@ -346,6 +308,50 @@ export default function OptionsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Troubleshooting Section (Available for everyone) */}
+            <div className="mt-8 pt-8 border-t border-dashed border-border/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="bg-orange-500/5 border-orange-500/20 border p-6 rounded-3xl flex flex-col gap-4">
+                        <div className="flex items-center gap-3 text-orange-600 font-bold text-lg">
+                            <AlertTriangle className="w-5 h-5" />
+                            Troubleshooting / App Reparieren
+                        </div>
+                        <p className="text-sm text-muted-foreground flex-1">
+                            Falls du Darstellungsfehler hast, alte Versionen siehst oder Push-Nachrichten nicht ankommen: Dies löscht den App-Cache und erzwingt ein Update.
+                        </p>
+                        <button
+                            onClick={async () => {
+                                if (!confirm("Dies wird die App bereinigen und neu laden. Fortfahren?")) return;
+
+                                try {
+                                    // Unregister SW
+                                    const registrations = await navigator.serviceWorker.getRegistrations();
+                                    for (const registration of registrations) {
+                                        await registration.unregister();
+                                    }
+
+                                    // Clear Cache
+                                    const cacheKeys = await caches.keys();
+                                    await Promise.all(cacheKeys.map(key => caches.delete(key)));
+
+                                    alert("Reset erfolgreich! Die Seite lädt jetzt neu.");
+                                    window.location.reload();
+                                } catch (e) {
+                                    alert("Fehler: " + e);
+                                }
+                            }}
+                            className={cn(
+                                "w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm",
+                                "bg-orange-600 hover:bg-orange-700 text-white shadow-orange-900/10"
+                            )}
+                        >
+                            <AlertTriangle className="w-4 h-4" />
+                            App Reparieren & Update erzwingen
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

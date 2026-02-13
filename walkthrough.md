@@ -11,6 +11,7 @@
 - Event-Formular: Überlappende Zeit/Location-Boxen auf Mobile gefixt (`min-w-0`, responsive Grid)
 - Event-Formular Design-Feinschliff: Einheitliche Höhen (`h-10`), iOS-Styling angepasst (`appearance-none`), Rand-Ausrichtung korrigiert
 - **Cache-Update (`v5`)**: Service Worker Version erhöht und visuellen Indikator (Platzhalter "Musterbar") hinzugefügt, um Update auf iPad zu erzwingen
+- **Troubleshooting**: "App Reparieren"-Button jetzt für alle Nutzer sichtbar (nicht nur Admin), um Updates manuell zu erzwingen
 - Cloud Functions + Hosting deployed
 
 ---
