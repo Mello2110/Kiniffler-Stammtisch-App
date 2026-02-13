@@ -88,16 +88,15 @@ export function DashboardView() {
     ), [todayStr]);
     const { data: votes } = useFirestoreQuery<StammtischVote>(qVotes);
 
-    // 8. Fetch My Open Penalties (for balance calculation)
+    // 8. Fetch ALL My Penalties (for balance calculation — includes paid + unpaid)
     const qMyPenalties = useMemo(() => {
         if (!user) return null;
         return query(
             collection(db, "penalties"),
-            where("userId", "==", user.uid),
-            where("isPaid", "==", false)
+            where("userId", "==", user.uid)
         );
     }, [user]);
-    const { data: myOpenPenaltiesData } = useFirestoreQuery<Penalty>(qMyPenalties);
+    const { data: myAllPenaltiesData } = useFirestoreQuery<Penalty>(qMyPenalties);
 
     // 9. Fetch My Expenses (for balance calculation)
     const qMyExpenses = useMemo(() => {
@@ -113,12 +112,13 @@ export function DashboardView() {
     // DERIVED STATE CALCULATIONS
     // ============================================
 
-    // Update Member Balance (Expenses - Unpaid Penalties)
+    // Update Member Balance (Expenses - ALL Penalties)
+    // Balance = credit remaining after all penalties are accounted for
     useEffect(() => {
         const totalExpenses = myExpensesData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
-        const totalUnpaidPenalties = myOpenPenaltiesData?.reduce((sum, p) => sum + p.amount, 0) || 0;
-        setMemberBalance(totalExpenses - totalUnpaidPenalties);
-    }, [myExpensesData, myOpenPenaltiesData]);
+        const totalAllPenalties = myAllPenaltiesData?.reduce((sum, p) => sum + p.amount, 0) || 0;
+        setMemberBalance(totalExpenses - totalAllPenalties);
+    }, [myExpensesData, myAllPenaltiesData]);
 
     // Update Pot & Expenses
     useEffect(() => {
@@ -284,10 +284,10 @@ export function DashboardView() {
                                         : dict.dashboard.widgets.penalties.descZero
                             }
                             className={`transition-colors h-full cursor-pointer ${memberBalance > 0
-                                    ? "border-green-500/50 hover:bg-green-500/10"
-                                    : memberBalance < 0
-                                        ? "border-red-500/50 hover:bg-red-500/10"
-                                        : "hover:border-primary/50"
+                                ? "border-green-500/50 hover:bg-green-500/10"
+                                : memberBalance < 0
+                                    ? "border-red-500/50 hover:bg-red-500/10"
+                                    : "hover:border-primary/50"
                                 }`}
                         />
                     </Link>
