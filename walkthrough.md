@@ -9,6 +9,7 @@
 - Cloud Functions: `db.collection('events')` → `db.collection('set_events')` — Notifications fanden nie Events
 - Datumsformat in Queries korrigiert: ISO-Timestamps → `yyyy-MM-dd` Strings
 - Event-Formular: Überlappende Zeit/Location-Boxen auf Mobile gefixt (`min-w-0`, responsive Grid)
+- Event-Formular Design-Feinschliff: Einheitliche Höhen (`h-10`), iOS-Styling angepasst (`appearance-none`), Rand-Ausrichtung korrigiert
 - Cloud Functions + Hosting deployed
 
 ---
