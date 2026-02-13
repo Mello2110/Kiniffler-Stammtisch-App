@@ -16,7 +16,7 @@ firebase.initializeApp({
 // This is required for valid getToken() retrieval when passing this SW registration.
 const messaging = firebase.messaging();
 
-const CACHE_NAME = 'kp-stammtisch-v4'; // Bump version
+const CACHE_NAME = 'kp-stammtisch-v5-mobile-fix'; // Bump version
 const URLS_TO_CACHE = [
     '/',
     '/manifest.json',

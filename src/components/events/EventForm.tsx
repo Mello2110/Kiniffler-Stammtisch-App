@@ -111,7 +111,7 @@ export function EventForm({ initialData, members, onSubmit, onCancel, isSubmitti
                             type="text"
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
-                            placeholder={dict.events.modal.form.venuePlaceholder}
+                            placeholder="Ort (z.B. Musterbar)"
                             className="w-full h-10 rounded-md border border-input bg-background pl-9 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         />
                     </div>

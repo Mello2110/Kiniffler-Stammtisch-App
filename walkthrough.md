@@ -10,6 +10,7 @@
 - Datumsformat in Queries korrigiert: ISO-Timestamps → `yyyy-MM-dd` Strings
 - Event-Formular: Überlappende Zeit/Location-Boxen auf Mobile gefixt (`min-w-0`, responsive Grid)
 - Event-Formular Design-Feinschliff: Einheitliche Höhen (`h-10`), iOS-Styling angepasst (`appearance-none`), Rand-Ausrichtung korrigiert
+- **Cache-Update (`v5`)**: Service Worker Version erhöht und visuellen Indikator (Platzhalter "Musterbar") hinzugefügt, um Update auf iPad zu erzwingen
 - Cloud Functions + Hosting deployed
 
 ---
