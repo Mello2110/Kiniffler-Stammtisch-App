@@ -18,8 +18,9 @@ import { EditableHeader } from "@/components/common/EditableHeader";
 export function DashboardView() {
     const { user } = useAuth();
 
-    // States not handled by hook directly or derived
-    const [myOpenPenalties, setMyOpenPenalties] = useState(0);
+    // ============================================
+    // STATE
+    // ============================================
 
     // Stats
     const [nextEvent, setNextEvent] = useState<{
@@ -36,8 +37,11 @@ export function DashboardView() {
     const [expensesTotal, setExpensesTotal] = useState(0);
     const [startingBalance, setStartingBalance] = useState(0);
     const [seasonLeader, setSeasonLeader] = useState<{ id: string; points: number } | null>(null);
+    const [memberBalance, setMemberBalance] = useState(0);
 
-    // Queries (Memoized to prevent infinite loops in hook)
+    // ============================================
+    // QUERIES
+    // ============================================
     const qMembers = useMemo(() => query(collection(db, "members")), []);
     const { data: members } = useFirestoreQuery<Member>(qMembers);
 
@@ -84,7 +88,7 @@ export function DashboardView() {
     ), [todayStr]);
     const { data: votes } = useFirestoreQuery<StammtischVote>(qVotes);
 
-    // 8. Fetch My Open Penalties
+    // 8. Fetch My Open Penalties (for balance calculation)
     const qMyPenalties = useMemo(() => {
         if (!user) return null;
         return query(
@@ -95,15 +99,26 @@ export function DashboardView() {
     }, [user]);
     const { data: myOpenPenaltiesData } = useFirestoreQuery<Penalty>(qMyPenalties);
 
-    // --- Derived State Calculations ---
+    // 9. Fetch My Expenses (for balance calculation)
+    const qMyExpenses = useMemo(() => {
+        if (!user) return null;
+        return query(
+            collection(db, "expenses"),
+            where("memberId", "==", user.uid)
+        );
+    }, [user]);
+    const { data: myExpensesData } = useFirestoreQuery<{ amount: number }>(qMyExpenses);
 
-    // Update My Open Penalties
+    // ============================================
+    // DERIVED STATE CALCULATIONS
+    // ============================================
+
+    // Update Member Balance (Expenses - Unpaid Penalties)
     useEffect(() => {
-        if (myOpenPenaltiesData) {
-            const total = myOpenPenaltiesData.reduce((sum, p) => sum + p.amount, 0);
-            setMyOpenPenalties(total);
-        }
-    }, [myOpenPenaltiesData]);
+        const totalExpenses = myExpensesData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+        const totalUnpaidPenalties = myOpenPenaltiesData?.reduce((sum, p) => sum + p.amount, 0) || 0;
+        setMemberBalance(totalExpenses - totalUnpaidPenalties);
+    }, [myExpensesData, myOpenPenaltiesData]);
 
     // Update Pot & Expenses
     useEffect(() => {
@@ -259,10 +274,21 @@ export function DashboardView() {
                     <Link href="/cash">
                         <StatCard
                             title={dict.dashboard.widgets.penalties.title}
-                            value={`€${myOpenPenalties.toFixed(2)}`}
+                            value={`€${Math.abs(memberBalance).toFixed(2)}`}
                             icon={AlertCircle}
-                            description={dict.dashboard.widgets.penalties.desc}
-                            className={`transition-colors h-full cursor-pointer ${myOpenPenalties > 0 ? "border-orange-500/50 hover:bg-orange-500/10" : "hover:border-primary/50"}`}
+                            description={
+                                memberBalance > 0
+                                    ? dict.dashboard.widgets.penalties.descPositive
+                                    : memberBalance < 0
+                                        ? dict.dashboard.widgets.penalties.descNegative
+                                        : dict.dashboard.widgets.penalties.descZero
+                            }
+                            className={`transition-colors h-full cursor-pointer ${memberBalance > 0
+                                    ? "border-green-500/50 hover:bg-green-500/10"
+                                    : memberBalance < 0
+                                        ? "border-red-500/50 hover:bg-red-500/10"
+                                        : "hover:border-primary/50"
+                                }`}
                         />
                     </Link>
 

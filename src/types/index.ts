@@ -76,6 +76,8 @@ export interface Penalty {
     reason: string;
     date: string; // ISO date string
     isPaid: boolean;
+    paidViaReconciliation?: boolean; // true if auto-paid by reconciliation
+    reconciledAt?: any; // Firestore Timestamp when reconciled
     createdAt: any;
 }
 
@@ -84,6 +86,8 @@ export interface Expense {
     description: string;
     amount: number;
     date: string; // ISO date string
+    memberId?: string; // Firebase UID of the member who made the expense
+    memberName?: string; // Denormalized display name
     createdAt: any;
 }
 

@@ -30,7 +30,7 @@ export const dictionaries = {
             quickActions: "Quick Actions",
             widgets: {
                 members: { title: "Total Members", desc: "Active regular members" },
-                penalties: { title: "My Open Penalties", desc: "Unpaid fines" },
+                penalties: { title: "Member Balance", desc: "Unpaid fines", descPositive: "Credit from expenses", descNegative: "Outstanding amount", descZero: "All settled" },
                 cash: { title: "Current Cash Balance", desc: "Available funds" },
                 seasonLeader: { title: "Season Leader", desc: "Points", noPoints: "No points yet" },
                 hof: { title: "Hall of Fame", value: "Legends", desc: "Top Donors & Hosts" }
@@ -228,7 +228,7 @@ export const dictionaries = {
             quickActions: "Schnellzugriff",
             widgets: {
                 members: { title: "Mitglieder Gesamt", desc: "Aktive Stammgäste" },
-                penalties: { title: "Meine offenen Strafen", desc: "Unbezahlte Bußen" },
+                penalties: { title: "Guthaben", desc: "Unbezahlte Bußen", descPositive: "Guthaben aus Ausgaben", descNegative: "Offener Betrag", descZero: "Ausgeglichen" },
                 cash: { title: "Aktueller Kassenstand", desc: "Verfügbares Guthaben" },
                 seasonLeader: { title: "Saison-Spitze", desc: "Punkte", noPoints: "Noch keine Punkte" },
                 hof: { title: "Ruhmeshalle", value: "Legenden", desc: "Top Spender & Gastgeber" }
@@ -426,7 +426,7 @@ export const dictionaries = {
             quickActions: "Szybkie Akcje",
             widgets: {
                 members: { title: "Łącznie Członków", desc: "Aktywni bywalcy" },
-                penalties: { title: "Moje Kary", desc: "Niezapłacone grzywny" },
+                penalties: { title: "Saldo", desc: "Niezapłacone grzywny", descPositive: "Kredyt z wydatków", descNegative: "Zaległa kwota", descZero: "Rozliczone" },
                 cash: { title: "Stan Kasy", desc: "Dostępne środki" },
                 seasonLeader: { title: "Lider Sezonu", desc: "Punkty", noPoints: "Brak punktów" },
                 hof: { title: "Aleja Sław", value: "Legendy", desc: "Top Darczyńcy" }

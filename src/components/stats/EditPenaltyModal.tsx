@@ -5,6 +5,7 @@ import { X, Loader2, DollarSign } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Member, Penalty } from "@/types";
+import { reconcileMemberBalance } from "@/lib/reconciliation";
 
 interface EditPenaltyModalProps {
     penalty: Penalty;
@@ -27,13 +28,36 @@ export function EditPenaltyModal({ penalty, members, onClose }: EditPenaltyModal
 
         setIsSubmitting(true);
         try {
+            const oldMemberId = penalty.userId;
             const ref = doc(db, "penalties", penalty.id);
-            await updateDoc(ref, {
+
+            // If manually changing paid status, reset reconciliation flag
+            const updateData: Record<string, unknown> = {
                 userId: selectedMember,
                 amount: parseFloat(amount),
                 reason,
-                isPaid
-            });
+                isPaid,
+            };
+
+            // If manually setting to paid, ensure it's not marked as reconciled
+            if (isPaid && !penalty.isPaid) {
+                updateData.paidViaReconciliation = false;
+            }
+            // If manually setting to unpaid, clear reconciliation
+            if (!isPaid && penalty.isPaid) {
+                updateData.paidViaReconciliation = false;
+                updateData.reconciledAt = null;
+            }
+
+            await updateDoc(ref, updateData);
+
+            // Reconcile old member if member changed
+            if (oldMemberId !== selectedMember) {
+                await reconcileMemberBalance(oldMemberId);
+            }
+            // Reconcile current member
+            await reconcileMemberBalance(selectedMember);
+
             onClose();
         } catch (error) {
             console.error("Error updating penalty:", error);

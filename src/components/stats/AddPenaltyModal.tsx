@@ -5,6 +5,7 @@ import { X, Loader2, DollarSign } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Member } from "@/types";
+import { reconcileMemberBalance } from "@/lib/reconciliation";
 
 interface AddPenaltyModalProps {
     onClose: () => void;
@@ -25,18 +26,18 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
 
         setIsSubmitting(true);
         try {
-            const writePromise = addDoc(collection(db, "penalties"), {
+            await addDoc(collection(db, "penalties"), {
                 userId: selectedMember,
                 amount: parseFloat(amount),
                 reason,
                 isPaid: false,
+                paidViaReconciliation: false,
                 date: new Date().toISOString(),
                 createdAt: serverTimestamp()
             });
 
-            // Force close after 2 seconds max to prevent hanging
-            const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));
-            await Promise.race([writePromise, timeoutPromise]);
+            // Trigger reconciliation for this member
+            await reconcileMemberBalance(selectedMember);
 
             onClose();
         } catch (error) {

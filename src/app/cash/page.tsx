@@ -9,7 +9,7 @@ import { CashBalance } from "@/components/cash/CashBalance";
 import { ContributionTable } from "@/components/cash/ContributionTable";
 import { ExpensesTable } from "@/components/cash/ExpensesTable";
 import { DonationTable } from "@/components/cash/DonationTable";
-import { PenaltyTable } from "@/components/stats/PenaltyTable";
+import { PenaltyGroupedView } from "@/components/cash/PenaltyGroupedView";
 import { AddPenaltyModal } from "@/components/stats/AddPenaltyModal";
 import { EditPenaltyModal } from "@/components/stats/EditPenaltyModal";
 import { EditExpenseModal } from "@/components/cash/EditExpenseModal";
@@ -30,8 +30,8 @@ export default function CashPage() {
     const qMembers = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
     const { data: members, loading: membersLoading } = useFirestoreQuery<Member>(qMembers);
 
-    // Fetch penalties (Recent 50)
-    const qPenalties = useMemo(() => query(collection(db, "penalties"), orderBy("createdAt", "desc"), limit(50)), []);
+    // Fetch penalties (All for grouped view)
+    const qPenalties = useMemo(() => query(collection(db, "penalties"), orderBy("createdAt", "desc")), []);
     const { data: penalties } = useFirestoreQuery<Penalty>(qPenalties);
 
     useEffect(() => {
@@ -42,7 +42,6 @@ export default function CashPage() {
 
     const canManageFinance = useMemo(() => {
         if (!user || membersLoading) return false;
-        // return currentMember.isAdmin || currentMember.role?.toLowerCase() === "kassenwart";
         return true; // GLOBAL ACCESS UNLOCKED FOR EVENT
     }, [user, members, membersLoading]);
 
@@ -127,7 +126,7 @@ export default function CashPage() {
                 </section>
 
                 <div className="grid gap-8 md:grid-cols-2 items-start">
-                    {/* Section 2: Penalties (Existing) */}
+                    {/* Section 2: Penalties (Grouped by Member) */}
                     <section className="space-y-4">
                         <div className="flex items-center justify-between h-[34px]">
                             <EditableHeader
@@ -146,7 +145,7 @@ export default function CashPage() {
                                 </button>
                             )}
                         </div>
-                        <PenaltyTable
+                        <PenaltyGroupedView
                             penalties={penalties}
                             members={members}
                             onEdit={(p) => setEditingPenalty(p)}
@@ -154,12 +153,12 @@ export default function CashPage() {
                         />
                     </section>
 
-                    {/* Section 3: Expenses (New) */}
+                    {/* Section 3: Expenses */}
                     <section className="space-y-4">
-                        {/* Header handled inside ExpensesTable for state access */}
                         <ExpensesTable
                             onEdit={(e) => setEditingExpense(e)}
                             canManage={canManageFinance}
+                            members={members}
                         />
                     </section>
                 </div>
@@ -183,6 +182,7 @@ export default function CashPage() {
             {editingExpense && canManageFinance && (
                 <EditExpenseModal
                     expense={editingExpense}
+                    members={members}
                     onClose={() => setEditingExpense(null)}
                 />
             )}
