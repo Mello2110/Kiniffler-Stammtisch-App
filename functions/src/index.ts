@@ -4,7 +4,7 @@
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import * as logger from 'firebase-functions/logger';
+// import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
 import * as cloudinary from 'cloudinary';
 import { addDays, startOfDay, endOfDay, format } from 'date-fns';
@@ -100,16 +100,16 @@ export const dailyEventReminderCheck = onSchedule({
     const in7Days = addDays(today, 7);
     const tomorrow = addDays(today, 1);
 
-    // Fetch events for 7 days
-    const events7DaysSnap = await db.collection('events')
-        .where('date', '>=', startOfDay(in7Days).toISOString()) // Assuming ISO strings in DB as per Types
-        .where('date', '<=', endOfDay(in7Days).toISOString())
+    // Fetch events for 7 days (dates stored as "yyyy-MM-dd" strings)
+    const in7DaysStr = format(in7Days, 'yyyy-MM-dd');
+    const events7DaysSnap = await db.collection('set_events')
+        .where('date', '==', in7DaysStr)
         .get();
 
     // Fetch events for tomorrow
-    const events1DaySnap = await db.collection('events')
-        .where('date', '>=', startOfDay(tomorrow).toISOString())
-        .where('date', '<=', endOfDay(tomorrow).toISOString())
+    const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
+    const events1DaySnap = await db.collection('set_events')
+        .where('date', '==', tomorrowStr)
         .get();
 
     // Process 7-day reminders
@@ -232,9 +232,12 @@ export const monthlyOverview = onSchedule({
     const monthName = format(today, 'MMMM', { locale: de });
     const year = today.getFullYear();
 
-    const eventsSnap = await db.collection('events')
-        .where('date', '>=', startOfMonthDate.toISOString())
-        .where('date', '<=', endOfMonthDate.toISOString())
+    // Dates stored as "yyyy-MM-dd" strings — use string range comparison
+    const startStr = format(startOfMonthDate, 'yyyy-MM-dd');
+    const endStr = format(endOfMonthDate, 'yyyy-MM-dd');
+    const eventsSnap = await db.collection('set_events')
+        .where('date', '>=', startStr)
+        .where('date', '<=', endStr)
         .orderBy('date', 'asc')
         .get();
 

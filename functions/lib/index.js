@@ -29,6 +29,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.monthlyOverview = exports.votingReminder = exports.dailyEventReminderCheck = exports.bulkDeleteCloudinaryImages = exports.deleteCloudinaryImage = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
+// import * as logger from 'firebase-functions/logger';
 const admin = __importStar(require("firebase-admin"));
 const cloudinary = __importStar(require("cloudinary"));
 const date_fns_1 = require("date-fns");
@@ -102,15 +103,15 @@ exports.dailyEventReminderCheck = (0, scheduler_1.onSchedule)({
     const today = new Date();
     const in7Days = (0, date_fns_1.addDays)(today, 7);
     const tomorrow = (0, date_fns_1.addDays)(today, 1);
-    // Fetch events for 7 days
-    const events7DaysSnap = await db.collection('events')
-        .where('date', '>=', (0, date_fns_1.startOfDay)(in7Days).toISOString()) // Assuming ISO strings in DB as per Types
-        .where('date', '<=', (0, date_fns_1.endOfDay)(in7Days).toISOString())
+    // Fetch events for 7 days (dates stored as "yyyy-MM-dd" strings)
+    const in7DaysStr = (0, date_fns_1.format)(in7Days, 'yyyy-MM-dd');
+    const events7DaysSnap = await db.collection('set_events')
+        .where('date', '==', in7DaysStr)
         .get();
     // Fetch events for tomorrow
-    const events1DaySnap = await db.collection('events')
-        .where('date', '>=', (0, date_fns_1.startOfDay)(tomorrow).toISOString())
-        .where('date', '<=', (0, date_fns_1.endOfDay)(tomorrow).toISOString())
+    const tomorrowStr = (0, date_fns_1.format)(tomorrow, 'yyyy-MM-dd');
+    const events1DaySnap = await db.collection('set_events')
+        .where('date', '==', tomorrowStr)
         .get();
     // Process 7-day reminders
     if (!events7DaysSnap.empty) {
@@ -211,9 +212,12 @@ exports.monthlyOverview = (0, scheduler_1.onSchedule)({
     const endOfMonthDate = (0, date_fns_1.endOfDay)(new Date(today.getFullYear(), today.getMonth() + 1, 0));
     const monthName = (0, date_fns_1.format)(today, 'MMMM', { locale: locale_1.de });
     const year = today.getFullYear();
-    const eventsSnap = await db.collection('events')
-        .where('date', '>=', startOfMonthDate.toISOString())
-        .where('date', '<=', endOfMonthDate.toISOString())
+    // Dates stored as "yyyy-MM-dd" strings — use string range comparison
+    const startStr = (0, date_fns_1.format)(startOfMonthDate, 'yyyy-MM-dd');
+    const endStr = (0, date_fns_1.format)(endOfMonthDate, 'yyyy-MM-dd');
+    const eventsSnap = await db.collection('set_events')
+        .where('date', '>=', startStr)
+        .where('date', '<=', endStr)
         .orderBy('date', 'asc')
         .get();
     if (eventsSnap.empty)

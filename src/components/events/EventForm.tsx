@@ -90,8 +90,8 @@ export function EventForm({ initialData, members, onSubmit, onCancel, isSubmitti
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+            <div className="grid grid-cols-[2fr_3fr] md:grid-cols-2 gap-2 md:gap-4">
+                <div className="min-w-0 overflow-hidden space-y-2">
                     <label className="text-sm font-medium">{dict.events.modal.form.time}</label>
                     <div className="relative">
                         <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -103,7 +103,7 @@ export function EventForm({ initialData, members, onSubmit, onCancel, isSubmitti
                         />
                     </div>
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 overflow-hidden space-y-2">
                     <label className="text-sm font-medium">{dict.events.modal.form.location}</label>
                     <div className="relative">
                         <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
