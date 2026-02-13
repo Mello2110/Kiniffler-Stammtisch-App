@@ -36,8 +36,8 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
                 createdAt: serverTimestamp()
             });
 
-            // Trigger reconciliation for this member
-            await reconcileMemberBalance(selectedMember);
+            // Trigger reconciliation in background (non-blocking)
+            reconcileMemberBalance(selectedMember).catch(console.error);
 
             onClose();
         } catch (error) {

@@ -61,8 +61,8 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
                 createdAt: serverTimestamp()
             });
 
-            // Trigger reconciliation for this member
-            await reconcileMemberBalance(selectedMemberId);
+            // Trigger reconciliation in background (non-blocking)
+            reconcileMemberBalance(selectedMemberId).catch(console.error);
 
             setDesc("");
             setAmount("");
@@ -79,9 +79,9 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
         try {
             await deleteDoc(doc(db, "expenses", deletingExpense.id));
 
-            // Trigger reconciliation for this member (penalties may revert)
+            // Trigger reconciliation in background (non-blocking)
             if (memberId) {
-                await reconcileMemberBalance(memberId);
+                reconcileMemberBalance(memberId).catch(console.error);
             }
 
             setDeletingExpense(null);

@@ -51,12 +51,11 @@ export function EditPenaltyModal({ penalty, members, onClose }: EditPenaltyModal
 
             await updateDoc(ref, updateData);
 
-            // Reconcile old member if member changed
+            // Reconcile in background (non-blocking)
             if (oldMemberId !== selectedMember) {
-                await reconcileMemberBalance(oldMemberId);
+                reconcileMemberBalance(oldMemberId).catch(console.error);
             }
-            // Reconcile current member
-            await reconcileMemberBalance(selectedMember);
+            reconcileMemberBalance(selectedMember).catch(console.error);
 
             onClose();
         } catch (error) {

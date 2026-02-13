@@ -51,12 +51,11 @@ export function EditExpenseModal({ expense, members, onClose }: EditExpenseModal
                 memberName: member.name,
             });
 
-            // Reconcile OLD member if the member changed (their penalties may revert)
+            // Reconcile in background (non-blocking)
             if (oldMemberId && oldMemberId !== selectedMemberId) {
-                await reconcileMemberBalance(oldMemberId);
+                reconcileMemberBalance(oldMemberId).catch(console.error);
             }
-            // Reconcile NEW member
-            await reconcileMemberBalance(selectedMemberId);
+            reconcileMemberBalance(selectedMemberId).catch(console.error);
 
             onClose();
         } catch (error) {

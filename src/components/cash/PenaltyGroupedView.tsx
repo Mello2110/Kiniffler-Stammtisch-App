@@ -117,8 +117,8 @@ export function PenaltyGroupedView({ penalties, members, onEdit, canManage }: Pe
                     paidViaReconciliation: false, // manually paid
                 });
             }
-            // Trigger reconciliation
-            await reconcileMemberBalance(penalty.userId);
+            // Trigger reconciliation in background (non-blocking)
+            reconcileMemberBalance(penalty.userId).catch(console.error);
         } catch (error) {
             console.error("Error updating penalty:", error);
         }
@@ -129,9 +129,9 @@ export function PenaltyGroupedView({ penalties, members, onEdit, canManage }: Pe
         try {
             await deleteDoc(doc(db, "penalties", deletingId));
 
-            // Trigger reconciliation for the member
+            // Trigger reconciliation in background (non-blocking)
             if (deletingMemberId) {
-                await reconcileMemberBalance(deletingMemberId);
+                reconcileMemberBalance(deletingMemberId).catch(console.error);
             }
 
             setDeletingId(null);
