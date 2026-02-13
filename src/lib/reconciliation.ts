@@ -10,7 +10,6 @@ import {
     where,
     getDocs,
     writeBatch,
-    orderBy,
     serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -20,12 +19,15 @@ import { db } from "@/lib/firebase";
  *
  * Algorithm:
  * 1. Fetch all expenses for this member → totalExpenses
- * 2. Reset ALL paidViaReconciliation flags for this member
- * 3. Fetch all penalties for this member sorted by date ASC
- * 4. Iterate through unpaid penalties (FIFO), marking as paid if credit covers them
+ * 2. Fetch all penalties for this member, sort in memory by date ASC
+ * 3. Reset ALL paidViaReconciliation flags
+ * 4. Re-apply FIFO auto-payment from available credit
  * 5. Atomic write via Firestore batch
  *
  * This function is IDEMPOTENT — safe to call multiple times.
+ *
+ * NOTE: We sort in memory instead of using orderBy() to avoid
+ * requiring a Firestore composite index on (userId, date).
  */
 export async function reconcileMemberBalance(memberId: string): Promise<void> {
     if (!memberId) return;
@@ -44,64 +46,68 @@ export async function reconcileMemberBalance(memberId: string): Promise<void> {
             0
         );
 
-        // --- Step 2: Fetch ALL penalties for this member (sorted by date ASC) ---
+        // --- Step 2: Fetch ALL penalties for this member ---
+        // No orderBy to avoid composite index requirement
         const penaltiesQuery = query(
             collection(db, "penalties"),
-            where("userId", "==", memberId),
-            orderBy("date", "asc")
+            where("userId", "==", memberId)
         );
         const penaltiesSnap = await getDocs(penaltiesQuery);
 
-        // --- Step 3: Reset all paidViaReconciliation flags ---
-        penaltiesSnap.docs.forEach((penaltyDoc) => {
-            const data = penaltyDoc.data();
-            if (data.paidViaReconciliation === true) {
-                batch.update(penaltyDoc.ref, {
-                    isPaid: false,
-                    paidViaReconciliation: false,
-                    reconciledAt: null,
-                });
-            }
+        // Sort in memory by date ascending (oldest first for FIFO)
+        const sortedPenalties = [...penaltiesSnap.docs].sort((a, b) => {
+            const dateA = a.data().date || "";
+            const dateB = b.data().date || "";
+            return dateA.localeCompare(dateB);
         });
 
-        // --- Step 4: Calculate available credit and apply FIFO ---
-        // Available credit = totalExpenses - sum of manually paid penalties (not via reconciliation)
-        // Since we just reset all reconciliation flags, manually paid ones still have isPaid=true
-        // We only auto-pay penalties that are currently unpaid (after reset)
-
-        // After reset, get the effective state:
-        // - Penalties that were manually paid: isPaid=true, paidViaReconciliation=false
-        // - Penalties that were auto-paid (now reset): isPaid=false, paidViaReconciliation=false
-        // - Penalties that were never paid: isPaid=false, paidViaReconciliation=false
+        // --- Step 3 + 4: Single pass with in-memory state tracking ---
+        // Build effective state: determine which penalties are manually paid
+        // vs. auto-reconciled vs. unpaid, then apply FIFO.
 
         let availableCredit = totalExpenses;
 
-        // We iterate through ALL penalties. For manually paid ones, skip.
-        // For unpaid ones, try to auto-pay.
-        penaltiesSnap.docs.forEach((penaltyDoc) => {
+        sortedPenalties.forEach((penaltyDoc) => {
             const data = penaltyDoc.data();
 
-            // Skip manually paid penalties (isPaid was true AND paidViaReconciliation was false before our reset)
-            // Since we only reset paidViaReconciliation=true ones, manually paid ones still have isPaid=true
-            if (data.isPaid && !data.paidViaReconciliation) {
-                // This penalty is manually marked as paid, skip it
-                return;
+            // If this penalty was previously auto-reconciled, reset it first
+            if (data.paidViaReconciliation === true) {
+                // Will be handled below — we treat it as "unpaid" for FIFO
             }
 
-            // This penalty is unpaid (or was auto-paid and we just reset it)
+            // Skip manually paid penalties (isPaid=true but NOT via reconciliation)
+            const isManuallyPaid = data.isPaid === true && data.paidViaReconciliation !== true;
+            if (isManuallyPaid) {
+                return; // Don't touch manually paid penalties
+            }
+
+            // This penalty is either unpaid or was previously auto-reconciled
+            // Try to auto-pay it from available credit
             if (availableCredit >= data.amount) {
-                // Auto-pay this penalty
+                // Mark as paid via reconciliation
                 batch.update(penaltyDoc.ref, {
                     isPaid: true,
                     paidViaReconciliation: true,
                     reconciledAt: serverTimestamp(),
                 });
                 availableCredit -= data.amount;
+            } else {
+                // Not enough credit — ensure it's marked as unpaid
+                // (important for previously auto-reconciled penalties that
+                //  can no longer be covered after an expense was deleted)
+                if (data.paidViaReconciliation === true || data.isPaid === true) {
+                    batch.update(penaltyDoc.ref, {
+                        isPaid: false,
+                        paidViaReconciliation: false,
+                        reconciledAt: null,
+                    });
+                }
             }
         });
 
         // --- Step 5: Commit all changes atomically ---
         await batch.commit();
+        console.log(`Reconciliation complete for member ${memberId}: credit=${totalExpenses}, remaining=${availableCredit}`);
     } catch (error) {
         console.error("Reconciliation error for member:", memberId, error);
         throw error;
