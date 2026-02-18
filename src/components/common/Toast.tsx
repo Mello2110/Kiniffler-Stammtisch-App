@@ -30,7 +30,7 @@ export function Toast({ message, isVisible, onClose, duration = 3000 }: ToastPro
     return (
         <div
             className={cn(
-                "fixed top-4 right-4 z-[10001] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300",
+                "fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300",
                 "bg-green-500/90 text-white backdrop-blur-sm",
                 isAnimating ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
             )}
