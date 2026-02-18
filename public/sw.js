@@ -13,92 +13,75 @@ firebase.initializeApp({
 });
 
 // Retrieve an instance of Firebase Messaging so that it can handle background messages.
-// This is required for valid getToken() retrieval when passing this SW registration.
 const messaging = firebase.messaging();
 
-const CACHE_NAME = 'kp-stammtisch-v5-mobile-fix'; // Bump version
-const URLS_TO_CACHE = [
-    '/',
+// ============================================
+// CACHING STRATEGY
+// ============================================
+// v8: Nuclear reset — clear ALL old caches, only cache static assets,
+// NEVER cache page HTML (navigation requests).
+const CACHE_NAME = 'kp-v8';
+const STATIC_ASSETS = [
     '/manifest.json',
     '/kanpai-icon.jpg',
     '/landing-icon.jpg',
     '/kanpai-logo.png',
-    '/login',
-    '/dashboard',
-    '/cash',
-    '/events',
-    '/feedback',
-    '/gallery',
-    '/hall-of-fame',
-    '/members',
-    '/options',
-    '/stats'
 ];
 
+// ============================================
+// INSTALL — cache static assets only, skip waiting immediately
+// ============================================
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => {
-                return cache.addAll(URLS_TO_CACHE);
-            })
+            .then((cache) => cache.addAll(STATIC_ASSETS))
             .then(() => self.skipWaiting())
     );
 });
 
+// ============================================
+// ACTIVATE — delete ALL old caches, claim clients immediately
+// ============================================
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        }).then(() => self.clients.claim())
+        caches.keys()
+            .then((names) => Promise.all(
+                names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
+            ))
+            .then(() => self.clients.claim())
     );
 });
 
+// ============================================
+// FETCH — network only for pages, network-first for assets
+// ============================================
 self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests
     if (event.request.method !== 'GET') return;
-
-    // Skip cross-origin requests
     if (!event.request.url.startsWith(self.location.origin)) return;
 
-    // Network First Strategy for pages (try network, fall back to cache)
-    // This ensures fresh content when online, but works without it.
+    // HTML page navigations: ALWAYS network, NEVER cache
+    if (event.request.mode === 'navigate') {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
+    // Static assets (_next/static, images, etc.): network first, cache fallback
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // If valid response, clone and cache it
-                if (!response || response.status !== 200 || response.type !== 'basic') {
-                    return response;
+                if (response && response.status === 200 && response.type === 'basic') {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                 }
-
-                const responseToCache = response.clone();
-                caches.open(CACHE_NAME)
-                    .then((cache) => {
-                        cache.put(event.request, responseToCache);
-                    });
-
                 return response;
             })
-            .catch(() => {
-                // Network failed, try cache
-                return caches.match(event.request)
-                    .then((response) => {
-                        if (response) {
-                            return response;
-                        }
-                        // If both fail, and it's a navigation request, could return a custom offline page
-                        // For now, we rely on the cache.
-                    });
-            })
+            .catch(() => caches.match(event.request))
     );
 });
 
-// Listen for push events
+// ============================================
+// PUSH NOTIFICATIONS
+// ============================================
 self.addEventListener('push', function (event) {
     const data = event.data?.json() ?? {};
     const title = data.title || 'Stammtisch Benachrichtigung';
@@ -111,7 +94,6 @@ self.addEventListener('push', function (event) {
     event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Handle notification click
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
     if (event.notification.data?.url) {

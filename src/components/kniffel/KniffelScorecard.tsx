@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { doc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize, Dice3, Dice4, Home, TrendingUp, ArrowUpRight, Star, Shuffle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toast, useToast } from "@/components/common/Toast";
 import type { Member, KniffelSheet, KniffelScores, ScoreValue, Player, GuestPlayer } from "@/types";
@@ -476,6 +476,21 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         return labels[field];
     };
 
+    // --- Icon mapping for lower section fields ---
+    const getFieldIcon = (field: ScoreField): React.ReactNode | null => {
+        const iconClass = "field-icon h-4 w-4 shrink-0";
+        const icons: Partial<Record<ScoreField, React.ReactNode>> = {
+            threeOfAKind: <Dice3 className={iconClass} />,
+            fourOfAKind: <Dice4 className={iconClass} />,
+            fullHouse: <Home className={iconClass} />,
+            smallStraight: <TrendingUp className={iconClass} />,
+            largeStraight: <ArrowUpRight className={iconClass} />,
+            kniffel: <Star className={iconClass} />,
+            chance: <Shuffle className={iconClass} />,
+        };
+        return icons[field] || null;
+    };
+
     const renderScoreInput = (memberId: string, field: ScoreField) => {
         const scores = localScores[memberId];
         const value = scores?.[field];
@@ -516,7 +531,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     <button
                         onClick={() => handleFixedFieldClick(memberId, field)}
                         className={cn(
-                            "w-full text-center px-1 py-1.5 rounded-lg border transition-all duration-200 text-sm cursor-pointer",
+                            "w-full text-center px-1 py-2 rounded-lg border transition-all duration-200 text-sm cursor-pointer min-h-[44px]",
                             isFilled
                                 ? "bg-green-500/20 border-green-400/40 text-green-300 font-bold"
                                 : "bg-white/5 border-white/10 hover:bg-white/10 text-muted-foreground"
@@ -527,7 +542,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     <button
                         onClick={() => toggleStroke(memberId, field)}
                         className={cn(
-                            "p-1 rounded transition-colors shrink-0",
+                            "p-1.5 rounded transition-colors shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center",
                             isStrokeValue
                                 ? "bg-gray-500/30 text-gray-300"
                                 : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
@@ -554,7 +569,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             currentValue: isStrokeValue ? null : (typeof value === 'number' ? value : null),
                         })}
                         className={cn(
-                            "w-full text-center px-1 py-1.5 rounded-lg border transition-all duration-200 text-sm cursor-pointer",
+                            "w-full text-center px-1 py-2.5 rounded-lg border transition-all duration-200 text-sm cursor-pointer min-h-[44px]",
                             isStrokeValue
                                 ? "bg-gray-500/20 border-gray-400/30 text-gray-400"
                                 : hasValue
@@ -567,7 +582,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     <button
                         onClick={() => toggleStroke(memberId, field)}
                         className={cn(
-                            "p-1 rounded transition-colors shrink-0",
+                            "p-1.5 rounded transition-colors shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center",
                             isStrokeValue
                                 ? "bg-gray-500/30 text-gray-300"
                                 : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
@@ -589,14 +604,14 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     value={isStrokeValue ? "-" : (value ?? "")}
                     onChange={(e) => handleScoreChange(memberId, field, e.target.value)}
                     className={cn(
-                        "w-full text-center px-1 py-1.5 rounded-lg bg-white/5 border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm",
+                        "w-full text-center px-1 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm min-h-[44px]",
                         highlightClass
                     )}
                 />
                 <button
                     onClick={() => toggleStroke(memberId, field)}
                     className={cn(
-                        "p-1 rounded transition-colors shrink-0",
+                        "p-1.5 rounded transition-colors shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center",
                         isStrokeValue
                             ? "bg-gray-500/30 text-gray-300"
                             : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
@@ -777,7 +792,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             {LOWER_FIELDS.map(field => (
                                 <tr key={field} className="border-b border-white/5">
                                     <td className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col", isFullscreen && "whitespace-nowrap")}>
-                                        {isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}
+                                        <span className="flex items-center gap-1">
+                                            {getFieldIcon(field)}
+                                            {isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}
+                                        </span>
                                         {isFixedPointField(field) && !isFullscreen && (
                                             <span className="text-xs text-muted-foreground ml-1 block sm:inline">
                                                 ({FIXED_POINT_FIELDS[field]})
@@ -854,9 +872,15 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         />
     );
 
+    const toastElement = <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />;
+
     return (
         <>
-            <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />
+            {/* Toast: portal to body in fullscreen so it appears above z-9999 overlay */}
+            {isFullscreen && typeof document !== 'undefined'
+                ? createPortal(toastElement, document.body)
+                : toastElement
+            }
             {isFullscreen && typeof document !== 'undefined'
                 ? createPortal(scorecardContent, document.body)
                 : scorecardContent

@@ -217,7 +217,7 @@ h6 {
 
 .kniffel-fullscreen th,
 .kniffel-fullscreen td {
-  padding: 2px 1px !important;
+  padding: 4px 2px !important;
   text-align: center !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -233,12 +233,12 @@ h6 {
   padding-left: 4px !important;
 }
 
-/* Score input cells - make them as small as possible */
+/* Score input cells - properly sized touch targets */
 .kniffel-fullscreen input {
   width: 100% !important;
-  padding: 1px 2px !important;
+  padding: 2px 4px !important;
   font-size: inherit !important;
-  min-height: 20px !important;
+  min-height: 32px !important;
   height: auto !important;
   text-align: center !important;
   box-sizing: border-box !important;
@@ -246,9 +246,16 @@ h6 {
 
 /* Buttons in fullscreen */
 .kniffel-fullscreen button {
-  padding: 1px 2px !important;
+  padding: 2px 4px !important;
   font-size: inherit !important;
-  min-height: 20px !important;
+  min-height: 32px !important;
+}
+
+/* Icon scaling in fullscreen */
+.kniffel-fullscreen .field-icon {
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0;
 }
 
 /* Compact mode for 7-9 players */
@@ -314,8 +321,13 @@ h6 {
   }
 
   .kniffel-fullscreen input {
-    min-height: 18px !important;
+    min-height: 28px !important;
     font-size: 12px !important;
+  }
+
+  .kniffel-fullscreen .field-icon {
+    width: 12px !important;
+    height: 12px !important;
   }
 
   /* Mobile compact mode */

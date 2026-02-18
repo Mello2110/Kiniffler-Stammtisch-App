@@ -16,8 +16,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (typeof window !== "undefined" && "serviceWorker" in navigator) {
             navigator.serviceWorker
-                .register("/sw.js")
-                .then((registration) => console.log("SW registered: ", registration.scope))
+                .register("/sw.js", { updateViaCache: 'none' })
+                .then((registration) => {
+                    console.log("SW registered: ", registration.scope);
+                    // Force check for updates immediately
+                    registration.update();
+                })
                 .catch((err) => console.log("SW registration failed: ", err));
         }
     }, []);
