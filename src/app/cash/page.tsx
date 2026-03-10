@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { collection, query, onSnapshot, orderBy, limit } from "firebase/firestore";
+import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import type { Member, Penalty } from "@/types";
@@ -13,7 +14,7 @@ import { PenaltyGroupedView } from "@/components/cash/PenaltyGroupedView";
 import { AddPenaltyModal } from "@/components/stats/AddPenaltyModal";
 import { EditPenaltyModal } from "@/components/stats/EditPenaltyModal";
 import { EditExpenseModal } from "@/components/cash/EditExpenseModal";
-import { Plus, Wallet, PiggyBank } from "lucide-react";
+import { Plus, Wallet, PiggyBank, History } from "lucide-react";
 import type { Expense } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditableHeader } from "@/components/common/EditableHeader";
@@ -66,6 +67,14 @@ export default function CashPage() {
                     </div>
 
                     <div className="flex items-center gap-4 text-muted-foreground">
+                        <Link
+                            href="/cash/ledger"
+                            className="flex items-center gap-2 bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+                        >
+                            <History className="h-4 w-4" />
+                            PayPal Sync
+                        </Link>
+                        <div className="h-10 w-px bg-border mx-2" />
                         <div className="flex flex-col items-end">
                             <span className="text-2xl font-black text-foreground outfit">€</span>
                             <span className="text-xs uppercase font-bold tracking-widest">Euro</span>

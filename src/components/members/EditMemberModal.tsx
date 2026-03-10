@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Loader2, Award, Calendar, Cake } from "lucide-react";
+import { X, Loader2, Award, Calendar, Cake, Mail } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Member } from "@/types";
@@ -40,6 +40,7 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
     const [selectedRoles, setSelectedRoles] = useState<string[]>(initialRoles);
     const [joinYear, setJoinYear] = useState(member.joinYear?.toString() || new Date().getFullYear().toString());
     const [birthday, setBirthday] = useState(member.birthday || "");
+    const [paypalEmail, setPaypalEmail] = useState(member.paypalEmail || "");
 
     // Toggle Role
     const toggleRole = (roleToCheck: string) => {
@@ -71,6 +72,7 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                 roles: selectedRoles,
                 joinYear: parseInt(joinYear),
                 birthday: birthday,
+                paypalEmail: paypalEmail.trim(),
                 isAdmin: selectedRoles.includes("Admin")
             });
 
@@ -133,14 +135,14 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                                         onClick={() => !isTakenAdmin && toggleRole(r)}
                                         disabled={isTakenAdmin}
                                         className={`group relative flex items-center justify-between p-3 rounded-xl border transition-all duration-200 ${isSelected
-                                                ? "bg-primary/10 border-primary shadow-sm"
-                                                : "bg-card border-border hover:border-primary/50 hover:bg-muted/50"
+                                            ? "bg-primary/10 border-primary shadow-sm"
+                                            : "bg-card border-border hover:border-primary/50 hover:bg-muted/50"
                                             } ${isTakenAdmin ? "opacity-50 cursor-not-allowed bg-muted/30 grayscale" : ""}`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className={`h-5 w-5 rounded-md flex items-center justify-center border transition-colors ${isSelected
-                                                    ? "bg-primary border-primary text-primary-foreground"
-                                                    : "border-muted-foreground/30 bg-background group-hover:border-primary/50"
+                                                ? "bg-primary border-primary text-primary-foreground"
+                                                : "border-muted-foreground/30 bg-background group-hover:border-primary/50"
                                                 }`}>
                                                 {isSelected && <Award className="h-3 w-3" />}
                                             </div>
@@ -188,6 +190,22 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                                 type="date"
                                 value={birthday}
                                 onChange={(e) => setBirthday(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 pb-2">
+                        <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-primary">
+                            PayPal Email <span className="text-[10px] lowercase font-normal">(für autom. Zuordnung)</span>
+                        </label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <input
+                                type="email"
+                                value={paypalEmail}
+                                onChange={(e) => setPaypalEmail(e.target.value)}
+                                placeholder="paypal@beispiel.de"
                                 className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                             />
                         </div>

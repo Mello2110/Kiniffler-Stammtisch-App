@@ -23,6 +23,7 @@ export interface Member {
     points: number;
     isAdmin?: boolean;
     email?: string; // Added for linking Auth User to Member
+    paypalEmail?: string; // Dedicated field for PayPal matching
     birthday?: string; // YYYY-MM-DD
     notificationPreferences?: NotificationPreferences;
 }
@@ -186,4 +187,35 @@ export interface KniffelSheet {
     chanceTimestamps?: {
         [memberId: string]: number; // Date.now() timestamp when chance was entered
     };
+}
+
+// --- PayPal Integration Types ---
+
+export type PayPalTransactionCategory = 'contribution' | 'penalty' | 'expense' | 'donation' | 'refund' | 'uncategorized';
+
+export interface PayPalTransaction {
+    id: string; // PayPal transaction_id
+    amount: number; // Positive for inflow, negative for outflow
+    fee?: number; // PayPal fee
+    net?: number; // Net amount (amount - fee)
+    currency: string;
+    payerEmail?: string;
+    payerName?: string;
+    note?: string; // transaction_subject or note
+    date: string; // ISO date string
+    status: string; // COMPLETED, PENDING, etc.
+
+    // Reconciliation info
+    assignedMemberId?: string; // Firebase UID
+    category: PayPalTransactionCategory;
+    isReconciled: boolean;
+    reconciledAt?: any;
+    linkedDocId?: string; // ID of the Penalty or Contribution doc updated
+}
+
+export interface PayPalBalance {
+    amount: number;
+    currency: string;
+    asOfTime: string;
+    lastRefreshTime: string;
 }

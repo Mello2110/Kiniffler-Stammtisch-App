@@ -24,6 +24,8 @@ export const functions = getFunctions(app);
 // Cloud Function callable references
 export const deleteCloudinaryImage = httpsCallable(functions, 'deleteCloudinaryImage');
 export const bulkDeleteCloudinaryImages = httpsCallable(functions, 'bulkDeleteCloudinaryImages');
+export const getPayPalBalance = httpsCallable(functions, 'getPayPalBalance');
+export const syncPayPalTransactions = httpsCallable(functions, 'syncPayPalTransactions');
 
 if (typeof window !== "undefined") {
     // Enable offline persistence

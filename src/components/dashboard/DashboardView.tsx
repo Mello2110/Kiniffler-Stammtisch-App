@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { NextEventWidget } from "@/components/dashboard/NextEventWidget";
+import { PayPalBalanceWidget } from "@/components/dashboard/PayPalBalanceWidget";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Users, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity } from "lucide-react";
 import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
@@ -319,6 +320,8 @@ export function DashboardView() {
                             className="border-purple-500/20 hover:border-purple-500/50 transition-colors h-full cursor-pointer"
                         />
                     </Link>
+
+                    <PayPalBalanceWidget />
                 </div>
             </div>
 

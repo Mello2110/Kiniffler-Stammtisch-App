@@ -22,6 +22,18 @@ import {
     monthlyOverviewTemplate
 } from './emailTemplates';
 
+import {
+    fetchPayPalBalance,
+    fetchPayPalTransactions,
+    paypalClientId,
+    paypalClientSecret
+} from './paypalService';
+
+import {
+    categorizeTransaction,
+    findMemberIdByEmail
+} from './categorization';
+
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -271,3 +283,138 @@ export const monthlyOverview = onSchedule({
         await queueEmail(user.email, emailContent.subject, emailContent.html, emailContent.text);
     }
 });
+
+// --- PayPal Functions ---
+
+export const getPayPalBalance = onCall({
+    secrets: [paypalClientId, paypalClientSecret]
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login erforderlich");
+    }
+
+    try {
+        const balance = await fetchPayPalBalance();
+        return { success: true, balance };
+    } catch (error: any) {
+        console.error('PayPal Balance Error:', error);
+        throw new HttpsError("internal", `PayPal Fehler: ${error.message}`);
+    }
+});
+
+export const syncPayPalTransactions = onCall({
+    secrets: [paypalClientId, paypalClientSecret]
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login erforderlich");
+    }
+
+    // Default to last 3 days if no dates provided
+    const now = new Date();
+    const defaultStart = format(addDays(now, -3), "yyyy-MM-dd'T'HH:mm:ss'Z'");
+    const defaultEnd = format(now, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+    const startDate = request.data.startDate || defaultStart;
+    const endDate = request.data.endDate || defaultEnd;
+
+    try {
+        const rawTransactions = await fetchPayPalTransactions(startDate, endDate);
+        const results = [];
+
+        for (const raw of rawTransactions) {
+            const info = raw.transaction_info;
+            const payer = raw.payer_info;
+            const tid = info.transaction_id;
+
+            // Check if exists
+            const docRef = db.collection('paypal_transactions').doc(tid);
+            const doc = await docRef.get();
+
+            if (doc.exists) continue;
+
+            const amount = parseFloat(info.transaction_amount.value);
+            const fee = info.fee_amount ? parseFloat(info.fee_amount.value) : 0;
+            const note = info.transaction_subject || info.transaction_note || '';
+            const payerEmail = payer?.email_address;
+
+            const category = categorizeTransaction(amount, note, payerEmail);
+            const memberId = await findMemberIdByEmail(db, payerEmail);
+
+            const tx: any = {
+                id: tid,
+                amount,
+                fee,
+                net: amount - fee,
+                currency: info.transaction_amount.currency_code,
+                payerEmail,
+                payerName: payer?.payer_name?.alternate_full_name,
+                note,
+                date: info.transaction_updated_date,
+                status: info.transaction_status,
+                category,
+                assignedMemberId: memberId,
+                isReconciled: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+
+            // Reconciliation Logic
+            if (memberId && (category === 'penalty' || category === 'contribution')) {
+                const reconciled = await performReconciliation(memberId, category, amount, tid);
+                if (reconciled) {
+                    tx.isReconciled = true;
+                    tx.reconciledAt = admin.firestore.FieldValue.serverTimestamp();
+                    tx.linkedDocId = reconciled;
+                }
+            }
+
+            await docRef.set(tx);
+            results.push(tx);
+        }
+
+        return { success: true, count: results.length, transactions: results };
+    } catch (error: any) {
+        console.error('PayPal Sync Error:', error);
+        throw new HttpsError("internal", `PayPal Sync Fehler: ${error.message}`);
+    }
+});
+
+async function performReconciliation(memberId: string, category: string, amount: number, paypalTxId: string) {
+    if (category === 'penalty') {
+        const penaltiesSnap = await db.collection('penalties')
+            .where('userId', '==', memberId)
+            .where('isPaid', '==', false)
+            .orderBy('date', 'asc')
+            .limit(1)
+            .get();
+
+        if (!penaltiesSnap.empty) {
+            const pDoc = penaltiesSnap.docs[0];
+            await pDoc.ref.update({
+                isPaid: true,
+                paidViaReconciliation: true,
+                reconciledAt: admin.firestore.FieldValue.serverTimestamp(),
+                paypalTxId: paypalTxId
+            });
+            return pDoc.id;
+        }
+    } else if (category === 'contribution') {
+        // Find oldest contribution not paid
+        const contributionsSnap = await db.collection('contributions')
+            .where('userId', '==', memberId)
+            .where('isPaid', '==', false)
+            .orderBy('year', 'asc')
+            .orderBy('month', 'asc')
+            .limit(1)
+            .get();
+
+        if (!contributionsSnap.empty) {
+            const cDoc = contributionsSnap.docs[0];
+            await cDoc.ref.update({
+                isPaid: true,
+                paypalTxId: paypalTxId
+            });
+            return cDoc.id;
+        }
+    }
+    return null;
+}
