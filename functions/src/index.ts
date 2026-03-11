@@ -287,7 +287,8 @@ export const monthlyOverview = onSchedule({
 // --- PayPal Functions ---
 
 export const getPayPalBalance = onCall({
-    secrets: [paypalClientId, paypalClientSecret]
+    secrets: [paypalClientId, paypalClientSecret],
+    cors: true
 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "Login erforderlich");
@@ -303,7 +304,8 @@ export const getPayPalBalance = onCall({
 });
 
 export const syncPayPalTransactions = onCall({
-    secrets: [paypalClientId, paypalClientSecret]
+    secrets: [paypalClientId, paypalClientSecret],
+    cors: true
 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "Login erforderlich");
