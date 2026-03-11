@@ -4,7 +4,7 @@
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-// import * as logger from 'firebase-functions/logger';
+import { setGlobalOptions } from 'firebase-functions/v2';
 import * as admin from 'firebase-admin';
 import * as cloudinary from 'cloudinary';
 import { addDays, startOfDay, endOfDay, format } from 'date-fns';
@@ -37,6 +37,11 @@ import {
 admin.initializeApp();
 const db = admin.firestore();
 
+// Set global options for all functions
+setGlobalOptions({
+    region: 'us-central1'
+});
+
 // --- Cloudinary Configuration ---
 const CLOUDINARY_CONFIG = {
     cloud_name: "doasrf18u",
@@ -46,7 +51,7 @@ const CLOUDINARY_CONFIG = {
 
 cloudinary.v2.config(CLOUDINARY_CONFIG);
 
-// --- Cloudinary Functions (Migrated to V2) ---
+// --- Cloudinary Functions ---
 
 export const deleteCloudinaryImage = onCall(async (request) => {
     if (!request.auth) {
@@ -101,9 +106,8 @@ export const bulkDeleteCloudinaryImages = onCall(async (request) => {
     return { results, successCount, totalCount: publicIds.length };
 });
 
-// --- Scheduled Notification Functions (Migrated to V2) ---
+// --- Scheduled Notification Functions ---
 
-// 1. Daily Event Reminder Check (09:00 Europe/Berlin)
 export const dailyEventReminderCheck = onSchedule({
     schedule: "0 9 * * *",
     timeZone: "Europe/Berlin"
@@ -112,68 +116,50 @@ export const dailyEventReminderCheck = onSchedule({
     const in7Days = addDays(today, 7);
     const tomorrow = addDays(today, 1);
 
-    // Fetch events for 7 days (dates stored as "yyyy-MM-dd" strings)
     const in7DaysStr = format(in7Days, 'yyyy-MM-dd');
     const events7DaysSnap = await db.collection('set_events')
         .where('date', '==', in7DaysStr)
         .get();
 
-    // Fetch events for tomorrow
     const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
     const events1DaySnap = await db.collection('set_events')
         .where('date', '==', tomorrowStr)
         .get();
 
-    // Process 7-day reminders
     if (!events7DaysSnap.empty) {
         const users = await getMembersWithPreference('eventReminder7Days');
-
         for (const doc of events7DaysSnap.docs) {
             const eventData = doc.data();
             const dateStr = new Date(eventData.date).toLocaleDateString('de-DE');
             const timeStr = eventData.time || 'Ganztägig';
-
             const pushPayload = {
                 title: `In einer Woche: ${eventData.title}`,
                 body: `Am ${dateStr} ist ${eventData.title} in ${eventData.location || 'Location tbd'}.`,
                 url: '/events'
             };
-
             const emailContent = eventReminderTemplate(eventData.title, dateStr, timeStr, 7, 'https://stammtisch-web-app.web.app/events');
-
-            // Send Pushes
             const pushTokens = users.filter(u => u.pushEnabled && u.fcmToken).map(u => u.fcmToken!);
             if (pushTokens.length > 0) await sendPushToUsers(pushTokens, pushPayload);
-
-            // Queue Emails
             for (const user of users.filter(u => u.emailEnabled && u.email)) {
                 await queueEmail(user.email, emailContent.subject, emailContent.html, emailContent.text);
             }
         }
     }
 
-    // Process 1-day reminders
     if (!events1DaySnap.empty) {
         const users = await getMembersWithPreference('eventReminder1Day');
-
         for (const doc of events1DaySnap.docs) {
             const eventData = doc.data();
             const dateStr = new Date(eventData.date).toLocaleDateString('de-DE');
             const timeStr = eventData.time || 'Ganztägig';
-
             const pushPayload = {
                 title: `Morgen: ${eventData.title}`,
                 body: `Vergiss nicht, morgen ist ${eventData.title}!`,
                 url: '/events'
             };
-
             const emailContent = eventReminderTemplate(eventData.title, dateStr, timeStr, 1, 'https://stammtisch-web-app.web.app/events');
-
-            // Send Pushes
             const pushTokens = users.filter(u => u.pushEnabled && u.fcmToken).map(u => u.fcmToken!);
             if (pushTokens.length > 0) await sendPushToUsers(pushTokens, pushPayload);
-
-            // Queue Emails
             for (const user of users.filter(u => u.emailEnabled && u.email)) {
                 await queueEmail(user.email, emailContent.subject, emailContent.html, emailContent.text);
             }
@@ -181,58 +167,42 @@ export const dailyEventReminderCheck = onSchedule({
     }
 });
 
-// 2. Voting Reminder (24th of month, 10:00 Europe/Berlin)
 export const votingReminder = onSchedule({
     schedule: "0 10 24 * *",
     timeZone: "Europe/Berlin"
 }, async (event) => {
     const today = new Date();
-    // Calculate next month
     let targetMonth = today.getMonth() + 1;
     let targetYear = today.getFullYear();
     if (targetMonth > 11) {
         targetMonth = 0;
         targetYear++;
     }
-
-    const nextMonthIndex = targetMonth; // 0-11
+    const nextMonthIndex = targetMonth;
     const nextMonthName = format(new Date(targetYear, nextMonthIndex, 1), 'MMMM', { locale: de });
-
-    // Get all votes for that month/year
     const votesSnap = await db.collection('stammtisch_votes')
         .where('month', '==', nextMonthIndex)
         .where('year', '==', targetYear)
         .get();
-
     const voterIds = new Set(votesSnap.docs.map(d => d.data().userId));
-
-    // Get users who want reminder
     const candidateUsers = await getMembersWithPreference('votingReminder');
-
-    // Filter those who haven't voted
     const usersToNotify = candidateUsers.filter(u => !voterIds.has(u.id));
 
     if (usersToNotify.length > 0) {
         const pushPayload = {
             title: `Abstimmung für ${nextMonthName} noch offen`,
             body: `Du hast noch nicht für den Stammtisch im ${nextMonthName} abgestimmt.`,
-            url: '/events' // or where voting is
+            url: '/events'
         };
-
         const emailContent = votingReminderTemplate(nextMonthName, 'https://stammtisch-web-app.web.app/events');
-
-        // Send Pushes
         const pushTokens = usersToNotify.filter(u => u.pushEnabled && u.fcmToken).map(u => u.fcmToken!);
         if (pushTokens.length > 0) await sendPushToUsers(pushTokens, pushPayload);
-
-        // Queue Emails
         for (const user of usersToNotify.filter(u => u.emailEnabled && u.email)) {
             await queueEmail(user.email, emailContent.subject, emailContent.html, emailContent.text);
         }
     }
 });
 
-// 3. Monthly Overview (1st of month, 09:00 Europe/Berlin)
 export const monthlyOverview = onSchedule({
     schedule: "0 9 1 * *",
     timeZone: "Europe/Berlin"
@@ -240,11 +210,8 @@ export const monthlyOverview = onSchedule({
     const today = new Date();
     const startOfMonthDate = startOfDay(new Date(today.getFullYear(), today.getMonth(), 1));
     const endOfMonthDate = endOfDay(new Date(today.getFullYear(), today.getMonth() + 1, 0));
-
     const monthName = format(today, 'MMMM', { locale: de });
     const year = today.getFullYear();
-
-    // Dates stored as "yyyy-MM-dd" strings — use string range comparison
     const startStr = format(startOfMonthDate, 'yyyy-MM-dd');
     const endStr = format(endOfMonthDate, 'yyyy-MM-dd');
     const eventsSnap = await db.collection('set_events')
@@ -265,20 +232,14 @@ export const monthlyOverview = onSchedule({
     });
 
     const users = await getMembersWithPreference('monthlyOverview');
-
     const pushPayload = {
         title: `Events im ${monthName} ${year}`,
         body: `${events.length} Events diesen Monat: ${events.map(e => e.name).join(', ')}`,
         url: '/dashboard'
     };
-
     const emailContent = monthlyOverviewTemplate(monthName, year, events, 'https://stammtisch-web-app.web.app/dashboard');
-
-    // Send Pushes
     const pushTokens = users.filter(u => u.pushEnabled && u.fcmToken).map(u => u.fcmToken!);
     if (pushTokens.length > 0) await sendPushToUsers(pushTokens, pushPayload);
-
-    // Queue Emails
     for (const user of users.filter(u => u.emailEnabled && u.email)) {
         await queueEmail(user.email, emailContent.subject, emailContent.html, emailContent.text);
     }
@@ -311,7 +272,6 @@ export const syncPayPalTransactions = onCall({
         throw new HttpsError("unauthenticated", "Login erforderlich");
     }
 
-    // Default to last 3 days if no dates provided
     const now = new Date();
     const defaultStart = format(addDays(now, -3), "yyyy-MM-dd'T'HH:mm:ss'Z'");
     const defaultEnd = format(now, "yyyy-MM-dd'T'HH:mm:ss'Z'");
@@ -328,7 +288,6 @@ export const syncPayPalTransactions = onCall({
             const payer = raw.payer_info;
             const tid = info.transaction_id;
 
-            // Check if exists
             const docRef = db.collection('paypal_transactions').doc(tid);
             const doc = await docRef.get();
 
@@ -359,7 +318,6 @@ export const syncPayPalTransactions = onCall({
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             };
 
-            // Reconciliation Logic
             if (memberId && (category === 'penalty' || category === 'contribution')) {
                 const reconciled = await performReconciliation(memberId, category, amount, tid);
                 if (reconciled) {
@@ -400,7 +358,6 @@ async function performReconciliation(memberId: string, category: string, amount:
             return pDoc.id;
         }
     } else if (category === 'contribution') {
-        // Find oldest contribution not paid
         const contributionsSnap = await db.collection('contributions')
             .where('userId', '==', memberId)
             .where('isPaid', '==', false)

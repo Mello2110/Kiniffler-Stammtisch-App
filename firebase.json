@@ -30,6 +30,9 @@
     {
       "source": "functions",
       "codebase": "default",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ],
       "disallowLegacyRuntimeConfig": true,
       "ignore": [
         "node_modules",
