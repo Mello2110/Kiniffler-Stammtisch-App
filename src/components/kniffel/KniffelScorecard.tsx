@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { doc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, updateDoc, addDoc, collection, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize, Dice3, Dice4, Home, TrendingUp, ArrowUpRight, Star, Shuffle } from "lucide-react";
@@ -54,7 +54,7 @@ interface SortablePlayerHeaderProps {
     dict: any;
 }
 
-function SortablePlayerHeader({ player, isReorderMode, isFullscreen, dict }: SortablePlayerHeaderProps) {
+function SortablePlayerHeader({ player, isReorderMode, isFullscreen, isActive, dict }: SortablePlayerHeaderProps & { isActive?: boolean }) {
     const {
         attributes,
         listeners,
@@ -74,9 +74,10 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, dict }: Sor
             ref={setNodeRef}
             style={style}
             className={cn(
-                "text-center p-2 font-semibold",
+                "text-center p-3 font-semibold border-b",
                 !isFullscreen && "min-w-[100px]",
-                isDragging && "opacity-50 z-50"
+                isDragging && "opacity-50 z-50",
+                isActive ? "bg-primary/15 border-primary/40 text-primary glow-active-player" : "border-white/5 bg-secondary"
             )}
         >
             <div className="flex flex-col items-center gap-1">
@@ -110,6 +111,11 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const [localPlayerOrder, setLocalPlayerOrder] = useState(sheet.playerOrder || sheet.memberSnapshot);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const { toast, showToast, hideToast } = useToast();
+
+    // Matrix Transfer States
+    const [transferModalOpen, setTransferModalOpen] = useState(false);
+    const [matrixPointsData, setMatrixPointsData] = useState<{ member: Member, rank: number, points: number, breakdown: { placement: number, kniffel: number, highestChance: number, lowestChance: number } }[]>([]);
+    const [isTransferring, setIsTransferring] = useState(false);
 
     // State for dice count entry modal (upper section fields)
     const [diceCountModal, setDiceCountModal] = useState<{
@@ -231,6 +237,35 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const isFixedPointField = (field: ScoreField): boolean => {
         return field in FIXED_POINT_FIELDS;
     };
+
+    // Calculate Active Player (player with lowest amount of filled fields)
+    const getActivePlayerId = useCallback(() => {
+        if (!sheetPlayers.length) return null;
+        
+        let minFilled = Infinity;
+        let activeId = null;
+
+        for (const player of sheetPlayers) {
+            const scores = localScores[player.id];
+            let filledCount = 0;
+            if (scores) {
+                for (const field of [...UPPER_FIELDS, ...LOWER_FIELDS]) {
+                    if (scores[field] !== undefined && scores[field] !== null) {
+                        filledCount++;
+                    }
+                }
+            }
+            if (filledCount < minFilled) {
+                minFilled = filledCount;
+                activeId = player.id;
+            }
+        }
+        
+        // If sheet is completely full (13 fields each), no one is active
+        if (minFilled >= 13) return null;
+        
+        return activeId;
+    }, [sheetPlayers, localScores]);
 
     // Calculate upper section sum for a member
     const calculateUpperSum = useCallback((memberId: string): number => {
@@ -456,6 +491,117 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         return null;
     };
 
+    // Matrix Transfer Logic
+    const calculateMatrixPoints = () => {
+        // Evaluate all players' scores
+        const playerScores = sheetPlayers.map(p => ({
+            player: p,
+            totalScore: calculateTotal(p.id)
+        }));
+
+        // Sort descending
+        playerScores.sort((a, b) => b.totalScore - a.totalScore);
+
+        // Assign ranks handling ties
+        const rankedPlayers: { player: Player, totalScore: number, rank: number }[] = [];
+        let currentRank = 1;
+        let p = 0; 
+        
+        while (p < playerScores.length) {
+            const currentScore = playerScores[p].totalScore;
+            // Find how many tied players
+            let ties = 1;
+            while (p + ties < playerScores.length && playerScores[p + ties].totalScore === currentScore) {
+                ties++;
+            }
+            
+            for (let i = 0; i < ties; i++) {
+                rankedPlayers.push({ player: playerScores[p + i].player, totalScore: currentScore, rank: currentRank });
+            }
+            
+            currentRank += ties; 
+            p += ties;
+        }
+
+        const maxPoints = sheetPlayers.length; 
+        
+        const matrixData = [];
+        
+        for (const rp of rankedPlayers) {
+            // Matrix only for actual members, ignore Guests
+            if (isGuest(rp.player)) continue;
+            
+            const placementPoints = Math.max(0, maxPoints - rp.rank + 1);
+            const breakdown = { placement: placementPoints, kniffel: 0, highestChance: 0, lowestChance: 0 };
+            let totalPoints = placementPoints;
+            
+            // Kniffel Extra
+            if (getKniffelHighlight(rp.player.id)) {
+                breakdown.kniffel = 1;
+                totalPoints += 1;
+            }
+            
+            // Chance Extras
+            const chanceHighlight = getChanceHighlight(rp.player.id);
+            if (chanceHighlight === "highest") {
+                breakdown.highestChance = 1;
+                totalPoints += 1;
+            } else if (chanceHighlight === "lowest") {
+                breakdown.lowestChance = 1;
+                totalPoints += 1;
+            }
+            
+            matrixData.push({
+                member: rp.player as Member,
+                rank: rp.rank,
+                points: totalPoints,
+                breakdown
+            });
+        }
+        
+        setMatrixPointsData(matrixData);
+        setTransferModalOpen(true);
+    };
+
+    const handleTransferPoints = async () => {
+        setIsTransferring(true);
+        try {
+            for (const data of matrixPointsData) {
+                const compositeId = `${data.member.id}_${sheet.year}_${sheet.month}`;
+                const pointRef = doc(db, "points", compositeId);
+                
+                // Fetch the existing document to update sheetContributions
+                const snap = await getDoc(pointRef);
+                const existingData = snap.exists() ? snap.data() : null;
+                
+                // Initialize or preserve existing contributions
+                const sheetContributions = existingData?.sheetContributions || {};
+                
+                // Update this sheet's contribution
+                sheetContributions[sheet.id] = data.points;
+                
+                // Calculate the new total points dynamically
+                const newTotalPoints = Object.values(sheetContributions).reduce((sum: number, val: any) => sum + (typeof val === 'number' ? val : 0), 0);
+                
+                await setDoc(pointRef, {
+                    id: compositeId,
+                    userId: data.member.id,
+                    month: sheet.month,
+                    year: sheet.year,
+                    points: newTotalPoints,
+                    sheetContributions: sheetContributions
+                }, { merge: true });
+            }
+            showToast(dict.kniffel.transferSuccess);
+            setTransferModalOpen(false);
+        } catch (error) {
+            console.error("Error saving to matrix:", error);
+            showToast("Error saving to points matrix");
+        } finally {
+            setIsTransferring(false);
+        }
+    };
+
     // Field label mapping
     const getFieldLabel = (field: ScoreField): string => {
         const labels: Record<ScoreField, string> = {
@@ -639,6 +785,15 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 "flex justify-end gap-2 mb-3 relative fullscreen-controls",
                 isFullscreen && "p-4 pb-0"
             )}>
+                {/* Submit to Matrix Button */}
+                <button
+                    onClick={calculateMatrixPoints}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-300 transition-all touch-target"
+                >
+                    <ArrowUpRight className="h-4 w-4" />
+                    <span className="hidden md:inline">{dict.kniffel.transferToMatrix}</span>
+                </button>
+
                 {/* Reorder Columns Button */}
                 <button
                     onClick={() => setIsReorderMode(!isReorderMode)}
@@ -752,7 +907,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                                 <tr key={field} className="border-b border-white/5">
                                     <td className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col", isFullscreen && "whitespace-nowrap")}>{isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}</td>
                                     {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-1", !isFullscreen && "min-w-[100px]")}>
+                                        <td key={player.id} className={cn("p-1 transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                             {renderScoreInput(player.id, field)}
                                         </td>
                                     ))}
@@ -763,7 +918,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             <tr className="bg-white/5 font-semibold">
                                 <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.upperSum}</td>
                                 {sortedPlayers.map((player: Player) => (
-                                    <td key={player.id} className={cn("p-2 text-center", !isFullscreen && "min-w-[100px]")}>
+                                    <td key={player.id} className={cn("p-2 text-center transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         {calculateUpperSum(player.id)}
                                     </td>
                                 ))}
@@ -773,7 +928,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             <tr className="bg-white/5 font-semibold">
                                 <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.bonus}</td>
                                 {sortedPlayers.map((player: Player) => (
-                                    <td key={player.id} className={cn("p-2 text-center", !isFullscreen && "min-w-[100px]")}>
+                                    <td key={player.id} className={cn("p-2 text-center transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         <span className={cn(calculateBonus(player.id) > 0 && "text-green-400")}>
                                             {calculateBonus(player.id)}
                                         </span>
@@ -803,7 +958,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                                         )}
                                     </td>
                                     {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-1", !isFullscreen && "min-w-[100px]")}>
+                                        <td key={player.id} className={cn("p-1 transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                             {renderScoreInput(player.id, field)}
                                         </td>
                                     ))}
@@ -814,7 +969,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             <tr className="bg-white/5 font-semibold">
                                 <td className="p-2 sticky left-0 z-10 bg-secondary/90 backdrop-blur shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5">{dict.kniffel.lowerSum}</td>
                                 {sortedPlayers.map((player: Player) => (
-                                    <td key={player.id} className={cn("p-2 text-center", !isFullscreen && "min-w-[100px]")}>
+                                    <td key={player.id} className={cn("p-2 text-center transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         {calculateLowerSum(player.id)}
                                     </td>
                                 ))}
@@ -824,7 +979,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             <tr className="bg-primary/20 font-bold text-lg">
                                 <td className="p-3 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-primary/30">{dict.kniffel.total}</td>
                                 {sortedPlayers.map((player: Player) => (
-                                    <td key={player.id} className={cn("p-3 text-center text-primary", !isFullscreen && "min-w-[100px]")}>
+                                    <td key={player.id} className={cn("p-3 text-center text-primary transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         {calculateTotal(player.id)}
                                     </td>
                                 ))}
@@ -837,7 +992,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                                     {dict.kniffel.penalty}
                                 </td>
                                 {sortedPlayers.map((player: Player) => (
-                                    <td key={player.id} className={cn("p-2 text-center", !isFullscreen && "min-w-[100px]")}>
+                                    <td key={player.id} className={cn("p-2 text-center transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         <button
                                             onClick={() => createPenalty(player)}
                                             className="px-3 py-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-lg transition-colors border border-red-500/30 touch-target flex items-center justify-center w-full"
@@ -891,6 +1046,80 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 ? createPortal(modalElement, document.body)
                 : modalElement
             }
+
+            {/* Matrix Transfer Modal */}
+            {transferModalOpen && (
+                (isFullscreen && typeof document !== 'undefined' ? createPortal : (el: React.ReactNode) => el)(
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-secondary w-full max-w-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                            <h3 className="font-semibold text-lg">{dict.kniffel.transferConfirmTitle}</h3>
+                            <button onClick={() => setTransferModalOpen(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-4 overflow-y-auto">
+                            <p className="text-sm text-muted-foreground mb-4">{dict.kniffel.transferConfirmDesc}</p>
+                            
+                            <div className="space-y-3">
+                                {matrixPointsData.map((data, idx) => (
+                                    <div key={idx} className="bg-white/5 p-3 rounded-lg border border-white/5 flex flex-col gap-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-foreground">{data.member.name}</span>
+                                            <span className="text-primary font-bold">{data.points} Pkt</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                            <span>{dict.kniffel.place} {data.rank}</span>
+                                            <span>{data.breakdown.placement} Pkt</span>
+                                        </div>
+                                        {(data.breakdown.kniffel > 0 || data.breakdown.highestChance > 0 || data.breakdown.lowestChance > 0) && (
+                                            <div className="border-t border-white/10 pt-2 flex flex-col gap-1 text-xs">
+                                                {data.breakdown.kniffel > 0 && (
+                                                    <div className="flex justify-between text-yellow-400">
+                                                        <span>Kniffel Bonus</span>
+                                                        <span>+1</span>
+                                                    </div>
+                                                )}
+                                                {data.breakdown.highestChance > 0 && (
+                                                    <div className="flex justify-between text-emerald-400">
+                                                        <span>Chance (Max)</span>
+                                                        <span>+1</span>
+                                                    </div>
+                                                )}
+                                                {data.breakdown.lowestChance > 0 && (
+                                                    <div className="flex justify-between text-rose-400">
+                                                        <span>Chance (Min)</span>
+                                                        <span>+1</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="p-4 border-t border-white/10 bg-white/5 flex gap-2">
+                            <button 
+                                onClick={() => setTransferModalOpen(false)}
+                                className="flex-1 py-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors font-medium text-sm"
+                            >
+                                {dict.kniffel.cancel}
+                            </button>
+                            <button 
+                                onClick={handleTransferPoints}
+                                disabled={isTransferring}
+                                className="flex-1 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-500/40 font-medium text-sm transition-colors disabled:opacity-50"
+                            >
+                                {isTransferring ? "..." : dict.kniffel.transferBtn}
+                            </button>
+                        </div>
+                    </div>
+                </div>, 
+                document.body as any
+                )
+            )}
         </>
     );
 }

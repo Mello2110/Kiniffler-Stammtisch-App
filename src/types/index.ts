@@ -114,6 +114,7 @@ export interface PointEntry {
     month: number; // 0-11
     year: number;
     points: number;
+    sheetContributions?: Record<string, number>; // Maps sheet ID to the points it contributed
 }
 
 export interface CashConfig {

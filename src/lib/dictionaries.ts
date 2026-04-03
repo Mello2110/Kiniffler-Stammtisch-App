@@ -196,7 +196,14 @@ export const dictionaries = {
             howManyDice: "How many {field} rolled?",
             points: "Points",
             selectDiceCount: "Select dice count",
-            enter: "Enter"
+            enter: "Enter",
+            // Matrix Transfer
+            transferToMatrix: "Submit to Matrix",
+            transferConfirmTitle: "Matrix Transfer Summary",
+            transferConfirmDesc: "The following points will be transferred directly to the Points Matrix:",
+            transferBtn: "Transfer Points",
+            transferSuccess: "Points successfully transferred!",
+            place: "Place"
         }
     },
     de: {
@@ -394,7 +401,14 @@ export const dictionaries = {
             howManyDice: "Wie viele {field} gewürfelt?",
             points: "Punkte",
             selectDiceCount: "Anzahl auswählen",
-            enter: "Eintragen"
+            enter: "Eintragen",
+            // Matrix Transfer
+            transferToMatrix: "Punkte übertragen",
+            transferConfirmTitle: "Punkte Zusammenfassung",
+            transferConfirmDesc: "Folgende Punkte werden in die Points Matrix übertragen:",
+            transferBtn: "Punkte absegnen",
+            transferSuccess: "Punkte erfolgreich übertragen!",
+            place: "Platz"
         }
     },
     pl: {
@@ -592,7 +606,14 @@ export const dictionaries = {
             howManyDice: "Ile {field} wyrzucono?",
             points: "Punkty",
             selectDiceCount: "Wybierz liczbę",
-            enter: "Wprowadź"
+            enter: "Wprowadź",
+            // Matrix Transfer
+            transferToMatrix: "Przenieś do Macierzy",
+            transferConfirmTitle: "Podsumowanie Punktów",
+            transferConfirmDesc: "Następujące punkty zostaną przeniesione do Macierzy Punktów:",
+            transferBtn: "Przenieś Punkty",
+            transferSuccess: "Punkty pomyślnie przeniesione!",
+            place: "Miejsce"
         }
     }
 };
