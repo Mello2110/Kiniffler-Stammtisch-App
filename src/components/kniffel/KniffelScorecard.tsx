@@ -1007,10 +1007,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                                         className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col")}
                                         title={getFieldLabel(field)}
                                     >
-                                        <div className="flex items-center justify-center p-1 w-full h-full opacity-90 hover:opacity-100 transition-opacity text-foreground">
+                                        <div className="relative flex items-center justify-center p-1 w-full h-full opacity-90 hover:opacity-100 transition-opacity text-foreground">
                                             {getFieldIcon(field)}
                                             {isFixedPointField(field) && !isFullscreen && (
-                                                <span className="text-[10px] text-muted-foreground ml-1.5 opacity-75">
+                                                <span className="absolute left-[calc(50%+12px)] md:left-[calc(50%+16px)] text-[10px] text-muted-foreground opacity-75 whitespace-nowrap">
                                                     ({FIXED_POINT_FIELDS[field]})
                                                 </span>
                                             )}
