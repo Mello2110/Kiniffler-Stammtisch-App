@@ -224,13 +224,13 @@ h6 {
   white-space: nowrap !important;
 }
 
-/* First column (field names) - minimal but readable */
+/* First column (icon labels) - enough room for icons + optional point badge */
 .kniffel-fullscreen .sticky-col {
-  width: 15% !important;
-  min-width: 0 !important;
+  width: 10% !important;
+  min-width: 64px !important;
   max-width: none !important;
-  text-align: left !important;
-  padding-left: 4px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
 }
 
 /* Score input cells - properly sized touch targets */
@@ -264,7 +264,9 @@ h6 {
 }
 
 .kniffel-fullscreen.compact-mode .sticky-col {
-  width: 12% !important;
+  width: 9% !important;
+  min-width: 58px !important;
+  text-align: center !important;
 }
 
 /* Ultra-compact mode for 10-12 players */
@@ -273,7 +275,9 @@ h6 {
 }
 
 .kniffel-fullscreen.ultra-compact-mode .sticky-col {
-  width: 10% !important;
+  width: 8% !important;
+  min-width: 52px !important;
+  text-align: center !important;
 }
 
 .kniffel-fullscreen.ultra-compact-mode th,
@@ -311,8 +315,10 @@ h6 {
   }
 
   .kniffel-fullscreen .sticky-col {
-    width: 18% !important;
-    font-size: clamp(6px, 2vw, 10px) !important;
+    width: 14% !important;
+    min-width: 52px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
   }
 
   .kniffel-fullscreen th,
@@ -336,7 +342,9 @@ h6 {
   }
 
   .kniffel-fullscreen.compact-mode .sticky-col {
-    width: 15% !important;
+    width: 12% !important;
+    min-width: 46px !important;
+    text-align: center !important;
   }
 
   /* Mobile ultra-compact mode */
@@ -345,7 +353,9 @@ h6 {
   }
 
   .kniffel-fullscreen.ultra-compact-mode .sticky-col {
-    width: 12% !important;
+    width: 10% !important;
+    min-width: 40px !important;
+    text-align: center !important;
   }
 
   .kniffel-fullscreen.ultra-compact-mode input {
@@ -369,7 +379,10 @@ h6 {
   }
 
   .kniffel-fullscreen .sticky-col {
-    width: 12% !important;
+    width: 10% !important;
+    min-width: 46px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
   }
 
   .kniffel-fullscreen th,
