@@ -928,7 +928,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     <table style={{ tableLayout: 'fixed', width: '100%' }} className={cn("text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.08)]")}>
                         <thead>
                             <tr>
-                                <th style={{ width: '48px', minWidth: '40px', maxWidth: '56px' }} className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col"></th>
+                                <th style={{ width: '96px', minWidth: '80px', maxWidth: '112px' }} className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col"></th>
                                 <SortableContext
                                     items={localPlayerOrder}
                                     strategy={horizontalListSortingStrategy}
