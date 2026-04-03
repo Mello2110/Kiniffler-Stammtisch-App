@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-04-03 - Kniffel Scorecard: Icon-UI & iPad-Optimierung
+
+- **Icon-Only Labels**: Alle Zeilen-Beschriftungen (Einser bis Sechser, Dreierpasch bis Chance) sind jetzt reine Icons ohne Text
+  - Oberer Teil: `Dice1`–`Dice6` Lucide Icons
+  - 3er-/4er-Pasch: Custom Mini-Würfel mit "x" als 3er/4er Cluster
+  - Full House: `Home`, Kleine Straße: `Signpost`, Große Straße: `Route`, Kniffel: `Star`, Chance: `Shuffle`
+  - Tooltip (`title`) zeigt weiterhin den Feldnamen per Hover
+- **NumpadEntryModal**: Neues iPad-optimiertes Zahlenfeld-Popup für Dreierpasch, Viererpasch und Chance
+  - Ersetzt die native Tastatureingabe komplett
+  - 1–9, 0, Clear und Delete Tasten
+  - Punkte-Maximum (30) eingebaut
+  - „Streichen"-Button direkt im Modal
+- **Gleiche Spaltenbreiten**: Alle Spieler-Spalten haben jetzt exakt dieselbe Breite via `table-layout: fixed`
+  - Icon-Spalte auf 96px fixiert damit Icons + Punkt-Badges nicht überlappen
+  - Spielernamen werden sanft gekürzt (`truncate`) mit Hover-Tooltip
+- **Vollbild-Fix**: `globals.css` korrigiert – `text-align: left !important` auf `.sticky-col` geändert zu `center` damit Icons auch im Vollbild-Modus korrekt zentriert sind
+- **Matrix-Transfer**: Punkte-Übertrag aus Spielblätter in Punkte-Matrix korrekt kumuliert (mehrere Blätter pro Monat werden addiert via `sheetContributions`)
+
+---
+
 ## 2026-02-13 - Push Notifications & Event-Fix
 
 - Cloud Functions: `db.collection('events')` → `db.collection('set_events')` — Notifications fanden nie Events
