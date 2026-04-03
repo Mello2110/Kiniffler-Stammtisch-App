@@ -956,10 +956,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             {UPPER_FIELDS.map(field => (
                                 <tr key={field} className="border-b border-white/5">
                                     <td 
-                                        className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col flex justify-center items-center h-full")}
+                                        className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col text-center align-middle")}
                                         title={getFieldLabel(field)}
                                     >
-                                        <div className="flex items-center justify-center p-1 opacity-90 hover:opacity-100 transition-opacity text-foreground">
+                                        <div className="relative inline-flex items-center justify-center w-8 h-8 opacity-90 hover:opacity-100 transition-opacity text-foreground mx-auto">
                                             {getFieldIcon(field)}
                                         </div>
                                     </td>
@@ -1004,13 +1004,13 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             {LOWER_FIELDS.map(field => (
                                 <tr key={field} className="border-b border-white/5">
                                     <td 
-                                        className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col")}
+                                        className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col text-center align-middle")}
                                         title={getFieldLabel(field)}
                                     >
-                                        <div className="relative flex items-center justify-center p-1 w-full h-full opacity-90 hover:opacity-100 transition-opacity text-foreground">
+                                        <div className="relative inline-flex items-center justify-center w-8 h-8 opacity-90 hover:opacity-100 transition-opacity text-foreground mx-auto">
                                             {getFieldIcon(field)}
                                             {isFixedPointField(field) && !isFullscreen && (
-                                                <span className="absolute left-[calc(50%+12px)] md:left-[calc(50%+16px)] text-[10px] text-muted-foreground opacity-75 whitespace-nowrap">
+                                                <span className="absolute left-full ml-1 text-[10px] text-muted-foreground opacity-75 whitespace-nowrap">
                                                     ({FIXED_POINT_FIELDS[field]})
                                                 </span>
                                             )}
