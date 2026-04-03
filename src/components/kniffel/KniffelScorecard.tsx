@@ -75,13 +75,12 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, isActive, d
             ref={setNodeRef}
             style={style}
             className={cn(
-                "text-center p-3 font-semibold border-b",
-                !isFullscreen && "min-w-[100px]",
+                "text-center p-2 font-semibold border-b w-[110px] min-w-[90px] max-w-[150px]",
                 isDragging && "opacity-50 z-50",
                 isActive ? "bg-primary/15 border-primary/40 text-primary glow-active-player" : "border-white/5 bg-secondary"
             )}
         >
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-1 overflow-hidden">
                 {isReorderMode && (
                     <div
                         {...attributes}
@@ -91,9 +90,9 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, isActive, d
                         <GripVertical className="h-4 w-4 text-primary" />
                     </div>
                 )}
-                <span>{player.name}</span>
+                <span className="truncate w-full text-center block text-xs sm:text-sm" title={player.name}>{player.name}</span>
                 {isGuest(player) && (
-                    <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
+                    <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
                         {dict.kniffel.guestLabel}
                     </span>
                 )}
@@ -923,10 +922,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 onDragEnd={handleColumnReorder}
             >
                 <div className={cn("kniffel-table-wrapper", isFullscreen && "flex-1 overflow-auto px-4 pb-4")}>
-                    <table className={cn("w-full text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.08)]")}>
+                    <table className={cn("text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.08)] w-full table-fixed")}>
                         <thead>
                             <tr>
-                                <th className={cn("text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col", !isFullscreen && "min-w-[140px]")}></th>
+                                <th className={cn("text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col w-12 min-w-[40px] max-w-[56px]")}></th>
                                 <SortableContext
                                     items={localPlayerOrder}
                                     strategy={horizontalListSortingStrategy}
@@ -964,7 +963,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                                         </div>
                                     </td>
                                     {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-1 transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
+                                        <td key={player.id} className={cn("p-1 transition-colors duration-300", getActivePlayerId() === player.id && "bg-primary/10")}>
                                             {renderScoreInput(player.id, field)}
                                         </td>
                                     ))}
@@ -1017,7 +1016,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                                         </div>
                                     </td>
                                     {sortedPlayers.map((player: Player) => (
-                                        <td key={player.id} className={cn("p-1 transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
+                                        <td key={player.id} className={cn("p-1 transition-colors duration-300", getActivePlayerId() === player.id && "bg-primary/10")}>
                                             {renderScoreInput(player.id, field)}
                                         </td>
                                     ))}
