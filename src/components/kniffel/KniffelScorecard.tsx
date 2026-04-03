@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { doc, setDoc, updateDoc, addDoc, collection, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize, Dice3, Dice4, Home, TrendingUp, ArrowUpRight, Star, Shuffle } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Dices, Route, Signpost, Home, TrendingUp, ArrowUpRight, Star, Shuffle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toast, useToast } from "@/components/common/Toast";
 import type { Member, KniffelSheet, KniffelScores, ScoreValue, Player, GuestPlayer } from "@/types";
@@ -26,6 +26,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { DiceCountEntryModal, UPPER_FIELD_MULTIPLIERS } from "./DiceCountEntryModal";
+import { NumpadEntryModal } from "./NumpadEntryModal";
 
 interface KniffelScorecardProps {
     sheet: KniffelSheet;
@@ -109,7 +110,6 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const [showSortDropdown, setShowSortDropdown] = useState(false);
     const [isReorderMode, setIsReorderMode] = useState(false);
     const [localPlayerOrder, setLocalPlayerOrder] = useState(sheet.playerOrder || sheet.memberSnapshot);
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const { toast, showToast, hideToast } = useToast();
 
     // Matrix Transfer States
@@ -117,7 +117,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const [matrixPointsData, setMatrixPointsData] = useState<{ member: Member, rank: number, points: number, breakdown: { placement: number, kniffel: number, highestChance: number, lowestChance: number } }[]>([]);
     const [isTransferring, setIsTransferring] = useState(false);
 
-    // State for dice count entry modal (upper section fields)
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Modal States
     const [diceCountModal, setDiceCountModal] = useState<{
         isOpen: boolean;
         playerId: string;
@@ -129,6 +131,20 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         playerId: "",
         playerName: "",
         field: "ones",
+        currentValue: null,
+    });
+    
+    const [numpadModal, setNumpadModal] = useState<{
+        isOpen: boolean;
+        playerId: string;
+        playerName: string;
+        field: ScoreField;
+        currentValue: number | null;
+    }>({
+        isOpen: false,
+        playerId: "",
+        playerName: "",
+        field: "chance",
         currentValue: null,
     });
 
@@ -622,19 +638,42 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         return labels[field];
     };
 
-    // --- Icon mapping for lower section fields ---
+    const GenericDie = ({ className }: { className?: string }) => (
+        <div className={cn("w-3 h-3 rounded-[3px] border-[1.5px] border-current flex items-center justify-center shrink-0", className)}>
+            <span className="text-[6px] font-bold leading-none select-none">x</span>
+        </div>
+    );
+
+    // --- Icon mapping for all fields ---
     const getFieldIcon = (field: ScoreField): React.ReactNode | null => {
-        const iconClass = "field-icon h-4 w-4 shrink-0";
-        const icons: Partial<Record<ScoreField, React.ReactNode>> = {
-            threeOfAKind: <Dice3 className={iconClass} />,
-            fourOfAKind: <Dice4 className={iconClass} />,
-            fullHouse: <Home className={iconClass} />,
-            smallStraight: <TrendingUp className={iconClass} />,
-            largeStraight: <ArrowUpRight className={iconClass} />,
-            kniffel: <Star className={iconClass} />,
-            chance: <Shuffle className={iconClass} />,
-        };
-        return icons[field] || null;
+        const className = "h-5 w-5 md:h-6 md:w-6";
+        
+        switch (field) {
+            case "ones": return <Dice1 className={className} />;
+            case "twos": return <Dice2 className={className} />;
+            case "threes": return <Dice3 className={className} />;
+            case "fours": return <Dice4 className={className} />;
+            case "fives": return <Dice5 className={className} />;
+            case "sixes": return <Dice6 className={className} />;
+            case "threeOfAKind": 
+                return (
+                    <div className="flex items-center gap-[2px]">
+                        <GenericDie /><GenericDie /><GenericDie />
+                    </div>
+                );
+            case "fourOfAKind": 
+                return (
+                    <div className="flex items-center gap-[2px]">
+                        <GenericDie /><GenericDie /><GenericDie /><GenericDie />
+                    </div>
+                );
+            case "fullHouse": return <Home className={className} />;
+            case "smallStraight": return <Signpost className={className} />;
+            case "largeStraight": return <Route className={className} />;
+            case "kniffel": return <Star className={className} />;
+            case "chance": return <Shuffle className={className} />;
+            default: return null;
+        }
     };
 
     const renderScoreInput = (memberId: string, field: ScoreField) => {
@@ -741,19 +780,30 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
             );
         }
 
-        // Lower section non-fixed fields: regular input (threeOfAKind, fourOfAKind, chance)
+        // Lower section non-fixed fields: Numpad Entry (threeOfAKind, fourOfAKind, chance)
+        const hasLowerValue = !isStrokeValue && value !== undefined && value !== null;
         return (
             <div className="flex items-center gap-1">
-                <input
-                    type="text"
-                    inputMode="numeric"
-                    value={isStrokeValue ? "-" : (value ?? "")}
-                    onChange={(e) => handleScoreChange(memberId, field, e.target.value)}
+                <button
+                    onClick={() => setNumpadModal({
+                        isOpen: true,
+                        playerId: memberId,
+                        playerName: getPlayerName(),
+                        field: field,
+                        currentValue: isStrokeValue ? null : (typeof value === 'number' ? value : null),
+                    })}
                     className={cn(
-                        "w-full text-center px-1 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm min-h-[44px]",
+                        "w-full text-center px-1 py-2.5 rounded-lg border transition-all duration-200 text-sm cursor-pointer min-h-[44px]",
+                        isStrokeValue
+                            ? "bg-gray-500/20 border-gray-400/30 text-gray-400 line-through"
+                            : hasLowerValue
+                                ? "bg-primary/20 border-primary/40 text-primary font-semibold"
+                                : "bg-white/5 border-white/10 hover:bg-white/10 text-muted-foreground",
                         highlightClass
                     )}
-                />
+                >
+                    {isStrokeValue ? "-" : (hasLowerValue ? value : "")}
+                </button>
                 <button
                     onClick={() => toggleStroke(memberId, field)}
                     className={cn(
@@ -905,7 +955,14 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             {/* Upper Section Fields */}
                             {UPPER_FIELDS.map(field => (
                                 <tr key={field} className="border-b border-white/5">
-                                    <td className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col", isFullscreen && "whitespace-nowrap")}>{isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}</td>
+                                    <td 
+                                        className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col flex justify-center items-center h-full")}
+                                        title={getFieldLabel(field)}
+                                    >
+                                        <div className="flex items-center justify-center p-1 opacity-90 hover:opacity-100 transition-opacity text-foreground">
+                                            {getFieldIcon(field)}
+                                        </div>
+                                    </td>
                                     {sortedPlayers.map((player: Player) => (
                                         <td key={player.id} className={cn("p-1 transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                             {renderScoreInput(player.id, field)}
@@ -946,16 +1003,18 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                             {/* Lower Section Fields */}
                             {LOWER_FIELDS.map(field => (
                                 <tr key={field} className="border-b border-white/5">
-                                    <td className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col", isFullscreen && "whitespace-nowrap")}>
-                                        <span className="flex items-center gap-1">
+                                    <td 
+                                        className={cn("p-2 font-medium sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-b border-white/5 sticky-col")}
+                                        title={getFieldLabel(field)}
+                                    >
+                                        <div className="flex items-center justify-center p-1 w-full h-full opacity-90 hover:opacity-100 transition-opacity text-foreground">
                                             {getFieldIcon(field)}
-                                            {isFullscreen && compactMode ? getShortFieldLabel(field) : getFieldLabel(field)}
-                                        </span>
-                                        {isFixedPointField(field) && !isFullscreen && (
-                                            <span className="text-xs text-muted-foreground ml-1 block sm:inline">
-                                                ({FIXED_POINT_FIELDS[field]})
-                                            </span>
-                                        )}
+                                            {isFixedPointField(field) && !isFullscreen && (
+                                                <span className="text-[10px] text-muted-foreground ml-1.5 opacity-75">
+                                                    ({FIXED_POINT_FIELDS[field]})
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     {sortedPlayers.map((player: Player) => (
                                         <td key={player.id} className={cn("p-1 transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
@@ -1027,6 +1086,23 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         />
     );
 
+    const numpadModalElement = (
+        <NumpadEntryModal
+            isOpen={numpadModal.isOpen}
+            onClose={() => setNumpadModal(prev => ({ ...prev, isOpen: false }))}
+            onSave={(score) => {
+                handleScoreChange(numpadModal.playerId, numpadModal.field, String(score));
+            }}
+            onStroke={() => {
+                toggleStroke(numpadModal.playerId, numpadModal.field);
+            }}
+            fieldLabel={getFieldLabel(numpadModal.field)}
+            playerName={numpadModal.playerName}
+            currentValue={numpadModal.currentValue}
+            maxScore={30}
+        />
+    );
+
     const toastElement = <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />;
 
     return (
@@ -1045,6 +1121,12 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
             {isFullscreen && typeof document !== 'undefined'
                 ? createPortal(modalElement, document.body)
                 : modalElement
+            }
+
+            {/* Numpad Entry Modal */}
+            {isFullscreen && typeof document !== 'undefined'
+                ? createPortal(numpadModalElement, document.body)
+                : numpadModalElement
             }
 
             {/* Matrix Transfer Modal */}

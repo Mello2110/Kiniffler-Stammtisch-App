@@ -203,7 +203,8 @@ export const dictionaries = {
             transferConfirmDesc: "The following points will be transferred directly to the Points Matrix:",
             transferBtn: "Transfer Points",
             transferSuccess: "Points successfully transferred!",
-            place: "Place"
+            place: "Place",
+            enterPoints: "Enter Points"
         }
     },
     de: {
@@ -408,7 +409,8 @@ export const dictionaries = {
             transferConfirmDesc: "Folgende Punkte werden in die Points Matrix übertragen:",
             transferBtn: "Punkte absegnen",
             transferSuccess: "Punkte erfolgreich übertragen!",
-            place: "Platz"
+            place: "Platz",
+            enterPoints: "Punkte eingeben"
         }
     },
     pl: {
@@ -611,11 +613,10 @@ export const dictionaries = {
             transferToMatrix: "Przenieś do Macierzy",
             transferConfirmTitle: "Podsumowanie Punktów",
             transferConfirmDesc: "Następujące punkty zostaną przeniesione do Macierzy Punktów:",
-            transferBtn: "Przenieś Punkty",
-            transferSuccess: "Punkty pomyślnie przeniesione!",
-            place: "Miejsce"
+            transferBtn: "Przekaż Punkty",
+            transferSuccess: "Punkty pomyślnie przekazane!",
+            place: "Miejsce",
+            enterPoints: "Wpisz Punkty"
         }
     }
 };
-
-
