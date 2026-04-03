@@ -73,9 +73,9 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, isActive, d
     return (
         <th
             ref={setNodeRef}
-            style={style}
+            style={{ ...style, width: '110px', minWidth: '90px', maxWidth: '150px' }}
             className={cn(
-                "text-center p-2 font-semibold border-b w-[110px] min-w-[90px] max-w-[150px]",
+                "text-center p-2 font-semibold border-b",
                 isDragging && "opacity-50 z-50",
                 isActive ? "bg-primary/15 border-primary/40 text-primary glow-active-player" : "border-white/5 bg-secondary"
             )}
@@ -90,7 +90,10 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, isActive, d
                         <GripVertical className="h-4 w-4 text-primary" />
                     </div>
                 )}
-                <span className="truncate w-full text-center block text-xs sm:text-sm" title={player.name}>{player.name}</span>
+                <span
+                    title={player.name}
+                    style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', fontSize: '0.8rem' }}
+                >{player.name}</span>
                 {isGuest(player) && (
                     <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
                         {dict.kniffel.guestLabel}
@@ -922,10 +925,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 onDragEnd={handleColumnReorder}
             >
                 <div className={cn("kniffel-table-wrapper", isFullscreen && "flex-1 overflow-auto px-4 pb-4")}>
-                    <table className={cn("text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.08)] w-full table-fixed")}>
+                    <table style={{ tableLayout: 'fixed', width: '100%' }} className={cn("text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.08)]")}>
                         <thead>
                             <tr>
-                                <th className={cn("text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col w-12 min-w-[40px] max-w-[56px]")}></th>
+                                <th style={{ width: '48px', minWidth: '40px', maxWidth: '56px' }} className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col"></th>
                                 <SortableContext
                                     items={localPlayerOrder}
                                     strategy={horizontalListSortingStrategy}
