@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { doc, setDoc, updateDoc, addDoc, collection, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Dices, Route, Signpost, Home, TrendingUp, ArrowUpRight, Star, Shuffle } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Dices, Route, Signpost, Home, TrendingUp, ArrowUpRight, Star, Shuffle, Sigma } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toast, useToast } from "@/components/common/Toast";
 import type { Member, KniffelSheet, KniffelScores, ScoreValue, Player, GuestPlayer } from "@/types";
@@ -610,6 +610,11 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     sheetContributions: sheetContributions
                 }, { merge: true });
             }
+
+            // Mark the sheet as submitted
+            const sheetRef = doc(db, "kniffelSheets", sheet.id);
+            await setDoc(sheetRef, { isSubmitted: true }, { merge: true });
+
             showToast(dict.kniffel.transferSuccess);
             setTransferModalOpen(false);
         } catch (error) {
@@ -692,16 +697,14 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         let highlightClass = "";
         if (isStrokeValue) {
             highlightClass = "bg-gray-500/20 border-gray-400/30 text-gray-400 line-through";
-        } else if (isFixed && isFilled) {
-            highlightClass = "bg-green-500/20 border-green-400/40 text-green-300 font-bold";
         } else if (isKniffel && getKniffelHighlight(memberId)) {
             highlightClass = "bg-yellow-500/30 border-yellow-400/50";
         } else if (isChance) {
             const chanceHighlight = getChanceHighlight(memberId);
             if (chanceHighlight === "highest") {
-                highlightClass = "bg-green-500/30 border-green-400/50";
+                highlightClass = "bg-green-500/30 border-green-400/50 font-bold";
             } else if (chanceHighlight === "lowest") {
-                highlightClass = "bg-orange-500/30 border-orange-400/50";
+                highlightClass = "bg-orange-500/30 border-orange-400/50 font-bold";
             }
         }
 
@@ -719,9 +722,12 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                         onClick={() => handleFixedFieldClick(memberId, field)}
                         className={cn(
                             "w-full text-center px-1 py-2 rounded-lg border transition-all duration-200 text-sm cursor-pointer min-h-[44px]",
-                            isFilled
-                                ? "bg-green-500/20 border-green-400/40 text-green-300 font-bold"
-                                : "bg-white/5 border-white/10 hover:bg-white/10 text-muted-foreground"
+                            isStrokeValue
+                                ? "bg-gray-500/20 border-gray-400/30 text-gray-400"
+                                : isFilled
+                                    ? "bg-primary/20 border-primary/40 text-primary font-semibold"
+                                    : "bg-white/5 border-white/10 hover:bg-white/10 text-muted-foreground",
+                            highlightClass
                         )}
                     >
                         {isStrokeValue ? "-" : (isFilled ? fixedValue : "")}
@@ -928,7 +934,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     <table style={{ tableLayout: 'fixed', width: '100%' }} className={cn("text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.08)]")}>
                         <thead>
                             <tr>
-                                <th style={{ width: '96px', minWidth: '80px', maxWidth: '112px' }} className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col"></th>
+                                <th style={{ width: '110px', minWidth: '100px', maxWidth: '140px' }} className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col"></th>
                                 <SortableContext
                                     items={localPlayerOrder}
                                     strategy={horizontalListSortingStrategy}
@@ -1045,7 +1051,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
                             {/* Total Score */}
                             <tr className="bg-primary/20 font-bold text-lg">
-                                <td className="p-3 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-primary/30">{dict.kniffel.total}</td>
+                                <td className="p-3 sticky left-0 z-10 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] border-t border-primary/30 flex items-center justify-center" title={dict.kniffel.total}>
+                                    <Sigma className="h-6 w-6 text-primary" />
+                                </td>
                                 {sortedPlayers.map((player: Player) => (
                                     <td key={player.id} className={cn("p-3 text-center text-primary transition-colors duration-300", !isFullscreen && "min-w-[100px]", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         {calculateTotal(player.id)}

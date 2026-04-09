@@ -21,7 +21,8 @@ import {
     Beer,
     MessageSquarePlus,
     Dice5,
-    User
+    User,
+    BarChart3
 } from "lucide-react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -85,6 +86,7 @@ export function Sidebar({ className }: { className?: string }) {
         { icon: Calendar, label: dict.sidebar.events, href: "/events" },
         { icon: Dice5, label: dict.sidebar.kniffel, href: "/kniffel" },
         { icon: Trophy, label: dict.sidebar.stats, href: "/stats" },
+        { icon: BarChart3, label: dict.sidebar.statistiken, href: "/statistiken" },
         { icon: DollarSign, label: dict.sidebar.finances, href: "/cash" },
         { icon: ImageIcon, label: dict.sidebar.gallery, href: "/gallery" },
         { icon: Users, label: dict.sidebar.members, href: "/members" },

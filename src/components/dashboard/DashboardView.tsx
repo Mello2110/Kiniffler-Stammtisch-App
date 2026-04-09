@@ -7,14 +7,17 @@ import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { NextEventWidget } from "@/components/dashboard/NextEventWidget";
-import { PayPalBalanceWidget } from "@/components/dashboard/PayPalBalanceWidget";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { Users, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity } from "lucide-react";
+import { Users, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity, Dice5, Star } from "lucide-react";
 import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTitle } from "@/contexts/TitleContext";
 import { EditableHeader } from "@/components/common/EditableHeader";
+import { TokenService } from "@/lib/TokenService";
+import { initializeMemberTokens } from "@/lib/initializeTokens";
+import { TokenPotModal } from "@/components/dashboard/TokenPotModal";
+import { ShinyEncounterModal } from "@/components/dashboard/ShinyEncounterModal";
 
 export function DashboardView() {
     const { user } = useAuth();
@@ -34,11 +37,16 @@ export function DashboardView() {
     } | null>(null);
 
     const [penaltyPot, setPenaltyPot] = useState(0);
+    const [penaltiesPaidTotal, setPenaltiesPaidTotal] = useState(0);
     const [contributionsTotal, setContributionsTotal] = useState(0);
+    const [donationsTotal, setDonationsTotal] = useState(0);
     const [expensesTotal, setExpensesTotal] = useState(0);
     const [startingBalance, setStartingBalance] = useState(0);
     const [seasonLeader, setSeasonLeader] = useState<{ id: string; points: number } | null>(null);
     const [memberBalance, setMemberBalance] = useState(0);
+    const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
+    const [isShinyModalOpen, setIsShinyModalOpen] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // ============================================
     // QUERIES
@@ -70,6 +78,14 @@ export function DashboardView() {
     const qExpenses = useMemo(() => query(collection(db, "expenses")), []);
     const { data: expensesData } = useFirestoreQuery<{ amount: number }>(qExpenses);
 
+    // 5.1 Fetch Contributions
+    const qContributions = useMemo(() => query(collection(db, "contributions")), []);
+    const { data: contributionsData } = useFirestoreQuery(qContributions);
+
+    // 5.2 Fetch Donations
+    const qDonations = useMemo(() => query(collection(db, "donations")), []);
+    const { data: donationsData } = useFirestoreQuery<{ amount: number }>(qDonations);
+
     // 6. Fetch Config
     useEffect(() => {
         // Keep manual for single doc for now...
@@ -88,6 +104,41 @@ export function DashboardView() {
         where("date", ">=", todayStr)
     ), [todayStr]);
     const { data: votes } = useFirestoreQuery<StammtischVote>(qVotes);
+
+    // 10. Automated Token Tasks (Initialization & Early Voter Bonus)
+    useEffect(() => {
+        const runTokenTasks = async () => {
+            if (!user || isInitialized) return;
+
+            try {
+                // Initialize tokens for all members if needed
+                await initializeMemberTokens();
+                
+                // Process automated bonus for early voting
+                await TokenService.processMonthlyEarlyVoterBonus();
+                
+                setIsInitialized(true);
+            } catch (err) {
+                console.error("Token task error:", err);
+            }
+        };
+
+        runTokenTasks();
+    }, [user, isInitialized]);
+
+    // 11. Shiny Encounter Trigger
+    // We check if the user HAS a shiny balance but hasn't seen the popup yet.
+    // To implement "hasn't seen yet", we could use localStorage.
+    useEffect(() => {
+        const currentUser = members.find(m => m.id === user?.uid);
+        if (currentUser && (currentUser.tokenShinyBalance || 0) > 0) {
+            const hasSeenShiny = localStorage.getItem(`shiny_seen_${user?.uid}`);
+            if (!hasSeenShiny) {
+                setIsShinyModalOpen(true);
+                localStorage.setItem(`shiny_seen_${user?.uid}`, "true");
+            }
+        }
+    }, [members, user]);
 
     // 8. Fetch ALL My Penalties (for balance calculation — includes paid + unpaid)
     const qMyPenalties = useMemo(() => {
@@ -121,14 +172,36 @@ export function DashboardView() {
         setMemberBalance(totalExpenses - totalAllPenalties);
     }, [myExpensesData, myAllPenaltiesData]);
 
-    // Update Pot & Expenses
+    // Update Pot, Contributions, Donations & Expenses
     useEffect(() => {
+        // Unpaid penalties for the "Pot" indicator (though we might use it less)
         const pot = penalties.reduce((sum, p) => sum + p.amount, 0);
         setPenaltyPot(pot);
 
+        // Paid penalties for actual cash
+        // We need another query or filter the existing unpaid ones? 
+        // Wait, 'penalties' query is 'where isPaid == false'. We need ALL penalties for cash balance.
+    }, [penalties]);
+
+    // Added: Fetch all paid penalties for cash calculation
+    const qPaidPenalties = useMemo(() => query(collection(db, "penalties"), where("isPaid", "==", true)), []);
+    const { data: paidPenaltiesData } = useFirestoreQuery<Penalty>(qPaidPenalties);
+
+    useEffect(() => {
+        const paidTotal = paidPenaltiesData.reduce((sum, p) => sum + p.amount, 0);
+        setPenaltiesPaidTotal(paidTotal);
+    }, [paidPenaltiesData]);
+
+    useEffect(() => {
+        const contribs = (contributionsData?.length || 0) * 15;
+        setContributionsTotal(contribs);
+
+        const dons = donationsData.reduce((sum, d) => sum + (d.amount || 0), 0);
+        setDonationsTotal(dons);
+
         const exp = expensesData.reduce((sum, e) => sum + e.amount, 0);
         setExpensesTotal(exp);
-    }, [penalties, expensesData]);
+    }, [contributionsData, donationsData, expensesData]);
 
     // Calculate Season Leader
     useEffect(() => {
@@ -206,7 +279,7 @@ export function DashboardView() {
     const { dict } = useLanguage();
     const { title: sidebarTitle } = useTitle();
 
-    const currentCashBalance = startingBalance + contributionsTotal + penaltyPot - expensesTotal;
+    const currentCashBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesPaidTotal - expensesTotal;
 
     return (
         <div className="flex flex-col gap-6">
@@ -303,13 +376,43 @@ export function DashboardView() {
                         />
                     </Link>
 
-                    <StatCard
-                        title={dict.dashboard.widgets.seasonLeader.title}
-                        value={seasonLeader ? (members.find(m => m.id === seasonLeader.id)?.name || "Unknown") : "-"}
-                        icon={Trophy}
-                        description={seasonLeader ? `${seasonLeader.points} ${dict.dashboard.widgets.seasonLeader.desc}` : dict.dashboard.widgets.seasonLeader.noPoints}
-                        className="border-yellow-500/20 hover:border-yellow-500/50 transition-colors h-full cursor-pointer"
-                    />
+                    <Link href="/stats">
+                        <StatCard
+                            title={dict.dashboard.widgets.seasonLeader.title}
+                            value={seasonLeader ? (members.find(m => m.id === seasonLeader.id)?.name || "Unknown") : "-"}
+                            icon={Trophy}
+                            description={seasonLeader ? `${seasonLeader.points} ${dict.dashboard.widgets.seasonLeader.desc}` : dict.dashboard.widgets.seasonLeader.noPoints}
+                            className="border-yellow-500/20 hover:border-yellow-500/50 transition-colors h-full cursor-pointer"
+                        />
+                    </Link>
+
+                    <div onClick={() => setIsTokenModalOpen(true)}>
+                        <StatCard
+                            title="Tokens"
+                            value={members.find(m => m.id === user?.uid)?.tokenBalance || 0}
+                            icon={Dice5}
+                            description={dict.dashboard.widgets.tokens?.desc || "Deine Tokens für Deals und Wetten"}
+                            className="border-blue-500/20 hover:border-blue-500/50 transition-colors h-full cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Hidden Shiny Card: Only appears if user has at least one shiny token */}
+                    {(members.find(m => m.id === user?.uid)?.tokenShinyBalance || 0) > 0 && (
+                        <div className="relative">
+                            <StatCard
+                                title="Shiny Tokens"
+                                value={members.find(m => m.id === user?.uid)?.tokenShinyBalance || 0}
+                                icon={Star}
+                                description="Ein unfassbares Phänomen!"
+                                className="border-yellow-400 border-2 shadow-[0_0_15px_rgba(250,204,21,0.4)] animate-pulse h-full bg-gradient-to-br from-yellow-500/10 to-transparent"
+                            />
+                            {/* Visual sparkle overlay */}
+                            <div className="absolute top-2 right-2 flex gap-0.5">
+                                <Star className="h-3 w-3 text-yellow-400 fill-current animate-ping" />
+                                <Star className="h-2 w-2 text-yellow-300 fill-current animate-bounce" />
+                            </div>
+                        </div>
+                    )}
 
                     <Link href="/hall-of-fame">
                         <StatCard
@@ -320,10 +423,21 @@ export function DashboardView() {
                             className="border-purple-500/20 hover:border-purple-500/50 transition-colors h-full cursor-pointer"
                         />
                     </Link>
-
-                    <PayPalBalanceWidget />
                 </div>
             </div>
+
+            {/* Modals */}
+            <TokenPotModal 
+                isOpen={isTokenModalOpen} 
+                onClose={() => setIsTokenModalOpen(false)} 
+                members={members}
+                currentUserId={user?.uid || ""}
+            />
+            
+            <ShinyEncounterModal
+                isOpen={isShinyModalOpen}
+                onClose={() => setIsShinyModalOpen(false)}
+            />
 
             {/* Quick Actions */}
             <div>

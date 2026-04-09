@@ -6,6 +6,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { SetEvent, Member } from "@/types";
 import { EventForm } from "./EventForm";
+import { TokenService } from "@/lib/TokenService";
 
 interface EditEventModalProps {
     event: SetEvent;
@@ -27,6 +28,19 @@ export function EditEventModal({ event, onClose, members = [] }: EditEventModalP
                 location: data.location,
                 hostId: data.hostId
             });
+
+            // Sync tokens if host changed
+            const oldHostId = event.hostId;
+            const newHostId = data.hostId;
+            if (oldHostId !== newHostId) {
+                if (oldHostId && oldHostId !== "neutral") {
+                    await TokenService.revokeToken(oldHostId, `Host-Wechsel: ${event.title}`, "hosting");
+                }
+                if (newHostId && newHostId !== "neutral") {
+                    await TokenService.awardToken(newHostId, `Hosting: ${data.title}`, "hosting");
+                }
+            }
+
             onClose();
         } catch (error) {
             console.error("Error updating event:", error);

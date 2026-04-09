@@ -9,6 +9,7 @@ import type { StammtischVote } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { enUS, de, pl } from "date-fns/locale";
 import { EventForm } from "./EventForm";
+import { TokenService } from "@/lib/TokenService";
 
 interface DateInteractionModalProps {
     date: Date;
@@ -99,6 +100,11 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                 hostId: data.hostId,
                 createdAt: serverTimestamp()
             });
+
+            // Award token to host if specified
+            if (data.hostId && data.hostId !== "neutral") {
+                await TokenService.awardToken(data.hostId, `Hosting: ${data.title}`, "hosting");
+            }
 
             const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));
             await Promise.race([writePromise, timeoutPromise]);

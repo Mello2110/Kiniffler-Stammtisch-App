@@ -177,6 +177,7 @@ export interface KniffelSheet {
     id: string;
     year: number;
     month: number; // 0-11
+    isSubmitted?: boolean; // Flag to indicate if sheet has been transferred to matrix
     createdAt: any; // Firestore Timestamp
     memberSnapshot: string[]; // Member IDs in selection order
     playerOrder?: string[]; // ALL player IDs (members + guests) in selection order
@@ -219,4 +220,58 @@ export interface PayPalBalance {
     currency: string;
     asOfTime: string;
     lastRefreshTime: string;
+}
+
+// --- Token & Award System Types ---
+
+export type TokenType = 'regular' | 'shiny';
+
+export interface TokenTransaction {
+    id: string;
+    memberId: string;
+    amount: number; // 1 for earn, can be negative for spend/bet
+    type: TokenType;
+    category: 'planning' | 'hosting' | 'achievement' | 'transfer' | 'pot' | 'initial';
+    reason: string;
+    timestamp: any; // Firestore Timestamp
+    year: number;
+}
+
+export interface Member {
+    id: string;
+    name: string;
+    role: string;
+    roles: string[];
+    joinYear?: number;
+    avatarUrl?: string;
+    avatar?: {
+        icon: string;
+        bgColor: string;
+    };
+    points: number;
+    tokenBalance?: number;       // Denormalized regular tokens
+    tokenShinyBalance?: number;  // Denormalized shiny tokens (initially hidden)
+    isAdmin?: boolean;
+    email?: string;
+    paypalEmail?: string;
+    birthday?: string;
+    notificationPreferences?: NotificationPreferences;
+}
+
+export interface TokenPot {
+    id: string;
+    creatorId: string;
+    description: string;
+    totalAmount: number;
+    type: TokenType; // Regular pots or Shiny pots (if anyone is that crazy)
+    participants: {
+        memberId: string;
+        amount: number;
+    }[];
+    status: 'open' | 'closed' | 'resolved';
+    winners?: {
+        memberId: string;
+        share: number; // Percentage or exact amount? Let's use exact amount.
+    }[];
+    createdAt: any;
 }

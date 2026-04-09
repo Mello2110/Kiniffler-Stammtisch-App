@@ -20,6 +20,10 @@ export function CashBalance() {
     const qExpenses = useMemo(() => query(collection(db, "expenses")), []);
     const { data: expenses } = useFirestoreQuery<{ amount: number }>(qExpenses);
 
+    // 3.1 Fetch Donations
+    const qDonations = useMemo(() => query(collection(db, "donations")), []);
+    const { data: donations } = useFirestoreQuery<{ amount: number }>(qDonations);
+
     // 4. Fetch Start Balance Config
     const configRef = useMemo(() => doc(db, "config", "cash"), []);
     const { data: configData } = useFirestoreDocument<{ startingBalance: number }>(configRef);
@@ -31,9 +35,10 @@ export function CashBalance() {
     const penaltiesTotal = penalties?.reduce((acc, p) => acc + (p.isPaid ? (p.amount || 0) : 0), 0) || 0;
     const penaltiesPendingTotal = penalties?.reduce((acc, p) => acc + (!p.isPaid ? (p.amount || 0) : 0), 0) || 0;
 
+    const donationsTotal = donations?.reduce((acc, d) => acc + (d.amount || 0), 0) || 0;
     const expensesTotal = expenses?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0;
 
-    const currentBalance = startingBalance + contributionsTotal + penaltiesTotal - expensesTotal;
+    const currentBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesTotal - expensesTotal;
 
     return (
         <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 shadow-sm">
@@ -69,6 +74,13 @@ export function CashBalance() {
                     <div className="font-semibold text-orange-500 flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" />
                         €{penaltiesPendingTotal.toFixed(2)}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-xs text-muted-foreground mb-1">Donations</div>
+                    <div className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        €{donationsTotal.toFixed(2)}
                     </div>
                 </div>
                 <div>

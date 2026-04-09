@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Crown, Medal, Banknote, Calendar, Coins, Sparkles } from "lucide-react";
-import type { Member, Donation, Penalty, SetEvent } from "@/types";
+import { Crown, Medal, Banknote, Calendar, Coins, Sparkles, Dice5, Zap, Gamepad2 } from "lucide-react";
+import type { Member, Donation, Penalty, SetEvent, KniffelSheet, PointEntry } from "@/types";
 import { cn } from "@/lib/utils";
 import { EditableHeader } from "@/components/common/EditableHeader";
 
@@ -19,25 +19,51 @@ export default function HallOfFamePage() {
     const [topDonors, setTopDonors] = useState<RankedMember[]>([]);
     const [topPenaltyPayers, setTopPenaltyPayers] = useState<RankedMember[]>([]);
     const [topHosts, setTopHosts] = useState<RankedMember[]>([]);
+    const [topParticipations, setTopParticipations] = useState<RankedMember[]>([]);
+    const [topScores, setTopScores] = useState<RankedMember[]>([]);
+    const [topKniffels, setTopKniffels] = useState<RankedMember[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const fetchAll = async () => {
             try {
                 // Parallel Fetching for maximum speed
-                const [memSnap, donSnap, penSnap, evSnap] = await Promise.all([
+                const [memSnap, donSnap, penSnap, evSnap, sheetSnap, pointSnap] = await Promise.all([
                     getDocs(collection(db, "members")),
                     getDocs(collection(db, "donations")),
                     getDocs(collection(db, "penalties")),
-                    getDocs(collection(db, "set_events"))
+                    getDocs(collection(db, "set_events")),
+                    getDocs(collection(db, "kniffelSheets")),
+                    getDocs(collection(db, "points"))
                 ]);
 
                 const members = memSnap.docs.map(d => ({ id: d.id, ...d.data() } as Member));
                 const memberMap = new Map(members.map(m => [m.id, m]));
 
-                const donations = donSnap.docs.map(d => d.data() as Donation);
-                const penalties = penSnap.docs.map(d => d.data() as Penalty);
-                const events = evSnap.docs.map(d => d.data() as SetEvent);
+                const donations = donSnap.docs.map(d => ({ id: d.id, ...d.data() } as Donation));
+                const penalties = penSnap.docs.map(d => ({ id: d.id, ...d.data() } as Penalty));
+                const events = evSnap.docs.map(d => ({ id: d.id, ...d.data() } as SetEvent));
+                const sheets = sheetSnap.docs.map(d => ({ id: d.id, ...d.data() } as KniffelSheet));
+                const points = pointSnap.docs.map(d => ({ id: d.id, ...d.data() } as PointEntry));
+
+                // Identify ALL submitted sheet IDs (for backfill logic)
+                const submittedSheetIds = new Set<string>();
+                points.forEach(p => {
+                    if (p.sheetContributions) {
+                        Object.keys(p.sheetContributions).forEach(id => submittedSheetIds.add(id));
+                    }
+                });
+
+                // Filter for "Ranked" games
+                // Logic: 
+                // 1. Explicitly marked as isSubmitted
+                // 2. Or is in the points matrix (submittedSheetIds)
+                // 3. Or (Special Backfill) has NO isSubmitted field yet (meaning it's an old game)
+                const rankedSheets = sheets.filter(s => 
+                    s.isSubmitted === true || 
+                    submittedSheetIds.has(s.id) || 
+                    s.isSubmitted === undefined
+                );
 
                 // --- PROCESS RANKINGS ---
 
@@ -75,6 +101,71 @@ export default function HallOfFamePage() {
                     .sort((a, b) => b.value - a.value)
                     .slice(0, 3);
                 setTopHosts(sortedHosts);
+
+                // D. Top Participations (Most Ranked Games)
+                const participationStats: Record<string, number> = {};
+                rankedSheets.forEach(s => {
+                    if (s.memberSnapshot) {
+                        s.memberSnapshot.forEach(uid => {
+                            participationStats[uid] = (participationStats[uid] || 0) + 1;
+                        });
+                    }
+                });
+                const sortedParticipations = Object.entries(participationStats)
+                    .map(([uid, val]) => ({ id: uid, name: memberMap.get(uid)?.name || "Unknown", value: val }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 3);
+                setTopParticipations(sortedParticipations);
+
+                // E. Top Scores (Highest Single Game Score)
+                // Helper functions mirroring KniffelScorecard calculation
+                const UPPER_FIELDS = ["ones", "twos", "threes", "fours", "fives", "sixes"];
+                const getNumericVal = (v: any): number => (typeof v === 'number' ? v : 0);
+                const calcTotal = (scoreObj: any): number => {
+                    const upperSum = UPPER_FIELDS.reduce((s, f) => s + getNumericVal(scoreObj[f]), 0);
+                    const bonus = upperSum >= 63 ? 35 : 0;
+                    const lowerSum = Object.entries(scoreObj)
+                        .filter(([k]) => !UPPER_FIELDS.includes(k))
+                        .reduce((s, [, v]) => s + getNumericVal(v), 0);
+                    return upperSum + bonus + lowerSum;
+                };
+
+                const scoreStats: Record<string, number> = {};
+                rankedSheets.forEach(s => {
+                    if (s.scores) {
+                        Object.entries(s.scores).forEach(([uid, scoreObj]) => {
+                            if (!memberMap.has(uid)) return;
+                            const total = calcTotal(scoreObj);
+                            if (!scoreStats[uid] || total > scoreStats[uid]) {
+                                scoreStats[uid] = total;
+                            }
+                        });
+                    }
+                });
+                const sortedScores = Object.entries(scoreStats)
+                    .map(([uid, val]) => ({ id: uid, name: memberMap.get(uid)?.name || "Unknown", value: val }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 3);
+                setTopScores(sortedScores);
+
+                // F. Top Kniffels (Most Kniffels rolled)
+                const kniffelStats: Record<string, number> = {};
+                rankedSheets.forEach(s => {
+                    if (s.scores) {
+                        Object.entries(s.scores).forEach(([uid, scoreObj]) => {
+                            if (!memberMap.has(uid)) return;
+                            const kniffelValue = scoreObj.kniffel;
+                            if (typeof kniffelValue === 'number' && kniffelValue > 0) {
+                                kniffelStats[uid] = (kniffelStats[uid] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+                const sortedKniffels = Object.entries(kniffelStats)
+                    .map(([uid, val]) => ({ id: uid, name: memberMap.get(uid)?.name || "Unknown", value: val }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 3);
+                setTopKniffels(sortedKniffels);
 
             } catch (err) {
                 console.error("Error fetching HoF data", err);
@@ -192,7 +283,7 @@ export default function HallOfFamePage() {
 
                     <div className="flex items-center gap-4 text-muted-foreground">
                         <div className="flex flex-col items-end">
-                            <span className="text-2xl font-black text-foreground outfit">3</span>
+                            <span className="text-2xl font-black text-foreground outfit">6</span>
                             <span className="text-xs uppercase font-bold tracking-widest">Kategorien</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
@@ -229,6 +320,30 @@ export default function HallOfFamePage() {
                     data={topHosts}
                     unit="x"
                     colorHex="#1A5C2E"
+                />
+                <RankCard
+                    title="Most Active"
+                    headerId="most-active-title"
+                    icon={Gamepad2}
+                    data={topParticipations}
+                    unit="Spiele"
+                    colorHex="#00BCD4"
+                />
+                <RankCard
+                    title="Highscore"
+                    headerId="highscore-title"
+                    icon={Zap}
+                    data={topScores}
+                    unit="Pkt"
+                    colorHex="#FF9800"
+                />
+                <RankCard
+                    title="Kniffel Kings"
+                    headerId="kniffel-kings-title"
+                    icon={Dice5}
+                    data={topKniffels}
+                    unit="x"
+                    colorHex="#9C27B0"
                 />
             </div>
         </div>

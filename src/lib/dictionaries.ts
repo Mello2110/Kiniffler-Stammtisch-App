@@ -5,7 +5,8 @@ export const dictionaries = {
         sidebar: {
             dashboard: "Dashboard",
             events: "Events",
-            stats: "Stats (Points)",
+            stats: "Saison",
+            statistiken: "Statistics",
             finances: "Finances",
             gallery: "Gallery",
             members: "Members",
@@ -33,7 +34,8 @@ export const dictionaries = {
                 penalties: { title: "Member Balance", desc: "Unpaid fines", descPositive: "Credit from expenses", descNegative: "Outstanding amount", descZero: "All settled" },
                 cash: { title: "Current Cash Balance", desc: "Available funds" },
                 seasonLeader: { title: "Season Leader", desc: "Points", noPoints: "No points yet" },
-                hof: { title: "Hall of Fame", value: "Legends", desc: "Top Donors & Hosts" }
+                hof: { title: "Hall of Fame", value: "Legends", desc: "Top Donors & Hosts" },
+                tokens: { title: "Tokens", desc: "Your currency for deals and bets" }
             }
         },
         events: {
@@ -211,7 +213,8 @@ export const dictionaries = {
         sidebar: {
             dashboard: "Dashboard",
             events: "Termine",
-            stats: "Statistik",
+            stats: "Saison",
+            statistiken: "Statistiken",
             finances: "Finanzen",
             gallery: "Galerie",
             members: "Mitglieder",
@@ -239,7 +242,8 @@ export const dictionaries = {
                 penalties: { title: "Guthaben", desc: "Unbezahlte Bußen", descPositive: "Guthaben aus Ausgaben", descNegative: "Offener Betrag", descZero: "Ausgeglichen" },
                 cash: { title: "Aktueller Kassenstand", desc: "Verfügbares Guthaben" },
                 seasonLeader: { title: "Saison-Spitze", desc: "Punkte", noPoints: "Noch keine Punkte" },
-                hof: { title: "Ruhmeshalle", value: "Legenden", desc: "Top Spender & Gastgeber" }
+                hof: { title: "Ruhmeshalle", value: "Legenden", desc: "Top Spender & Gastgeber" },
+                tokens: { title: "Tokens", desc: "Deine Währung für Deals und Wetten" }
             }
         },
         events: {
@@ -417,7 +421,8 @@ export const dictionaries = {
         sidebar: {
             dashboard: "Pulpit",
             events: "Wydarzenia",
-            stats: "Statystyki",
+            stats: "Sezon",
+            statistiken: "Statystyki",
             finances: "Finanse",
             gallery: "Galeria",
             members: "Członkowie",
@@ -445,7 +450,8 @@ export const dictionaries = {
                 penalties: { title: "Saldo", desc: "Niezapłacone grzywny", descPositive: "Kredyt z wydatków", descNegative: "Zaległa kwota", descZero: "Rozliczone" },
                 cash: { title: "Stan Kasy", desc: "Dostępne środki" },
                 seasonLeader: { title: "Lider Sezonu", desc: "Punkty", noPoints: "Brak punktów" },
-                hof: { title: "Aleja Sław", value: "Legendy", desc: "Top Darczyńcy" }
+                hof: { title: "Aleja Sław", value: "Legendy", desc: "Top Darczyńcy" },
+                tokens: { title: "Tokeny", desc: "Twoja waluta na deale i zakłady" }
             }
         },
         events: {
