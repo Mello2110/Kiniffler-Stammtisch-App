@@ -87,8 +87,8 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
             {/* Sidebar Panel */}
             <div className={cn(
-                "fixed inset-y-0 left-0 z-50 w-[85%] max-w-[320px] bg-secondary/95 backdrop-blur-md border-r border-white/10 shadow-2xl",
-                "animate-in slide-in-from-left duration-300 lg:hidden",
+                "fixed inset-y-0 right-0 z-50 w-[85%] max-w-[320px] bg-secondary/95 backdrop-blur-md border-l border-white/10 shadow-2xl",
+                "animate-in slide-in-from-right duration-300 lg:hidden",
                 "flex flex-col"
             )}>
                 {/* Header - Close Button */}

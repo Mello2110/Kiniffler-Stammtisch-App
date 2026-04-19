@@ -607,8 +607,10 @@ export default function StatistikenPage() {
                                             border: "1px solid hsl(var(--border))", 
                                             borderRadius: "12px",
                                             fontSize: "12px",
-                                            backdropFilter: "blur(4px)"
+                                            backdropFilter: "blur(4px)",
+                                            color: "#fff"
                                         }}
+                                        labelStyle={{ color: "#aaa" }}
                                         itemStyle={{ padding: "0 2px" }}
                                     />
                                     <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
@@ -646,8 +648,10 @@ export default function StatistikenPage() {
                                             border: "1px solid hsl(var(--border))", 
                                             borderRadius: "12px",
                                             fontSize: "12px",
-                                            backdropFilter: "blur(4px)"
+                                            backdropFilter: "blur(4px)",
+                                            color: "#fff"
                                         }}
+                                        labelStyle={{ color: "#aaa" }}
                                         formatter={(value) => [value, CHART_METRICS.find(m => m.value === chartMetric)?.label ?? ""]}
                                     />
                                     <Bar dataKey="value" name={CHART_METRICS.find(m => m.value === chartMetric)?.label ?? ""} radius={[0, 4, 4, 0]} barSize={20}>

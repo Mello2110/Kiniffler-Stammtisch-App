@@ -32,22 +32,21 @@ export function Footer() {
     };
 
     return (
-        <footer className="w-full border-t border-border py-6 text-sm text-muted-foreground bg-background/50 backdrop-blur-sm">
-            <div className="w-full px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity justify-self-start">
-                    <img src="/kanpai-logo.png" alt="KANPAI" className="h-6 w-6 object-contain" />
-                    <span className="text-xs font-bold tracking-widest text-[#8B5CF6]">KANPAI</span>
+        <footer className="w-full border-t border-border py-4 text-xs text-muted-foreground bg-background/50 backdrop-blur-sm">
+            <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2 opacity-70">
+                    <span className="font-bold tracking-widest text-primary/70">KANPAI</span>
                 </div>
-                <div className="justify-self-center flex flex-col items-center gap-1">
-                    <p className="text-center whitespace-nowrap">
-                        &copy; {new Date().getFullYear()} Stammtisch Dashboard. <span className="opacity-50 text-xs">v1.2.0</span> All rights reserved.
+                <div className="flex items-center gap-4">
+                    <p className="text-center whitespace-nowrap opacity-70">
+                        &copy; {new Date().getFullYear()} Stammtisch Dashboard. v1.2.0
                     </p>
                     <button
                         onClick={handleForceUpdate}
-                        className="text-[10px] uppercase tracking-widest bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                        className="opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1 text-primary"
+                        title="App aktualisieren"
                     >
                         <RefreshCw className="h-3 w-3" />
-                        App Aktualisieren
                     </button>
                 </div>
             </div>
