@@ -511,37 +511,41 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
     // Matrix Transfer Logic
     const calculateMatrixPoints = () => {
-        // Evaluate all players' scores
+        // Evaluate all players' scores AND check if they actually played this round
         const playerScores = sheetPlayers.map(p => ({
             player: p,
-            totalScore: calculateTotal(p.id)
+            totalScore: calculateTotal(p.id),
+            hasPlayed: Object.values(localScores[p.id] || {}).some(val => val !== undefined && val !== null)
         }));
 
-        // Sort descending
-        playerScores.sort((a, b) => b.totalScore - a.totalScore);
+        // Filter out players who didn't play at all (e.g., absent, 0 entries)
+        const activePlayerScores = playerScores.filter(p => p.hasPlayed);
 
-        // Assign ranks handling ties
+        // Sort descending
+        activePlayerScores.sort((a, b) => b.totalScore - a.totalScore);
+
+        // Assign ranks handling ties (only for active players!)
         const rankedPlayers: { player: Player, totalScore: number, rank: number }[] = [];
         let currentRank = 1;
         let p = 0; 
         
-        while (p < playerScores.length) {
-            const currentScore = playerScores[p].totalScore;
+        while (p < activePlayerScores.length) {
+            const currentScore = activePlayerScores[p].totalScore;
             // Find how many tied players
             let ties = 1;
-            while (p + ties < playerScores.length && playerScores[p + ties].totalScore === currentScore) {
+            while (p + ties < activePlayerScores.length && activePlayerScores[p + ties].totalScore === currentScore) {
                 ties++;
             }
             
             for (let i = 0; i < ties; i++) {
-                rankedPlayers.push({ player: playerScores[p + i].player, totalScore: currentScore, rank: currentRank });
+                rankedPlayers.push({ player: activePlayerScores[p + i].player, totalScore: currentScore, rank: currentRank });
             }
             
             currentRank += ties; 
             p += ties;
         }
 
-        const maxPoints = sheetPlayers.length; 
+        const maxPoints = activePlayerScores.length; 
         
         const matrixData = [];
         
