@@ -722,9 +722,14 @@ export default function StatistikenPage() {
                         )}
                     </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground italic px-2">
-                    * Tokens werden automatisch für das Ausrichten von Events und frühzeitiges Abstimmen vergeben. Sie können am Jahresende gegen Saisonpunkte getauscht werden (5:1).
-                </p>
+                <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground italic px-2">
+                        * Tokens werden automatisch für das Ausrichten von Events und frühzeitiges Abstimmen vergeben. Sie können am Jahresende gegen Saisonpunkte getauscht werden (5:1).
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70 italic px-2">
+                        * Shiny-Token-Klausel: Mit einer geringen Wahrscheinlichkeit kann bei Token-Aktionen ein seltener "Shiny-Token" droppen, welcher den 25-fachen Wert eines normalen Tokens besitzt!
+                    </p>
+                </div>
             </section>
         </div>
     );
