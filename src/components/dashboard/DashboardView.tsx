@@ -9,8 +9,8 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { NextEventWidget } from "@/components/dashboard/NextEventWidget";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Users, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity, Dice5, Star } from "lucide-react";
-import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
+import { useLedger } from "@/hooks/useLedger";
+import { useAllLedgers } from "@/hooks/useLedger";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTitle } from "@/contexts/TitleContext";
 import { EditableHeader } from "@/components/common/EditableHeader";
@@ -43,8 +43,6 @@ export function DashboardView() {
     const [expensesTotal, setExpensesTotal] = useState(0);
     const [startingBalance, setStartingBalance] = useState(0);
     const [seasonLeader, setSeasonLeader] = useState<{ id: string; points: number } | null>(null);
-    const [memberBalance, setMemberBalance] = useState(0);
-    const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
     const [isShinyModalOpen, setIsShinyModalOpen] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
 
@@ -126,6 +124,53 @@ export function DashboardView() {
         runTokenTasks();
     }, [user, isInitialized]);
 
+    // Update Member Balance via Wallet/Ledger
+    const { balance: memberBalance } = useLedger(user?.uid);
+
+    // Fetch ALL ledgers
+    const { entries: allLedgers } = useAllLedgers();
+    
+    // Total unpaid balances
+    const [totalNegativeBalance, setTotalNegativeBalance] = useState(0);
+
+    useEffect(() => {
+        let pensTotal = 0;
+        let contTotal = 0;
+        
+        // Sum penalties and contributions from ledger
+        allLedgers.forEach(entry => {
+            if (entry.type === 'penalty') {
+                pensTotal += Math.abs(entry.amount);
+            } else if (entry.type === 'contribution') {
+                contTotal += Math.abs(entry.amount);
+            }
+        });
+
+        setPenaltiesPaidTotal(pensTotal);
+        setContributionsTotal(contTotal);
+
+        // Calculate member balances to find sum of negative balances
+        const balancesByMember: { [uid: string]: number } = {};
+        allLedgers.forEach(entry => {
+            balancesByMember[entry.userId] = (balancesByMember[entry.userId] || 0) + entry.amount;
+        });
+
+        let negativeSum = 0;
+        Object.values(balancesByMember).forEach(bal => {
+            if (bal < 0) {
+                negativeSum += Math.abs(bal);
+            }
+        });
+        
+        setTotalNegativeBalance(negativeSum);
+
+        const dons = donationsData.reduce((sum, d) => sum + (d.amount || 0), 0);
+        setDonationsTotal(dons);
+
+        const exp = expensesData.reduce((sum, e) => sum + e.amount, 0);
+        setExpensesTotal(exp);
+    }, [allLedgers, donationsData, expensesData]);
+
     // 11. Shiny Encounter Trigger
     // We check if the user HAS a shiny balance but hasn't seen the popup yet.
     // To implement "hasn't seen yet", we could use localStorage.
@@ -148,60 +193,7 @@ export function DashboardView() {
             where("userId", "==", user.uid)
         );
     }, [user]);
-    const { data: myAllPenaltiesData } = useFirestoreQuery<Penalty>(qMyPenalties);
-
-    // 9. Fetch My Expenses (for balance calculation)
-    const qMyExpenses = useMemo(() => {
-        if (!user) return null;
-        return query(
-            collection(db, "expenses"),
-            where("memberId", "==", user.uid)
-        );
-    }, [user]);
-    const { data: myExpensesData } = useFirestoreQuery<{ amount: number }>(qMyExpenses);
-
-    // ============================================
-    // DERIVED STATE CALCULATIONS
-    // ============================================
-
-    // Update Member Balance (Expenses - ALL Penalties)
-    // Balance = credit remaining after all penalties are accounted for
-    useEffect(() => {
-        const totalExpenses = myExpensesData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
-        const totalAllPenalties = myAllPenaltiesData?.reduce((sum, p) => sum + p.amount, 0) || 0;
-        setMemberBalance(totalExpenses - totalAllPenalties);
-    }, [myExpensesData, myAllPenaltiesData]);
-
-    // Update Pot, Contributions, Donations & Expenses
-    useEffect(() => {
-        // Unpaid penalties for the "Pot" indicator (though we might use it less)
-        const pot = penalties.reduce((sum, p) => sum + p.amount, 0);
-        setPenaltyPot(pot);
-
-        // Paid penalties for actual cash
-        // We need another query or filter the existing unpaid ones? 
-        // Wait, 'penalties' query is 'where isPaid == false'. We need ALL penalties for cash balance.
-    }, [penalties]);
-
-    // Added: Fetch all paid penalties for cash calculation
-    const qPaidPenalties = useMemo(() => query(collection(db, "penalties"), where("isPaid", "==", true)), []);
-    const { data: paidPenaltiesData } = useFirestoreQuery<Penalty>(qPaidPenalties);
-
-    useEffect(() => {
-        const paidTotal = paidPenaltiesData.reduce((sum, p) => sum + p.amount, 0);
-        setPenaltiesPaidTotal(paidTotal);
-    }, [paidPenaltiesData]);
-
-    useEffect(() => {
-        const contribs = (contributionsData?.length || 0) * 15;
-        setContributionsTotal(contribs);
-
-        const dons = donationsData.reduce((sum, d) => sum + (d.amount || 0), 0);
-        setDonationsTotal(dons);
-
-        const exp = expensesData.reduce((sum, e) => sum + e.amount, 0);
-        setExpensesTotal(exp);
-    }, [contributionsData, donationsData, expensesData]);
+    // Derived from ledger above
 
     // Calculate Season Leader
     useEffect(() => {
@@ -279,7 +271,7 @@ export function DashboardView() {
     const { dict } = useLanguage();
     const { title: sidebarTitle } = useTitle();
 
-    const currentCashBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesPaidTotal - expensesTotal;
+    const currentCashBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesPaidTotal - totalNegativeBalance;
 
     return (
         <div className="flex flex-col gap-6">

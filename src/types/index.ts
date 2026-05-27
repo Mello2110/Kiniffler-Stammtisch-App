@@ -23,7 +23,7 @@ export interface Member {
     points: number;
     isAdmin?: boolean;
     email?: string; // Added for linking Auth User to Member
-    paypalEmail?: string; // Dedicated field for PayPal matching
+    paypalName?: string; // PayPal display name for automatic payment matching
     birthday?: string; // YYYY-MM-DD
     notificationPreferences?: NotificationPreferences;
 }
@@ -191,35 +191,24 @@ export interface KniffelSheet {
     };
 }
 
-// --- PayPal Integration Types ---
+// --- Ledger & Wallet Integration Types ---
 
-export type PayPalTransactionCategory = 'contribution' | 'penalty' | 'expense' | 'donation' | 'refund' | 'uncategorized';
+export type LedgerTransactionCategory = 'paypal_deposit' | 'paypal_withdrawal' | 'contribution' | 'penalty' | 'expense' | 'donation' | 'refund' | 'uncategorized';
 
-export interface PayPalTransaction {
-    id: string; // PayPal transaction_id
+export interface LedgerEntry {
+    id: string; // Document ID
+    userId: string; // Firebase UID
     amount: number; // Positive for inflow, negative for outflow
-    fee?: number; // PayPal fee
-    net?: number; // Net amount (amount - fee)
-    currency: string;
-    payerEmail?: string;
-    payerName?: string;
-    note?: string; // transaction_subject or note
+    type: LedgerTransactionCategory;
+    description: string; // e.g. "Zahlung erhalten von Max Mustermann" or "Monatsbeitrag Mai"
     date: string; // ISO date string
-    status: string; // COMPLETED, PENDING, etc.
-
-    // Reconciliation info
-    assignedMemberId?: string; // Firebase UID
-    category: PayPalTransactionCategory;
-    isReconciled: boolean;
-    reconciledAt?: any;
-    linkedDocId?: string; // ID of the Penalty or Contribution doc updated
-}
-
-export interface PayPalBalance {
-    amount: number;
-    currency: string;
-    asOfTime: string;
-    lastRefreshTime: string;
+    createdAt: any; // Firestore Timestamp
+    
+    // Optional PayPal link for idempotency / tracking
+    paypalTxId?: string;
+    
+    // If it's linked to another document (e.g. a penalty or contribution ID)
+    linkedDocId?: string;
 }
 
 // --- Token & Award System Types ---
@@ -253,7 +242,7 @@ export interface Member {
     tokenShinyBalance?: number;  // Denormalized shiny tokens (initially hidden)
     isAdmin?: boolean;
     email?: string;
-    paypalEmail?: string;
+    paypalName?: string;
     birthday?: string;
     notificationPreferences?: NotificationPreferences;
 }

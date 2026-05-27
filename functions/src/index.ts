@@ -22,17 +22,7 @@ import {
     monthlyOverviewTemplate
 } from './emailTemplates';
 
-import {
-    fetchPayPalBalance,
-    fetchPayPalTransactions,
-    paypalClientId,
-    paypalClientSecret
-} from './paypalService';
 
-import {
-    categorizeTransaction,
-    findMemberIdByEmail
-} from './categorization';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -245,135 +235,480 @@ export const monthlyOverview = onSchedule({
     }
 });
 
-// --- PayPal Functions ---
+export const earlyVoterTokenBonus = onSchedule({
+    schedule: "1 0 1 * *",
+    timeZone: "Europe/Berlin"
+}, async (event) => {
+    // 1. Get current month/year in Europe/Berlin
+    const berlinDateStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Berlin" });
+    const berlinDate = new Date(berlinDateStr);
+    const currentMonth = berlinDate.getMonth(); // 0-11
+    const currentYear = berlinDate.getFullYear();
+    const bonusKey = `Early Voter Bonus ${currentMonth + 1}/${currentYear}`;
 
-export const getPayPalBalance = onCall({
-    secrets: [paypalClientId, paypalClientSecret],
-    cors: true
-}, async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login erforderlich");
-    }
+    console.log(`Running earlyVoterTokenBonus for ${bonusKey} at ${berlinDateStr}`);
 
-    try {
-        const balance = await fetchPayPalBalance();
-        return { success: true, balance };
-    } catch (error: any) {
-        console.error('PayPal Balance Error:', error);
-        throw new HttpsError("internal", `PayPal Fehler: ${error.message}`);
-    }
-});
+    // Calculate start of this month in Berlin time
+    const getBerlinStartOfMonthUTC = (year: number, m: number) => {
+        const utcDate = new Date(Date.UTC(year, m, 1, 0, 0, 0));
+        const tzStr = utcDate.toLocaleString("en-US", { timeZone: "Europe/Berlin" });
+        const tzDate = new Date(tzStr);
+        const diffMs = tzDate.getTime() - utcDate.getTime();
+        return new Date(utcDate.getTime() - diffMs);
+    };
 
-export const syncPayPalTransactions = onCall({
-    secrets: [paypalClientId, paypalClientSecret],
-    cors: true
-}, async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login erforderlich");
-    }
+    const monthStart = getBerlinStartOfMonthUTC(currentYear, currentMonth);
+    const monthStartTimestamp = admin.firestore.Timestamp.fromDate(monthStart);
 
-    const now = new Date();
-    const defaultStart = format(addDays(now, -3), "yyyy-MM-dd'T'HH:mm:ss'Z'");
-    const defaultEnd = format(now, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+    // 2. Fetch all members
+    const membersSnap = await db.collection('members').get();
+    
+    // 3. Fetch all votes for this month to filter in memory (safer, avoids composite index requirement)
+    const votesSnap = await db.collection('stammtisch_votes')
+        .where('month', '==', currentMonth)
+        .where('year', '==', currentYear)
+        .get();
 
-    const startDate = request.data.startDate || defaultStart;
-    const endDate = request.data.endDate || defaultEnd;
-
-    try {
-        const rawTransactions = await fetchPayPalTransactions(startDate, endDate);
-        const results = [];
-
-        for (const raw of rawTransactions) {
-            const info = raw.transaction_info;
-            const payer = raw.payer_info;
-            const tid = info.transaction_id;
-
-            const docRef = db.collection('paypal_transactions').doc(tid);
-            const doc = await docRef.get();
-
-            if (doc.exists) continue;
-
-            const amount = parseFloat(info.transaction_amount.value);
-            const fee = info.fee_amount ? parseFloat(info.fee_amount.value) : 0;
-            const note = info.transaction_subject || info.transaction_note || '';
-            const payerEmail = payer?.email_address;
-
-            const category = categorizeTransaction(amount, note, payerEmail);
-            const memberId = await findMemberIdByEmail(db, payerEmail);
-
-            const tx: any = {
-                id: tid,
-                amount,
-                fee,
-                net: amount - fee,
-                currency: info.transaction_amount.currency_code,
-                payerEmail,
-                payerName: payer?.payer_name?.alternate_full_name,
-                note,
-                date: info.transaction_updated_date,
-                status: info.transaction_status,
-                category,
-                assignedMemberId: memberId,
-                isReconciled: false,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
-            };
-
-            if (memberId && (category === 'penalty' || category === 'contribution')) {
-                const reconciled = await performReconciliation(memberId, category, amount, tid);
-                if (reconciled) {
-                    tx.isReconciled = true;
-                    tx.reconciledAt = admin.firestore.FieldValue.serverTimestamp();
-                    tx.linkedDocId = reconciled;
-                }
+    // Group votes by userId in memory
+    const votesByMember: { [memberId: string]: any[] } = {};
+    votesSnap.docs.forEach(docSnap => {
+        const vote = docSnap.data();
+        const createdAt = vote.createdAt;
+        if (createdAt && createdAt.toMillis() < monthStartTimestamp.toMillis()) {
+            if (!votesByMember[vote.userId]) {
+                votesByMember[vote.userId] = [];
             }
-
-            await docRef.set(tx);
-            results.push(tx);
+            votesByMember[vote.userId].push(vote);
         }
+    });
 
-        return { success: true, count: results.length, transactions: results };
-    } catch (error: any) {
-        console.error('PayPal Sync Error:', error);
-        throw new HttpsError("internal", `PayPal Sync Fehler: ${error.message}`);
-    }
-});
+    const SHINY_CHANCE = 8192;
+    const rollForShiny = () => Math.floor(Math.random() * SHINY_CHANCE) === 0;
 
-async function performReconciliation(memberId: string, category: string, amount: number, paypalTxId: string) {
-    if (category === 'penalty') {
-        const penaltiesSnap = await db.collection('penalties')
-            .where('userId', '==', memberId)
-            .where('isPaid', '==', false)
-            .orderBy('date', 'asc')
+    for (const memberDoc of membersSnap.docs) {
+        const memberId = memberDoc.id;
+        const memberData = memberDoc.data();
+
+        // Check if member already received the early voter bonus for this month
+        const existingTxSnap = await db.collection('tokenTransactions')
+            .where('memberId', '==', memberId)
+            .where('category', '==', 'planning')
+            .where('reason', '==', bonusKey)
             .limit(1)
             .get();
 
-        if (!penaltiesSnap.empty) {
-            const pDoc = penaltiesSnap.docs[0];
-            await pDoc.ref.update({
+        if (!existingTxSnap.empty) {
+            console.log(`Member ${memberId} already received bonus for ${bonusKey}`);
+            continue;
+        }
+
+        const memberVotesCount = votesByMember[memberId]?.length || 0;
+        if (memberVotesCount >= 2) {
+            console.log(`Member ${memberId} voted for ${memberVotesCount} dates before start of month. Awarding token...`);
+            
+            const isShiny = rollForShiny();
+            const tokenType = isShiny ? 'shiny' : 'regular';
+            
+            const transRef = db.collection('tokenTransactions').doc();
+            const batch = db.batch();
+            
+            batch.set(transRef, {
+                id: transRef.id,
+                memberId,
+                amount: 1,
+                type: tokenType,
+                category: 'planning',
+                reason: bonusKey,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                year: currentYear
+            });
+
+            const updateField = isShiny ? 'tokenShinyBalance' : 'tokenBalance';
+            const currentBalance = memberData[updateField] || 0;
+            batch.update(memberDoc.ref, {
+                [updateField]: currentBalance + 1
+            });
+
+            await batch.commit();
+            console.log(`Successfully awarded ${tokenType} token to member ${memberId}`);
+        }
+    }
+});
+
+import { processPayPalEmails } from './imapService';
+
+
+
+// --- Automated PayPal (IMAP) Sync (every 5 minutes, 540s timeout) ---
+
+export const syncPayPalEmailsCron = onSchedule({
+    schedule: "every 5 minutes",
+    timeZone: "Europe/Berlin",
+    timeoutSeconds: 540,
+    memory: "512MiB"
+}, async (event) => {
+    console.log('Running PayPal IMAP Sync...');
+    await processPayPalEmails(db);
+    console.log('PayPal IMAP Sync complete.');
+});
+
+// --- Manual HTTP Trigger for testing / debugging IMAP ---
+
+export const triggerPayPalSync = onCall({ timeoutSeconds: 540 }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Login required');
+    console.log('Manual PayPal sync triggered by:', request.auth.uid);
+    await processPayPalEmails(db);
+    return { success: true, message: 'Sync complete. Check logs for details.' };
+});
+
+export const migrateLegacyBalances = onCall(async (request) => {
+    
+    console.log("Starting legacy balance migration...");
+    const membersSnap = await db.collection('members').get();
+    let migratedCount = 0;
+    
+    for (const doc of membersSnap.docs) {
+        const member = doc.data();
+        const memberId = doc.id;
+        
+        // Fetch expenses for this member
+        const expensesSnap = await db.collection('expenses').where('memberId', '==', memberId).get();
+        let totalExpenses = 0;
+        expensesSnap.forEach(e => totalExpenses += e.data().amount);
+        
+        // Fetch PAID penalties for this member (in old system, if they existed)
+        const paidPenaltiesSnap = await db.collection('penalties')
+            .where('userId', '==', memberId)
+            .where('isPaid', '==', true)
+            .get();
+            
+        let totalPaidPenalties = 0;
+        paidPenaltiesSnap.forEach(p => totalPaidPenalties += p.data().amount);
+        
+        // Net starting balance based on old dashboard logic
+        const netStartingBalance = totalExpenses - totalPaidPenalties;
+        
+        if (totalExpenses > 0 || totalPaidPenalties > 0) {
+            const existingSnap = await db.collection('ledger_entries')
+                .where('userId', '==', memberId)
+                .where('description', '==', 'Übertrag Einzahlungen (Altsystem)')
+                .get();
+                
+            if (existingSnap.empty) {
+                await db.collection('ledger_entries').add({
+                    userId: memberId,
+                    amount: netStartingBalance,
+                    type: 'paypal_deposit', 
+                    description: 'Übertrag Einzahlungen (Altsystem)',
+                    date: new Date().toISOString(),
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    isReconciled: true
+                });
+                console.log(`✅ Created ledger entry for ${member.name}: ${netStartingBalance}€`);
+                migratedCount++;
+            }
+        }
+    }
+    
+    return { success: true, message: `Migrated ${migratedCount} members.` };
+});
+
+// --- Backfill past monthly contributions (callable by admin) ---
+
+export const backfillMonthlyContributions = onCall({ timeoutSeconds: 300 }, async (request) => {
+
+    const { fromMonth, fromYear, toMonth, toYear } = request.data as {
+        fromMonth: number; fromYear: number; toMonth: number; toYear: number;
+    };
+
+    const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+        'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+    const membersSnap = await db.collection('members').get();
+    const results: string[] = [];
+    const batch = db.batch();
+
+    // Iterate over months from → to
+    let year = fromYear;
+    let month = fromMonth;
+
+    while (year < toYear || (year === toYear && month <= toMonth)) {
+        for (const memberDoc of membersSnap.docs) {
+            const memberId = memberDoc.id;
+
+            // Check if contribution already exists
+            const existingContrib = await db.collection('contributions')
+                .where('userId', '==', memberId)
+                .where('month', '==', month)
+                .where('year', '==', year)
+                .limit(1)
+                .get();
+
+            if (!existingContrib.empty) {
+                results.push(`Skip: ${memberId} ${monthNames[month]}/${year} — already exists`);
+                continue;
+            }
+
+            // Create contribution document (unpaid)
+            const contribRef = db.collection('contributions').doc();
+            batch.set(contribRef, {
+                id: contribRef.id,
+                userId: memberId,
+                month,
+                year,
                 isPaid: true,
                 paidViaReconciliation: true,
                 reconciledAt: admin.firestore.FieldValue.serverTimestamp(),
-                paypalTxId: paypalTxId
             });
-            return pDoc.id;
+
+            // Immediately deduct from ledger
+            const entryRef = db.collection('ledger_entries').doc();
+            batch.set(entryRef, {
+                id: entryRef.id,
+                userId: memberId,
+                amount: -15, // Fixed 15 EUR contribution
+                type: 'contribution',
+                description: `Monatsbeitrag ${monthNames[month]} ${year}`,
+                date: new Date().toISOString(),
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                linkedDocId: contribRef.id,
+            });
+
+            results.push(`Created: ${memberId} ${monthNames[month]}/${year}`);
         }
-    } else if (category === 'contribution') {
-        const contributionsSnap = await db.collection('contributions')
+
+        // Next month
+        month++;
+        if (month > 11) { month = 0; year++; }
+    }
+    
+    await batch.commit();
+
+    return { results, count: results.length };
+});
+
+// --- Monthly Contribution Deduction (1st of each month at 00:05) ---
+
+export const monthlyContributionDeduction = onSchedule({
+    schedule: "5 0 1 * *",
+    timeZone: "Europe/Berlin"
+}, async (event) => {
+    const now = new Date();
+    const month = now.getMonth(); // 0-11
+    const year = now.getFullYear();
+    const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+        'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+    console.log(`Running monthly contribution deduction for ${monthNames[month]} ${year}`);
+
+    // Get all members
+    const membersSnap = await db.collection('members').get();
+    const batch = db.batch();
+
+    for (const memberDoc of membersSnap.docs) {
+        const memberId = memberDoc.id;
+
+        // Check if contribution already exists for this month/year
+        const existingContrib = await db.collection('contributions')
             .where('userId', '==', memberId)
-            .where('isPaid', '==', false)
-            .orderBy('year', 'asc')
-            .orderBy('month', 'asc')
+            .where('month', '==', month)
+            .where('year', '==', year)
             .limit(1)
             .get();
 
-        if (!contributionsSnap.empty) {
-            const cDoc = contributionsSnap.docs[0];
-            await cDoc.ref.update({
-                isPaid: true,
-                paypalTxId: paypalTxId
-            });
-            return cDoc.id;
+        if (!existingContrib.empty) {
+            console.log(`Contribution for ${memberId} already exists for ${month}/${year}, skipping.`);
+            continue;
         }
+
+        // Create contribution document (marked as paid instantly)
+        const contribRef = db.collection('contributions').doc();
+        batch.set(contribRef, {
+            id: contribRef.id,
+            userId: memberId,
+            month,
+            year,
+            isPaid: true,
+            paidViaReconciliation: true,
+            reconciledAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Immediately deduct from ledger
+        const entryRef = db.collection('ledger_entries').doc();
+        batch.set(entryRef, {
+            id: entryRef.id,
+            userId: memberId,
+            amount: -15, // Fixed 15 EUR contribution
+            type: 'contribution',
+            description: `Monatsbeitrag ${monthNames[month]} ${year}`,
+            date: new Date().toISOString(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            linkedDocId: contribRef.id,
+        });
+
+        console.log(`Created contribution + ledger deduction for member ${memberId}`);
     }
-    return null;
-}
+
+    await batch.commit();
+});
+
+export const revertPre2026Contributions = onCall({ timeoutSeconds: 300 }, async (request) => {
+    // 1. Find all contributions before 2026
+    const contribsSnap = await db.collection('contributions').where('year', '<', 2026).get();
+    
+    let deletedContribs = 0;
+    let deletedLedgerEntries = 0;
+    let refundedLedgerEntries = 0;
+    
+    for (const doc of contribsSnap.docs) {
+        const contribId = doc.id;
+        
+        // 2. Find any ledger_entries linked to this contribution
+        const ledgerSnap = await db.collection('ledger_entries')
+            .where('linkedDocId', '==', contribId)
+            .get();
+            
+        // 3. Delete the ledger entries to restore the member's balance
+        for (const ledgerDoc of ledgerSnap.docs) {
+            await ledgerDoc.ref.delete();
+            deletedLedgerEntries++;
+            refundedLedgerEntries += Math.abs(ledgerDoc.data().amount);
+        }
+        
+        // 4. Delete the contribution itself
+        await doc.ref.delete();
+        deletedContribs++;
+    }
+    
+    return { 
+        success: true, 
+        message: `Deleted ${deletedContribs} pre-2026 contributions and ${deletedLedgerEntries} ledger entries (totaling ${refundedLedgerEntries} euro refunded).` 
+    };
+});
+
+export const refundJanFeb2026Contributions = onCall({ timeoutSeconds: 300 }, async (request) => {
+    // 1. Find all contributions for Jan (0) and Feb (1) of 2026
+    const contribsSnap = await db.collection('contributions')
+        .where('year', '==', 2026)
+        .where('month', 'in', [0, 1])
+        .get();
+        
+    let refundedLedgerEntries = 0;
+    let count = 0;
+    
+    const batch = db.batch();
+    
+    for (const doc of contribsSnap.docs) {
+        const contribId = doc.id;
+        
+        // 2. Find any ledger_entries linked to this contribution
+        const ledgerSnap = await db.collection('ledger_entries')
+            .where('linkedDocId', '==', contribId)
+            .get();
+            
+        // 3. Delete the ledger entries to restore the member's balance
+        for (const ledgerDoc of ledgerSnap.docs) {
+            batch.delete(ledgerDoc.ref);
+            refundedLedgerEntries += Math.abs(ledgerDoc.data().amount);
+        }
+        
+        // 4. Ensure the contribution remains marked as paid so it's not charged again
+        batch.update(doc.ref, { 
+            isPaid: true,
+            note: 'Bereits vor der Umstellung bezahlt'
+        });
+        
+        count++;
+    }
+    
+    await batch.commit();
+    
+    return { 
+        success: true, 
+        message: `Refunded ${count} contributions for Jan/Feb 2026 (totaling ${refundedLedgerEntries} euro added back to ledger balances).` 
+    };
+});
+import { onRequest } from 'firebase-functions/v2/https';
+
+export const migrateLedgerHttp = onRequest({ timeoutSeconds: 300 }, async (req, res) => {
+    const batch = db.batch();
+    let count = 0;
+
+    // Migrate Penalties
+    const pensSnap = await db.collection('penalties').where('isPaid', '==', false).get();
+    for (const penDoc of pensSnap.docs) {
+        const penData = penDoc.data();
+        const amount = penData.amount || 0;
+        
+        batch.update(penDoc.ref, { isPaid: true, paidViaReconciliation: true, reconciledAt: admin.firestore.FieldValue.serverTimestamp() });
+        
+        const entryRef = db.collection('ledger_entries').doc();
+        batch.set(entryRef, {
+            id: entryRef.id,
+            userId: penData.userId,
+            amount: -amount,
+            type: 'penalty',
+            description: `Strafe: ${penData.reason || 'Kniffel-Strafe'}`,
+            date: new Date().toISOString(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            linkedDocId: penDoc.id,
+        });
+        count++;
+    }
+
+    // Migrate Contributions
+    const contribSnap = await db.collection('contributions').where('isPaid', '==', false).get();
+    const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+    for (const contribDoc of contribSnap.docs) {
+        const cData = contribDoc.data();
+        const amount = 15;
+        
+        batch.update(contribDoc.ref, { isPaid: true, paidViaReconciliation: true, reconciledAt: admin.firestore.FieldValue.serverTimestamp() });
+        
+        const entryRef = db.collection('ledger_entries').doc();
+        batch.set(entryRef, {
+            id: entryRef.id,
+            userId: cData.userId,
+            amount: -amount,
+            type: 'contribution',
+            description: `Monatsbeitrag ${monthNames[cData.month] || cData.month} ${cData.year}`,
+            date: new Date().toISOString(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            linkedDocId: contribDoc.id,
+        });
+        count++;
+    }
+
+    await batch.commit();
+    res.json({ success: true, message: `Migrated ${count} unpaid items to ledger entries.` });
+});
+
+
+
+export const checkBalancesHttp = onRequest({ timeoutSeconds: 300 }, async (req, res) => {
+    const ledgers = await db.collection('ledger_entries').get();
+    const members = await db.collection('members').get();
+    
+    const balances: { [uid: string]: number } = {};
+    const details: { [uid: string]: any[] } = {};
+
+    ledgers.forEach(d => {
+        const data = d.data();
+        balances[data.userId] = (balances[data.userId] || 0) + data.amount;
+        if (!details[data.userId]) details[data.userId] = [];
+        details[data.userId].push(data);
+    });
+
+    const mdata: any = {};
+    let negSum = 0;
+    let posSum = 0;
+
+    members.forEach(m => {
+        const bal = balances[m.id] || 0;
+        if (bal < 0) negSum += Math.abs(bal);
+        if (bal > 0) posSum += bal;
+        mdata[m.data().name] = { balance: bal, entries: details[m.id] };
+    });
+
+    res.json({ negSum, posSum, mdata });
+});

@@ -6,9 +6,11 @@ import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { useFirestoreDocument } from "@/hooks/useFirestoreDocument";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
+import { useAllLedgers } from "@/hooks/useLedger";
 
 export function CashBalance() {
-    // 1. Fetch Penalties
+    // 1. Fetch All Ledgers
+    const { entries: allLedgers } = useAllLedgers();
     const qPenalties = useMemo(() => query(collection(db, "penalties")), []);
     const { data: penalties } = useFirestoreQuery<{ amount: number; isPaid: boolean }>(qPenalties);
 
@@ -30,15 +32,29 @@ export function CashBalance() {
 
     // Calculations
     const startingBalance = configData?.startingBalance || 0;
-    const contributionsTotal = (contributions?.length || 0) * 15;
+    
+    let penaltiesTotal = 0;
+    let contributionsTotal = 0;
+    
+    allLedgers.forEach(entry => {
+        if (entry.type === 'penalty') penaltiesTotal += Math.abs(entry.amount);
+        if (entry.type === 'contribution') contributionsTotal += Math.abs(entry.amount);
+    });
 
-    const penaltiesTotal = penalties?.reduce((acc, p) => acc + (p.isPaid ? (p.amount || 0) : 0), 0) || 0;
-    const penaltiesPendingTotal = penalties?.reduce((acc, p) => acc + (!p.isPaid ? (p.amount || 0) : 0), 0) || 0;
+    const balancesByMember: { [uid: string]: number } = {};
+    allLedgers.forEach(entry => {
+        balancesByMember[entry.userId] = (balancesByMember[entry.userId] || 0) + entry.amount;
+    });
+
+    let totalNegativeBalance = 0;
+    Object.values(balancesByMember).forEach(bal => {
+        if (bal < 0) totalNegativeBalance += Math.abs(bal);
+    });
 
     const donationsTotal = donations?.reduce((acc, d) => acc + (d.amount || 0), 0) || 0;
     const expensesTotal = expenses?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0;
 
-    const currentBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesTotal - expensesTotal;
+    const currentBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesTotal - totalNegativeBalance;
 
     return (
         <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 shadow-sm">
@@ -63,17 +79,17 @@ export function CashBalance() {
                     </div>
                 </div>
                 <div>
-                    <div className="text-xs text-muted-foreground mb-1">Penalties (Paid)</div>
+                    <div className="text-xs text-muted-foreground mb-1">Strafen</div>
                     <div className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" />
                         €{penaltiesTotal.toFixed(2)}
                     </div>
                 </div>
                 <div>
-                    <div className="text-xs text-muted-foreground mb-1">Penalties (Pending)</div>
+                    <div className="text-xs text-muted-foreground mb-1">Ausstehende Zahlungen</div>
                     <div className="font-semibold text-orange-500 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        €{penaltiesPendingTotal.toFixed(2)}
+                        <TrendingDown className="h-3 w-3" />
+                        €{totalNegativeBalance.toFixed(2)}
                     </div>
                 </div>
                 <div>

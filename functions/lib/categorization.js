@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.findMemberIdByEmail = exports.categorizeTransaction = void 0;
+exports.findMemberIdByName = exports.findMemberIdByEmail = exports.findMemberIdByPayPalName = exports.categorizeTransaction = void 0;
 const RULES = [
     { category: 'contribution', keywords: ['beitrag', 'mitgliedsbeitrag', 'contribution'] },
     { category: 'penalty', keywords: ['strafe', 'penalty', 'kniffelstrafe'] },
@@ -24,7 +24,36 @@ function categorizeTransaction(amount, note, payerEmail) {
 }
 exports.categorizeTransaction = categorizeTransaction;
 /**
- * Attempts to find a member ID by email.
+ * Attempts to find a member ID by their PayPal display name.
+ * This is the PRIMARY matching strategy — members store their PayPal name in the 'paypalName' field.
+ */
+async function findMemberIdByPayPalName(db, name) {
+    if (!name)
+        return null;
+    const lowerName = name.toLowerCase().trim();
+    const membersSnap = await db.collection('members').get();
+    for (const doc of membersSnap.docs) {
+        const d = doc.data();
+        // 1. Exact match on paypalName
+        if (d.paypalName && d.paypalName.toLowerCase().trim() === lowerName) {
+            return doc.id;
+        }
+    }
+    // 2. Partial match (PayPal name contains member's paypalName or vice versa)
+    for (const doc of membersSnap.docs) {
+        const d = doc.data();
+        if (d.paypalName) {
+            const pn = d.paypalName.toLowerCase().trim();
+            if (lowerName.includes(pn) || pn.includes(lowerName)) {
+                return doc.id;
+            }
+        }
+    }
+    return null;
+}
+exports.findMemberIdByPayPalName = findMemberIdByPayPalName;
+/**
+ * Attempts to find a member ID by email (fallback for backward compatibility).
  */
 async function findMemberIdByEmail(db, email) {
     if (!email)
@@ -47,4 +76,22 @@ async function findMemberIdByEmail(db, email) {
     return snap.docs[0].id;
 }
 exports.findMemberIdByEmail = findMemberIdByEmail;
+/**
+ * Attempts to find a member ID by app name (last resort fallback).
+ */
+async function findMemberIdByName(db, name) {
+    if (!name)
+        return null;
+    const lowerName = name.toLowerCase();
+    const membersSnap = await db.collection('members').get();
+    for (const doc of membersSnap.docs) {
+        const d = doc.data();
+        if (d.name && d.name.toLowerCase() === lowerName)
+            return doc.id;
+        if (d.name && lowerName.includes(d.name.toLowerCase()))
+            return doc.id;
+    }
+    return null;
+}
+exports.findMemberIdByName = findMemberIdByName;
 //# sourceMappingURL=categorization.js.map

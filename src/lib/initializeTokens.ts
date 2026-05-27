@@ -36,13 +36,5 @@ export async function initializeMemberTokens() {
 
     await batch.commit();
 
-    // Trigger monthly bonus check
-    try {
-        const { TokenService } = await import('./TokenService');
-        await TokenService.processMonthlyEarlyVoterBonus();
-    } catch (e) {
-        console.error("Monthly bonus check failed", e);
-    }
-
     console.log('Token initialization complete!');
 }

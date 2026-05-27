@@ -40,7 +40,7 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
     const [selectedRoles, setSelectedRoles] = useState<string[]>(initialRoles);
     const [joinYear, setJoinYear] = useState(member.joinYear?.toString() || new Date().getFullYear().toString());
     const [birthday, setBirthday] = useState(member.birthday || "");
-    const [paypalEmail, setPaypalEmail] = useState(member.paypalEmail || "");
+    const [paypalName, setPaypalName] = useState(member.paypalName || "");
 
     // Toggle Role
     const toggleRole = (roleToCheck: string) => {
@@ -72,7 +72,7 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                 roles: selectedRoles,
                 joinYear: parseInt(joinYear),
                 birthday: birthday,
-                paypalEmail: paypalEmail.trim(),
+                paypalName: paypalName.trim(),
                 isAdmin: selectedRoles.includes("Admin")
             });
 
@@ -197,18 +197,19 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
 
                     <div className="space-y-2 pb-2">
                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-primary">
-                            PayPal Email <span className="text-[10px] lowercase font-normal">(für autom. Zuordnung)</span>
+                            PayPal Name <span className="text-[10px] lowercase font-normal">(für autom. Zuordnung)</span>
                         </label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <input
-                                type="email"
-                                value={paypalEmail}
-                                onChange={(e) => setPaypalEmail(e.target.value)}
-                                placeholder="paypal@beispiel.de"
+                                type="text"
+                                value={paypalName}
+                                onChange={(e) => setPaypalName(e.target.value)}
+                                placeholder="z.B. Marcel Müller"
                                 className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                             />
                         </div>
+                        <p className="text-xs text-muted-foreground">Exakter Vor- und Nachname wie bei PayPal hinterlegt.</p>
                     </div>
 
                     <div className="pt-4 flex gap-3">

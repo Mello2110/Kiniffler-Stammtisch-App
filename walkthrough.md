@@ -38,13 +38,6 @@
 
 ---
 
-## 2026-02-13 - Reconciliation Bugfixes
-
-- Reconciliation-Aufrufe non-blocking gemacht (Fire-and-Forget)
-- Dashboard Saldo: Alle Strafen berücksichtigt, nicht nur unbezahlte
-
----
-
 ## 2026-02-12 - Kniffel Scorecard Rahmen & Chance-Highlighting
 
 - Äußerer Border + lila Schatten um Spielblatt-Tabelle
