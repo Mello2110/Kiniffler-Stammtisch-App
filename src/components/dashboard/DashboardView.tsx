@@ -11,8 +11,10 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Users, Trophy, Beer, AlertCircle, Crown, LayoutDashboard, Activity, Dice5, Star } from "lucide-react";
 import { useLedger } from "@/hooks/useLedger";
 import { useAllLedgers } from "@/hooks/useLedger";
+import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTitle } from "@/contexts/TitleContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { EditableHeader } from "@/components/common/EditableHeader";
 import { TokenService } from "@/lib/TokenService";
 import { initializeMemberTokens } from "@/lib/initializeTokens";
@@ -43,6 +45,7 @@ export function DashboardView() {
     const [expensesTotal, setExpensesTotal] = useState(0);
     const [startingBalance, setStartingBalance] = useState(0);
     const [seasonLeader, setSeasonLeader] = useState<{ id: string; points: number } | null>(null);
+    const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
     const [isShinyModalOpen, setIsShinyModalOpen] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
 
@@ -137,7 +140,7 @@ export function DashboardView() {
         let pensTotal = 0;
         let contTotal = 0;
         
-        // Sum penalties and contributions from ledger
+        // Sum penalties and contributions from ledger (absolute values)
         allLedgers.forEach(entry => {
             if (entry.type === 'penalty') {
                 pensTotal += Math.abs(entry.amount);
@@ -149,7 +152,7 @@ export function DashboardView() {
         setPenaltiesPaidTotal(pensTotal);
         setContributionsTotal(contTotal);
 
-        // Calculate member balances to find sum of negative balances
+        // Calculate per-member net balance, then sum up negative (outstanding) balances
         const balancesByMember: { [uid: string]: number } = {};
         allLedgers.forEach(entry => {
             balancesByMember[entry.userId] = (balancesByMember[entry.userId] || 0) + entry.amount;
@@ -167,7 +170,7 @@ export function DashboardView() {
         const dons = donationsData.reduce((sum, d) => sum + (d.amount || 0), 0);
         setDonationsTotal(dons);
 
-        const exp = expensesData.reduce((sum, e) => sum + e.amount, 0);
+        const exp = expensesData.reduce((sum, e) => sum + (e.amount || 0), 0);
         setExpensesTotal(exp);
     }, [allLedgers, donationsData, expensesData]);
 
@@ -271,7 +274,14 @@ export function DashboardView() {
     const { dict } = useLanguage();
     const { title: sidebarTitle } = useTitle();
 
-    const currentCashBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesPaidTotal - totalNegativeBalance;
+    // Cash balance = starting amount + all inflows - all outflows
+    // penaltiesPaidTotal: absolute sum of penalty ledger entries (collected fines)
+    // totalNegativeBalance: sum of what members still owe (not yet in the pot)
+    // expensesTotal: actual expenses paid out
+    const currentCashBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesPaidTotal - totalNegativeBalance - expensesTotal;
+
+    // Current member: resolved once to avoid repeated .find() in JSX
+    const currentMember = members.find(m => m.id === user?.uid);
 
     return (
         <div className="flex flex-col gap-6">
@@ -340,7 +350,11 @@ export function DashboardView() {
                     <Link href="/cash">
                         <StatCard
                             title={dict.dashboard.widgets.penalties.title}
-                            value={`€${Math.abs(memberBalance).toFixed(2)}`}
+                            value={
+                                memberBalance >= 0
+                                    ? `+€${memberBalance.toFixed(2)}`
+                                    : `-€${Math.abs(memberBalance).toFixed(2)}`
+                            }
                             icon={AlertCircle}
                             description={
                                 memberBalance > 0
@@ -349,12 +363,13 @@ export function DashboardView() {
                                         ? dict.dashboard.widgets.penalties.descNegative
                                         : dict.dashboard.widgets.penalties.descZero
                             }
-                            className={`transition-colors h-full cursor-pointer ${memberBalance > 0
-                                ? "border-green-500/50 hover:bg-green-500/10"
-                                : memberBalance < 0
-                                    ? "border-red-500/50 hover:bg-red-500/10"
-                                    : "hover:border-primary/50"
-                                }`}
+                            className={`transition-colors h-full cursor-pointer ${
+                                memberBalance > 0
+                                    ? "border-green-500/50 hover:bg-green-500/10"
+                                    : memberBalance < 0
+                                        ? "border-red-500/50 hover:bg-red-500/10"
+                                        : "hover:border-primary/50"
+                            }`}
                         />
                     </Link>
 
@@ -381,30 +396,22 @@ export function DashboardView() {
                     <div onClick={() => setIsTokenModalOpen(true)}>
                         <StatCard
                             title="Tokens"
-                            value={members.find(m => m.id === user?.uid)?.tokenBalance || 0}
+                            value={
+                                <div className="flex items-center gap-3">
+                                    <span>{currentMember?.tokenBalance ?? 0}</span>
+                                    {(currentMember?.tokenShinyBalance ?? 0) > 0 && (
+                                        <span className="flex items-center gap-1.5 text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full text-sm border border-yellow-500/20 shadow-[0_0_10px_rgba(250,204,21,0.2)]">
+                                            <Star className="h-3.5 w-3.5 fill-current animate-pulse" />
+                                            <span className="font-bold">{currentMember?.tokenShinyBalance}</span>
+                                        </span>
+                                    )}
+                                </div>
+                            }
                             icon={Dice5}
                             description={dict.dashboard.widgets.tokens?.desc || "Deine Tokens für Deals und Wetten"}
                             className="border-blue-500/20 hover:border-blue-500/50 transition-colors h-full cursor-pointer"
                         />
                     </div>
-
-                    {/* Hidden Shiny Card: Only appears if user has at least one shiny token */}
-                    {(members.find(m => m.id === user?.uid)?.tokenShinyBalance || 0) > 0 && (
-                        <div className="relative">
-                            <StatCard
-                                title="Shiny Tokens"
-                                value={members.find(m => m.id === user?.uid)?.tokenShinyBalance || 0}
-                                icon={Star}
-                                description="Ein unfassbares Phänomen!"
-                                className="border-yellow-400 border-2 shadow-[0_0_15px_rgba(250,204,21,0.4)] animate-pulse h-full bg-gradient-to-br from-yellow-500/10 to-transparent"
-                            />
-                            {/* Visual sparkle overlay */}
-                            <div className="absolute top-2 right-2 flex gap-0.5">
-                                <Star className="h-3 w-3 text-yellow-400 fill-current animate-ping" />
-                                <Star className="h-2 w-2 text-yellow-300 fill-current animate-bounce" />
-                            </div>
-                        </div>
-                    )}
 
                     <Link href="/hall-of-fame">
                         <StatCard
