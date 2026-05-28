@@ -10,7 +10,7 @@ import { CashBalance } from "@/components/cash/CashBalance";
 import { ContributionTable } from "@/components/cash/ContributionTable";
 import { ExpensesTable } from "@/components/cash/ExpensesTable";
 import { DonationTable } from "@/components/cash/DonationTable";
-import { PenaltyGroupedView } from "@/components/cash/PenaltyGroupedView";
+import { OutstandingPayments } from "@/components/cash/OutstandingPayments";
 import { AddPenaltyModal } from "@/components/stats/AddPenaltyModal";
 import { EditPenaltyModal } from "@/components/stats/EditPenaltyModal";
 import { EditExpenseModal } from "@/components/cash/EditExpenseModal";
@@ -135,30 +135,23 @@ export default function CashPage() {
                 </section>
 
                 <div className="grid gap-8 md:grid-cols-2 items-start">
-                    {/* Section 2: Penalties (Grouped by Member) */}
+                    {/* Section 2: Outstanding Payments */}
                     <section className="space-y-4">
                         <div className="flex items-center justify-between h-[34px]">
                             <EditableHeader
                                 pageId="cash"
-                                headerId="penalties-title"
-                                defaultText="Penalties"
+                                headerId="outstanding-title"
+                                defaultText="Ausstehende Zahlungen"
                                 as="h2"
                                 className="text-xl font-semibold"
                             />
-                            {canManageFinance && (
-                                <button
-                                    onClick={() => setIsPenaltyModalOpen(true)}
-                                    className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
-                                >
-                                    <Plus className="h-3 w-3" /> Add Penalty
-                                </button>
-                            )}
                         </div>
-                        <PenaltyGroupedView
-                            penalties={penalties}
+                        <OutstandingPayments 
                             members={members}
-                            onEdit={(p) => setEditingPenalty(p)}
+                            penalties={penalties}
                             canManage={canManageFinance}
+                            onAddPenalty={() => setIsPenaltyModalOpen(true)}
+                            onEditPenalty={(penalty) => setEditingPenalty(penalty)}
                         />
                     </section>
 
