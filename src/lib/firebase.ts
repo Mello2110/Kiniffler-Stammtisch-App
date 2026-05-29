@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
@@ -18,15 +18,32 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 
-// Use modern persistentLocalCache for offline support (replaces deprecated enableMultiTabIndexedDbPersistence)
-// This ensures data loads from cache instantly on repeat visits / mobile
-export const db = typeof window !== "undefined"
-    ? initializeFirestore(app, {
-        localCache: persistentLocalCache({
-            tabManager: persistentMultipleTabManager()
-        })
-    })
-    : initializeFirestore(app, {});
+// Use modern persistentLocalCache for offline support.
+// IMPORTANT: initializeFirestore can only be called once per app instance.
+// We guard with try/catch and fall back to getFirestore() if already initialized.
+function createDb() {
+    if (typeof window === "undefined") {
+        // SSR: use default (memory) Firestore, no persistence
+        try {
+            return initializeFirestore(app, {});
+        } catch {
+            return getFirestore(app);
+        }
+    }
+    // Client: use IndexedDB persistent cache
+    try {
+        return initializeFirestore(app, {
+            localCache: persistentLocalCache({
+                tabManager: persistentMultipleTabManager()
+            })
+        });
+    } catch {
+        // Already initialized (e.g. HMR or module re-import) — just get the existing instance
+        return getFirestore(app);
+    }
+}
+
+export const db = createDb();
 
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
