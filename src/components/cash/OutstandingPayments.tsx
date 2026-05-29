@@ -3,46 +3,100 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, Plus, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Member, Penalty } from "@/types";
+import type { Member, LedgerEntry, LedgerTransactionCategory } from "@/types";
 import { useAllLedgers } from "@/hooks/useLedger";
 import { format, parseISO } from "date-fns";
 
+export interface UnpaidLedgerComponent {
+    id: string; // The ledger entry id
+    description: string;
+    date: string;
+    remainingAmount: number; // Positive absolute amount owed
+    type: LedgerTransactionCategory;
+    linkedDocId?: string;
+    originalEntry: LedgerEntry;
+}
+
 interface OutstandingPaymentsProps {
     members: Member[];
-    penalties?: Penalty[];
     canManage?: boolean;
     onAddPenalty?: () => void;
-    onEditPenalty?: (penalty: Penalty) => void;
+    onEditLedgerEntry?: (entry: LedgerEntry) => void;
 }
 
 export function OutstandingPayments({ 
     members, 
-    penalties = [],
     canManage,
     onAddPenalty,
-    onEditPenalty
+    onEditLedgerEntry
 }: OutstandingPaymentsProps) {
     const { entries: allLedgers } = useAllLedgers();
     const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
 
     const outstandingMembers = useMemo(() => {
         const balancesByMember: { [uid: string]: number } = {};
+        const unpaidComponentsByMember: { [uid: string]: UnpaidLedgerComponent[] } = {};
+
+        const entriesByUser: { [uid: string]: LedgerEntry[] } = {};
         allLedgers.forEach(entry => {
+            if (!entriesByUser[entry.userId]) entriesByUser[entry.userId] = [];
+            entriesByUser[entry.userId].push(entry);
             balancesByMember[entry.userId] = (balancesByMember[entry.userId] || 0) + entry.amount;
+        });
+
+        // Calculate unpaid components for each user using FIFO
+        Object.keys(entriesByUser).forEach(userId => {
+            const userEntries = entriesByUser[userId];
+            // Sort oldest first for FIFO matching
+            userEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+            let positivePool = 0;
+            // First pass: sum all positive cash inflow
+            userEntries.forEach(entry => {
+                if (entry.amount > 0) positivePool += entry.amount;
+            });
+
+            const unpaid: UnpaidLedgerComponent[] = [];
+            // Second pass: apply positive pool to negative entries from oldest to newest
+            userEntries.forEach(entry => {
+                if (entry.amount < 0) {
+                    const debtAbsolute = Math.abs(entry.amount);
+                    if (positivePool >= debtAbsolute) {
+                        // Fully paid
+                        positivePool -= debtAbsolute;
+                    } else {
+                        // Partially or not paid at all
+                        const remainingDebt = debtAbsolute - positivePool;
+                        positivePool = 0;
+                        unpaid.push({
+                            id: entry.id,
+                            description: entry.description,
+                            date: entry.date,
+                            remainingAmount: remainingDebt,
+                            type: entry.type,
+                            linkedDocId: entry.linkedDocId,
+                            originalEntry: entry
+                        });
+                    }
+                }
+            });
+            // Reverse so newest unpaid are at top
+            unpaid.reverse();
+            unpaidComponentsByMember[userId] = unpaid;
         });
 
         return members
             .map(member => {
-                const memberPenalties = penalties.filter(p => p.userId === member.id && !p.isPaid);
                 return {
                     ...member,
                     balance: balancesByMember[member.id] || 0,
-                    unpaidPenalties: memberPenalties
+                    unpaidComponents: unpaidComponentsByMember[member.id] || []
                 };
             })
-            .filter(member => member.balance < 0)
+            // Tolerate floating point math issues e.g. -0.000001
+            .filter(member => member.balance < -0.01) 
             .sort((a, b) => a.balance - b.balance); // Most negative first
-    }, [allLedgers, members, penalties]);
+    }, [allLedgers, members]);
 
     const totalOutstanding = outstandingMembers.reduce((sum, m) => sum + Math.abs(m.balance), 0);
 
@@ -119,37 +173,38 @@ export function OutstandingPayments({
                                     {isExpanded && (
                                         <div className="bg-muted/10 border-t border-b p-4 space-y-3 shadow-inner">
                                             <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                                Zusammensetzung
+                                                Offene Posten
                                             </div>
                                             
-                                            {member.unpaidPenalties.length > 0 ? (
+                                            {member.unpaidComponents.length > 0 ? (
                                                 <div className="space-y-2">
-                                                    <div className="text-xs font-medium text-muted-foreground mb-1">
-                                                        Offene Strafen:
-                                                    </div>
-                                                    {member.unpaidPenalties.map(penalty => (
+                                                    {member.unpaidComponents.map(component => (
                                                         <div 
-                                                            key={penalty.id} 
+                                                            key={component.id} 
                                                             className="flex items-center justify-between bg-background p-3 rounded-md border shadow-sm"
                                                         >
                                                             <div className="flex flex-col">
-                                                                <span className="text-sm font-medium">{penalty.reason}</span>
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    {penalty.date ? format(parseISO(penalty.date), "dd.MM.yyyy") : ''}
+                                                                <span className="text-sm font-medium">{component.description}</span>
+                                                                <span className="text-xs text-muted-foreground capitalize">
+                                                                    {component.type === 'penalty' ? 'Strafe' : 
+                                                                     component.type === 'contribution' ? 'Beitrag' : 
+                                                                     component.type === 'donation' ? 'Spende' : component.type} 
+                                                                    {" • "} 
+                                                                    {component.date ? format(parseISO(component.date), "dd.MM.yyyy") : ''}
                                                                 </span>
                                                             </div>
                                                             <div className="flex items-center gap-3">
                                                                 <span className="text-sm font-medium text-red-500">
-                                                                    €{penalty.amount.toFixed(2)}
+                                                                    €{component.remainingAmount.toFixed(2)}
                                                                 </span>
-                                                                {canManage && onEditPenalty && (
+                                                                {canManage && onEditLedgerEntry && (
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            onEditPenalty(penalty);
+                                                                            onEditLedgerEntry(component.originalEntry);
                                                                         }}
                                                                         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                                                                        title="Strafe bearbeiten"
+                                                                        title="Eintrag bearbeiten/löschen"
                                                                     >
                                                                         <Pencil className="w-4 h-4" />
                                                                     </button>
@@ -158,12 +213,9 @@ export function OutstandingPayments({
                                                         </div>
                                                     ))}
                                                 </div>
-                                            ) : null}
-
-                                            {/* Note if balance doesn't match unpaid penalties */}
-                                            {Math.abs(member.balance) > (member.unpaidPenalties.reduce((s, p) => s + p.amount, 0)) && (
+                                            ) : (
                                                 <div className="text-xs text-muted-foreground italic bg-background p-3 rounded-md border">
-                                                    Hinweis: Die Gesamtschulden umfassen auch offene Mitgliedsbeiträge oder andere negative Kontobewegungen.
+                                                    Keine Details verfügbar. Die Schulden resultieren möglicherweise aus einem manuell gebuchten negativen Kontostand.
                                                 </div>
                                             )}
                                         </div>

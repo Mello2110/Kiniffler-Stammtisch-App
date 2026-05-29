@@ -5,7 +5,6 @@ import { collection, query, onSnapshot, orderBy, limit } from "firebase/firestor
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
-import type { Member, Penalty } from "@/types";
 import { CashBalance } from "@/components/cash/CashBalance";
 import { ContributionTable } from "@/components/cash/ContributionTable";
 import { ExpensesTable } from "@/components/cash/ExpensesTable";
@@ -14,8 +13,9 @@ import { OutstandingPayments } from "@/components/cash/OutstandingPayments";
 import { AddPenaltyModal } from "@/components/stats/AddPenaltyModal";
 import { EditPenaltyModal } from "@/components/stats/EditPenaltyModal";
 import { EditExpenseModal } from "@/components/cash/EditExpenseModal";
+import { EditLedgerEntryModal } from "@/components/cash/EditLedgerEntryModal";
+import type { Member, Penalty, Expense, LedgerEntry } from "@/types";
 import { Plus, Wallet, PiggyBank, History } from "lucide-react";
-import type { Expense } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditableHeader } from "@/components/common/EditableHeader";
 
@@ -24,6 +24,7 @@ export default function CashPage() {
     const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
     const [editingPenalty, setEditingPenalty] = useState<Penalty | null>(null);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+    const [editingLedgerEntry, setEditingLedgerEntry] = useState<LedgerEntry | null>(null);
     const [isLoadingMembers, setIsLoadingMembers] = useState(true);
     const currentYear = new Date().getFullYear();
 
@@ -147,11 +148,10 @@ export default function CashPage() {
                             />
                         </div>
                         <OutstandingPayments 
-                            members={members}
-                            penalties={penalties}
+                            members={members || []}
                             canManage={canManageFinance}
                             onAddPenalty={() => setIsPenaltyModalOpen(true)}
-                            onEditPenalty={(penalty) => setEditingPenalty(penalty)}
+                            onEditLedgerEntry={(entry) => setEditingLedgerEntry(entry)}
                         />
                     </section>
 
@@ -178,6 +178,13 @@ export default function CashPage() {
                     penalty={editingPenalty}
                     members={members}
                     onClose={() => setEditingPenalty(null)}
+                />
+            )}
+
+            {editingLedgerEntry && canManageFinance && (
+                <EditLedgerEntryModal
+                    entry={editingLedgerEntry}
+                    onClose={() => setEditingLedgerEntry(null)}
                 />
             )}
 
