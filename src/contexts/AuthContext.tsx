@@ -29,36 +29,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            if (currentUser) {
-                // Auto-create/update member profile
-                const userRef = doc(db, "members", currentUser.uid);
-                const userSnap = await getDoc(userRef);
-
-                if (!userSnap.exists()) {
-                    // Create new profile
-                    await setDoc(userRef, {
-                        uid: currentUser.uid,
-                        email: currentUser.email,
-                        name: currentUser.displayName || currentUser.email?.split('@')[0] || "New Member",
-                        avatarUrl: currentUser.photoURL || null,
-                        role: "FussVolk",
-                        roles: [],
-                        points: 0,
-                        joinYear: new Date().getFullYear(),
-                        createdAt: serverTimestamp(),
-                    });
-                } else {
-                    // Update existing profile with latest auth info if needed
-                    // Use merge to avoid overwriting existing custom data like roles/points
-                    await setDoc(userRef, {
-                        email: currentUser.email,
-                        // Only update name/avatar if they are missing in Firestore or if we want to sync
-                        // For now, let's strictly sync email and avoid overriding custom names
-                    }, { merge: true });
-                }
-            }
+            // Set user and loading immediately so the app can render!
             setUser(currentUser);
             setLoading(false);
+
+            try {
+                if (currentUser) {
+                    // Auto-create/update member profile asynchronously
+                    const userRef = doc(db, "members", currentUser.uid);
+                    const userSnap = await getDoc(userRef);
+
+                    if (!userSnap.exists()) {
+                        // Create new profile
+                        await setDoc(userRef, {
+                            uid: currentUser.uid,
+                            email: currentUser.email,
+                            name: currentUser.displayName || currentUser.email?.split('@')[0] || "New Member",
+                            avatarUrl: currentUser.photoURL || null,
+                            role: "FussVolk",
+                            roles: [],
+                            points: 0,
+                            joinYear: new Date().getFullYear(),
+                            createdAt: serverTimestamp(),
+                        });
+                    } else {
+                        // Update existing profile with latest auth info if needed
+                        await setDoc(userRef, {
+                            email: currentUser.email,
+                        }, { merge: true });
+                    }
+                }
+            } catch (error) {
+                console.error("Error in auth state change:", error);
+            }
         });
         return () => unsubscribe();
     }, []);
