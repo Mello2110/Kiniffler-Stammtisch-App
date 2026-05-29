@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
@@ -17,7 +17,17 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Use modern persistentLocalCache for offline support (replaces deprecated enableMultiTabIndexedDbPersistence)
+// This ensures data loads from cache instantly on repeat visits / mobile
+export const db = typeof window !== "undefined"
+    ? initializeFirestore(app, {
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        })
+    })
+    : initializeFirestore(app, {});
+
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 
@@ -26,15 +36,6 @@ export const deleteCloudinaryImage = httpsCallable(functions, 'deleteCloudinaryI
 export const bulkDeleteCloudinaryImages = httpsCallable(functions, 'bulkDeleteCloudinaryImages');
 export const getPayPalBalance = httpsCallable(functions, 'getPayPalBalance');
 export const syncPayPalTransactions = httpsCallable(functions, 'syncPayPalTransactions');
-
-if (typeof window !== "undefined") {
-    // Enable offline persistence
-    import("firebase/firestore").then(({ enableMultiTabIndexedDbPersistence }) => {
-        enableMultiTabIndexedDbPersistence(db).catch((err) => {
-            console.log("Firestore persistence request:", err.code);
-        });
-    });
-}
 
 
 let analytics;

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { LedgerProvider } from "@/contexts/LedgerContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -40,12 +41,27 @@ export default function RootLayout({
       >
         <LanguageProvider>
           <AuthProvider>
-            <ClientLayout>
-              {children}
-            </ClientLayout>
+            <LedgerProvider>
+              <ClientLayout>
+                {children}
+              </ClientLayout>
+            </LedgerProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                  registration.unregister();
+                }
+              });
+            }
+          `,
+        }}
+      />
     </html>
   );
 }

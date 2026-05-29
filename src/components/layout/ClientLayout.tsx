@@ -40,7 +40,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 {/* --- GLOBAL BACKGROUND DECOR (Advanced Lighting & Gradients) --- */}
                 <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-background">
                     {/* 1. Primary Light Source (Purple - Top Center) */}
-                    <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/20 blur-[130px] rounded-full opacity-60 mix-blend-screen animate-pulse duration-[4000ms]" />
+                    <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/20 blur-[130px] rounded-full opacity-60 mix-blend-screen" />
 
                     {/* 2. Secondary Light Source (Indigo/Blue - Bottom Right Offset) - Creates Farbverlauf */}
                     <div className="absolute top-[20%] right-[-10%] w-[800px] h-[600px] bg-indigo-500/10 blur-[120px] rounded-full opacity-40 mix-blend-screen" />
