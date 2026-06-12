@@ -7,8 +7,9 @@ import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { useFirestoreDocument } from "@/hooks/useFirestoreDocument";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { useAllLedgers } from "@/hooks/useLedger";
+import type { Member } from "@/types";
 
-export function CashBalance() {
+export function CashBalance({ members = [] }: { members?: Member[] }) {
     // 1. Fetch All Ledgers
     const { entries: allLedgers } = useAllLedgers();
     const qPenalties = useMemo(() => query(collection(db, "penalties")), []);
@@ -51,9 +52,30 @@ export function CashBalance() {
         if (bal < 0) totalNegativeBalance += Math.abs(bal);
     });
 
+    let displayOutstanding = 0;
+    if (members && members.length > 0) {
+        members.forEach(member => {
+            const bal = balancesByMember[member.id] || 0;
+            if (bal < -0.01) {
+                displayOutstanding += Math.abs(bal);
+            }
+        });
+    } else {
+        // Fallback
+        Object.keys(balancesByMember).forEach(uid => {
+            if (uid !== "system") {
+                const bal = balancesByMember[uid] || 0;
+                if (bal < -0.01) displayOutstanding += Math.abs(bal);
+            }
+        });
+    }
+
     const donationsTotal = donations?.reduce((acc, d) => acc + (d.amount || 0), 0) || 0;
     const expensesTotal = expenses?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0;
 
+    // We rely PURELY on the ledger system. 
+    // Expenses automatically create a "system" debt in the ledger, which is picked up by totalNegativeBalance.
+    // No explicit subtraction is needed.
     const currentBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesTotal - totalNegativeBalance;
 
     return (
@@ -89,7 +111,7 @@ export function CashBalance() {
                     <div className="text-xs text-muted-foreground mb-1">Ausstehende Zahlungen</div>
                     <div className="font-semibold text-orange-500 flex items-center gap-1">
                         <TrendingDown className="h-3 w-3" />
-                        €{totalNegativeBalance.toFixed(2)}
+                        €{displayOutstanding.toFixed(2)}
                     </div>
                 </div>
                 <div>

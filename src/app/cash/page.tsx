@@ -10,6 +10,7 @@ import { ContributionTable } from "@/components/cash/ContributionTable";
 import { ExpensesTable } from "@/components/cash/ExpensesTable";
 import { DonationTable } from "@/components/cash/DonationTable";
 import { OutstandingPayments } from "@/components/cash/OutstandingPayments";
+import { TransactionHistory } from "@/components/cash/TransactionHistory";
 import { AddPenaltyModal } from "@/components/stats/AddPenaltyModal";
 import { EditPenaltyModal } from "@/components/stats/EditPenaltyModal";
 import { EditExpenseModal } from "@/components/cash/EditExpenseModal";
@@ -18,6 +19,8 @@ import type { Member, Penalty, Expense, LedgerEntry } from "@/types";
 import { Plus, Wallet, PiggyBank, History } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditableHeader } from "@/components/common/EditableHeader";
+import { useAllLedgers } from "@/hooks/useLedger";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 export default function CashPage() {
     const { user } = useAuth();
@@ -36,6 +39,9 @@ export default function CashPage() {
     const qPenalties = useMemo(() => query(collection(db, "penalties"), orderBy("createdAt", "desc")), []);
     const { data: penalties } = useFirestoreQuery<Penalty>(qPenalties);
 
+    // Fetch all ledgers for transaction history
+    const { entries: allLedgers } = useAllLedgers();
+
     useEffect(() => {
         if (!membersLoading) {
             setIsLoadingMembers(false);
@@ -48,7 +54,7 @@ export default function CashPage() {
     }, [user, members, membersLoading]);
 
     return (
-        <div className="space-y-8 pb-10">
+        <div className="space-y-8 pb-10 overflow-x-hidden">
             {/* Header */}
             {/* Header Section */}
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
@@ -90,7 +96,9 @@ export default function CashPage() {
             </div>
 
             {/* Top: Balance */}
-            <CashBalance />
+            <ErrorBoundary fallbackTitle="Kassenstand konnte nicht geladen werden.">
+                <CashBalance members={members || []} />
+            </ErrorBoundary>
 
             <div className="grid gap-8 lg:grid-cols-1">
                 {/* Section 1: Monthly Contributions */}
@@ -105,12 +113,14 @@ export default function CashPage() {
                     {isLoadingMembers ? (
                         <div className="p-4 text-center text-muted-foreground">Lade Mitglieder...</div>
                     ) : (
-                        <ContributionTable
-                            members={members}
-                            currentYear={currentYear}
-                            currentUserId={user?.uid || ""}
-                            canManage={canManageFinance}
-                        />
+                        <ErrorBoundary fallbackTitle="Beitragstabelle konnte nicht geladen werden.">
+                            <ContributionTable
+                                members={members}
+                                currentYear={currentYear}
+                                currentUserId={user?.uid || ""}
+                                canManage={canManageFinance}
+                            />
+                        </ErrorBoundary>
                     )}
                 </section>
 
@@ -126,44 +136,51 @@ export default function CashPage() {
                     {isLoadingMembers ? (
                         <div className="p-4 text-center text-muted-foreground">Lade...</div>
                     ) : (
-                        <DonationTable
-                            members={members}
-                            currentYear={currentYear}
-                            currentUserId={user?.uid || ""}
-                            canManage={canManageFinance}
-                        />
+                        <ErrorBoundary fallbackTitle="Spendentabelle konnte nicht geladen werden.">
+                            <DonationTable
+                                members={members}
+                                currentYear={currentYear}
+                                currentUserId={user?.uid || ""}
+                                canManage={canManageFinance}
+                            />
+                        </ErrorBoundary>
                     )}
                 </section>
 
                 <div className="grid gap-8 md:grid-cols-2 items-start">
                     {/* Section 2: Outstanding Payments */}
-                    <section className="space-y-4">
-                        <div className="flex items-center justify-between h-[34px]">
-                            <EditableHeader
-                                pageId="cash"
-                                headerId="outstanding-title"
-                                defaultText="Ausstehende Zahlungen"
-                                as="h2"
-                                className="text-xl font-semibold"
+                    <section>
+                        <ErrorBoundary fallbackTitle="Ausstehende Zahlungen konnten nicht geladen werden.">
+                            <OutstandingPayments 
+                                members={members || []}
+                                canManage={canManageFinance}
+                                onAddPenalty={() => setIsPenaltyModalOpen(true)}
+                                onEditLedgerEntry={(entry) => setEditingLedgerEntry(entry)}
                             />
-                        </div>
-                        <OutstandingPayments 
-                            members={members || []}
-                            canManage={canManageFinance}
-                            onAddPenalty={() => setIsPenaltyModalOpen(true)}
-                            onEditLedgerEntry={(entry) => setEditingLedgerEntry(entry)}
-                        />
+                        </ErrorBoundary>
                     </section>
 
                     {/* Section 3: Expenses */}
                     <section className="space-y-4">
-                        <ExpensesTable
-                            onEdit={(e) => setEditingExpense(e)}
-                            canManage={canManageFinance}
-                            members={members}
-                        />
+                        <ErrorBoundary fallbackTitle="Ausgabentabelle konnte nicht geladen werden.">
+                            <ExpensesTable
+                                onEdit={(e) => setEditingExpense(e)}
+                                canManage={canManageFinance}
+                                members={members}
+                            />
+                        </ErrorBoundary>
                     </section>
                 </div>
+
+                {/* Section 4: Transaction History */}
+                <section className="space-y-4">
+                    <ErrorBoundary fallbackTitle="Transaktionsverlauf konnte nicht geladen werden.">
+                        <TransactionHistory 
+                            entries={allLedgers} 
+                            members={members || []} 
+                        />
+                    </ErrorBoundary>
+                </section>
             </div>
 
             {isPenaltyModalOpen && canManageFinance && (
