@@ -53,6 +53,26 @@ export default function CashPage() {
         return true; // GLOBAL ACCESS UNLOCKED FOR EVENT
     }, [user, members, membersLoading]);
 
+    // Calculate total outstanding using the same "positive pool" algorithm as OutstandingPayments
+    // This ensures the header value is always in sync with the list below.
+    const totalOutstanding = useMemo(() => {
+        const memberIds = new Set((members || []).map(m => m.id));
+        const entriesByUser: { [uid: string]: number[] } = {};
+
+        allLedgers.forEach(entry => {
+            if (!memberIds.has(entry.userId)) return; // only real members
+            if (!entriesByUser[entry.userId]) entriesByUser[entry.userId] = [];
+            entriesByUser[entry.userId].push(entry.amount);
+        });
+
+        let total = 0;
+        Object.values(entriesByUser).forEach(amounts => {
+            const net = amounts.reduce((sum, a) => sum + a, 0);
+            if (net < -0.01) total += Math.abs(net);
+        });
+        return total;
+    }, [allLedgers, members]);
+
     return (
         <div className="space-y-8 pb-10 overflow-x-hidden">
             {/* Header */}
@@ -97,7 +117,7 @@ export default function CashPage() {
 
             {/* Top: Balance */}
             <ErrorBoundary fallbackTitle="Kassenstand konnte nicht geladen werden.">
-                <CashBalance members={members || []} />
+                <CashBalance members={members || []} totalOutstanding={totalOutstanding} />
             </ErrorBoundary>
 
             <div className="grid gap-8 lg:grid-cols-1">
