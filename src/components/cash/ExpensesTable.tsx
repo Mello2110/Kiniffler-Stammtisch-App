@@ -3,12 +3,11 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { Trash2, Plus, Search, Pencil } from "lucide-react";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, getDocs, where } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { db } from "@/lib/firebase";
 import type { Expense, Member } from "@/types";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
-import { reconcileMemberBalance } from "@/lib/reconciliation";
 
 // ============================================
 // PROPS
@@ -33,6 +32,35 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
 
     // --- Search and Filter State ---
     const [filter, setFilter] = useState("");
+    const [isCleaning, setIsCleaning] = useState(false);
+
+    const handleCleanDatabase = async () => {
+        setIsCleaning(true);
+        try {
+            const expensesSnap = await getDocs(collection(db, "expenses"));
+            const validExpenseIds = new Set(expensesSnap.docs.map(doc => doc.id));
+
+            const ledgerSnap = await getDocs(collection(db, "ledger_entries"));
+
+            let deletedCount = 0;
+            for (const docSnap of ledgerSnap.docs) {
+                const data = docSnap.data();
+                if (data.type === "expense" && data.linkedDocId) {
+                    if (!validExpenseIds.has(data.linkedDocId)) {
+                        await deleteDoc(docSnap.ref);
+                        deletedCount++;
+                    }
+                }
+            }
+            alert(`Database cleaned! Deleted ${deletedCount} orphaned ledger entries. Your balances should now be correct.`);
+            window.location.reload();
+        } catch (error) {
+            console.error("Error cleaning database:", error);
+            alert("Error cleaning database. See console.");
+        } finally {
+            setIsCleaning(false);
+        }
+    };
     const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
 
     // ============================================
@@ -51,18 +79,42 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
         const member = members.find(m => m.id === selectedMemberId);
         if (!member) return;
 
+        const parsedAmount = parseFloat(amount);
+
         try {
-            await addDoc(collection(db, "expenses"), {
+            // 1. Create expense record (for ExpensesTable display & TransactionHistory)
+            const expenseRef = await addDoc(collection(db, "expenses"), {
                 description: desc,
-                amount: parseFloat(amount),
+                amount: parsedAmount,
                 date,
                 memberId: selectedMemberId,
                 memberName: member.name,
                 createdAt: serverTimestamp()
             });
 
-            // Trigger reconciliation in background (non-blocking)
-            reconcileMemberBalance(selectedMemberId).catch(console.error);
+            // 2. Positive ledger entry for the member — they advanced this money.
+            //    Increases their Guthaben (or offsets their debt).
+            await addDoc(collection(db, "ledger_entries"), {
+                userId: selectedMemberId,
+                amount: parsedAmount,
+                type: "expense",
+                description: `Ausgabe: ${desc}`,
+                date,
+                createdAt: serverTimestamp(),
+                linkedDocId: expenseRef.id,
+            });
+
+            // 3. Negative ledger entry for system — this money left the Kasse.
+            //    Reduces the overall Kassenstand via totalNegativeBalance.
+            await addDoc(collection(db, "ledger_entries"), {
+                userId: "system",
+                amount: -parsedAmount,
+                type: "expense",
+                description: `Kassenabgang: ${desc} (${member.name})`,
+                date,
+                createdAt: serverTimestamp(),
+                linkedDocId: expenseRef.id,
+            });
 
             setDesc("");
             setAmount("");
@@ -75,20 +127,21 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
 
     const handleDelete = async () => {
         if (!deletingExpense) return;
-        const memberId = deletingExpense.memberId;
         try {
+            // First, delete any attached ledger entries
+            const q = query(collection(db, "ledger_entries"), where("linkedDocId", "==", deletingExpense.id));
+            const snapshot = await getDocs(q);
+            const deletePromises = snapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
+            await Promise.all(deletePromises);
+
+            // Then delete the expense itself
             await deleteDoc(doc(db, "expenses", deletingExpense.id));
-
-            // Trigger reconciliation in background (non-blocking)
-            if (memberId) {
-                reconcileMemberBalance(memberId).catch(console.error);
-            }
-
             setDeletingExpense(null);
         } catch (error) {
             console.error("Error deleting expense:", error);
         }
     };
+
 
     // ============================================
     // FILTERING
@@ -113,12 +166,21 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
             <div className="flex justify-between items-center h-[34px]">
                 <h2 className="text-xl font-semibold">Expenses</h2>
                 {canManage && (
-                    <button
-                        onClick={() => setIsAdding(!isAdding)}
-                        className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
-                    >
-                        {isAdding ? "Cancel" : <><Plus className="h-3 w-3" /> Add Expense</>}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleCleanDatabase}
+                            disabled={isCleaning}
+                            className="text-xs bg-red-500/10 text-red-500 hover:bg-red-500/20 px-3 py-1.5 rounded-md font-medium transition-colors disabled:opacity-50"
+                        >
+                            {isCleaning ? "Cleaning..." : "Clean Database"}
+                        </button>
+                        <button
+                            onClick={() => setIsAdding(!isAdding)}
+                            className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1"
+                        >
+                            {isAdding ? "Cancel" : <><Plus className="h-3 w-3" /> Add Expense</>}
+                        </button>
+                    </div>
                 )}
             </div>
 

@@ -277,7 +277,8 @@ export function DashboardView() {
     // Cash balance = starting amount + all inflows - all outflows
     // penaltiesPaidTotal: absolute sum of penalty ledger entries (collected fines)
     // totalNegativeBalance: sum of what members still owe (not yet in the pot)
-    // Note: expenses are intentionally not subtracted here to match the CashBalance component logic.
+    // We rely purely on the ledger. Expenses automatically create a "system" debt in the ledger,
+    // which is automatically picked up by totalNegativeBalance.
     const currentCashBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesPaidTotal - totalNegativeBalance;
 
     // Current member: resolved once to avoid repeated .find() in JSX

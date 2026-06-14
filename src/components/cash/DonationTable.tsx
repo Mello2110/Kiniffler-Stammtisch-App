@@ -82,7 +82,7 @@ export function DonationTable({ members, currentYear, currentUserId, canManage }
     if (isLoading) return <div className="p-4 text-center"><Loader2 className="animate-spin inline-block mr-2" />Loading...</div>;
 
     return (
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden overflow-x-auto">
+        <div className="w-full rounded-xl border bg-card shadow-sm overflow-hidden overflow-x-auto">
             <table className="w-full text-sm">
                 <thead>
                     <tr className="border-b bg-muted/50">

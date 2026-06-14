@@ -5,7 +5,6 @@ import { X, Loader2, DollarSign } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Member } from "@/types";
-import { reconcileMemberBalance } from "@/lib/reconciliation";
 
 interface AddPenaltyModalProps {
     onClose: () => void;
@@ -26,9 +25,12 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
 
         setIsSubmitting(true);
         try {
-            await addDoc(collection(db, "penalties"), {
+            const parsedAmount = parseFloat(amount);
+
+            // 1. Create penalty record (for PenaltyTable / audit trail)
+            const penaltyRef = await addDoc(collection(db, "penalties"), {
                 userId: selectedMember,
-                amount: parseFloat(amount),
+                amount: parsedAmount,
                 reason,
                 isPaid: false,
                 paidViaReconciliation: false,
@@ -36,8 +38,17 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
                 createdAt: serverTimestamp()
             });
 
-            // Trigger reconciliation in background (non-blocking)
-            reconcileMemberBalance(selectedMember).catch(console.error);
+            // 2. Create negative ledger entry so penalty shows in OutstandingPayments.
+            //    The ledger is the source of truth for all balance calculations.
+            await addDoc(collection(db, "ledger_entries"), {
+                userId: selectedMember,
+                amount: -parsedAmount,
+                type: "penalty",
+                description: `Strafe: ${reason}`,
+                date: new Date().toISOString(),
+                createdAt: serverTimestamp(),
+                linkedDocId: penaltyRef.id,
+            });
 
             onClose();
         } catch (error) {
@@ -59,20 +70,20 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
                 </button>
 
                 <div className="mb-6">
-                    <h2 className="text-xl font-bold">Add New Penalty</h2>
-                    <p className="text-sm text-muted-foreground">Record a fine for a member.</p>
+                    <h2 className="text-xl font-bold">Strafe hinzufügen</h2>
+                    <p className="text-sm text-muted-foreground">Eine Strafe für ein Mitglied erfassen.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Member</label>
+                        <label className="text-sm font-medium">Mitglied</label>
                         <select
                             value={selectedMember}
                             onChange={(e) => setSelectedMember(e.target.value)}
                             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             required
                         >
-                            <option value="" disabled>Select a member...</option>
+                            <option value="" disabled>Mitglied auswählen...</option>
                             {members.map(m => (
                                 <option key={m.id} value={m.id}>{m.name}</option>
                             ))}
@@ -81,7 +92,7 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Amount (€)</label>
+                            <label className="text-sm font-medium">Betrag (€)</label>
                             <div className="relative">
                                 <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <input
@@ -99,12 +110,12 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Reason</label>
+                        <label className="text-sm font-medium">Grund</label>
                         <input
                             type="text"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            placeholder="e.g. Late Arrival"
+                            placeholder="z.B. Zu spät gekommen"
                             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             required
                         />
@@ -116,14 +127,14 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
                             onClick={onClose}
                             className="flex-1 rounded-md border border-input bg-background py-2 text-sm font-medium hover:bg-muted"
                         >
-                            Cancel
+                            Abbrechen
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting}
                             className="flex-1 rounded-md bg-destructive py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
                         >
-                            {isSubmitting ? "Adding..." : "Add Penalty"}
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Strafe hinzufügen"}
                         </button>
                     </div>
                 </form>

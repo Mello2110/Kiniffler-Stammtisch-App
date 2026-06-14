@@ -76,6 +76,9 @@ export async function reconcileMemberBalance(memberId: string): Promise<void> {
             }
 
             // Skip manually paid penalties (isPaid=true but NOT via reconciliation)
+            // NOTE: paidViaReconciliation may be undefined on older documents
+            // (e.g. Kniffel penalties created before this field was added).
+            // undefined === true is false → those are NOT treated as manually paid. ✓
             const isManuallyPaid = data.isPaid === true && data.paidViaReconciliation !== true;
             if (isManuallyPaid) {
                 return; // Don't touch manually paid penalties

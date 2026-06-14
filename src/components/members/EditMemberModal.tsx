@@ -76,8 +76,14 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
                 isAdmin: selectedRoles.includes("Admin")
             });
 
-            // Sync calendar events
-            await manageBirthdayEvents(member.id, name.trim(), birthday);
+            // Sync calendar events ONLY if birthday actually changed — and fire-and-forget
+            // (no await) so it never blocks the modal from closing, even if Firestore
+            // has a connectivity issue or a missing index.
+            if (birthday !== member.birthday) {
+                manageBirthdayEvents(member.id, name.trim(), birthday).catch(err =>
+                    console.warn("Birthday event sync failed (non-critical):", err)
+                );
+            }
 
             onClose();
         } catch (error) {

@@ -18,9 +18,9 @@ const messaging = firebase.messaging();
 // ============================================
 // CACHING STRATEGY
 // ============================================
-// v8: Nuclear reset — clear ALL old caches, only cache static assets,
+// v9: Force clear all old caches including JS bundles with broken test-user mock.
 // NEVER cache page HTML (navigation requests).
-const CACHE_NAME = 'kp-v8';
+const CACHE_NAME = 'kp-v9';
 const STATIC_ASSETS = [
     '/manifest.json',
     '/kanpai-icon.jpg',

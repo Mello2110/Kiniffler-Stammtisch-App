@@ -439,18 +439,36 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         }
 
         try {
-            await addDoc(collection(db, "penalties"), {
+            // 1. Create penalty record (audit trail / PenaltyTable display)
+            const penaltyRef = await addDoc(collection(db, "penalties"), {
                 userId: chargeUserId,
                 amount: 1,
-                reason: isGuestPenalty ? `${dict.kniffel.penaltyReason} (${player.name})` : dict.kniffel.penaltyReason,
+                reason: isGuestPenalty
+                    ? `Strich (${player.name})`
+                    : "Strich",
                 date: new Date().toISOString().split("T")[0],
                 isPaid: false,
+                paidViaReconciliation: false,
                 createdAt: serverTimestamp(),
-                // Guest metadata
                 isGuestPenalty: isGuestPenalty,
                 guestId: isGuestPenalty ? player.id : null,
                 guestName: isGuestPenalty ? player.name : null
             });
+
+            // 2. Create negative ledger entry — this is what OutstandingPayments reads.
+            //    Without this, the penalty never shows up in the balance.
+            await addDoc(collection(db, "ledger_entries"), {
+                userId: chargeUserId,
+                amount: -1,
+                type: "penalty",
+                description: isGuestPenalty
+                    ? `Strich (${player.name})`
+                    : "Strich",
+                date: new Date().toISOString().split("T")[0],
+                createdAt: serverTimestamp(),
+                linkedDocId: penaltyRef.id,
+            });
+
             showToast(`✓ 1€ ${dict.kniffel.penalty} - ${player.name}`);
         } catch (error) {
             console.error("Error creating penalty:", error);
