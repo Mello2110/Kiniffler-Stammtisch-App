@@ -712,3 +712,86 @@ export const checkBalancesHttp = onRequest({ timeoutSeconds: 300 }, async (req, 
 
     res.json({ negSum, posSum, mdata });
 });
+
+export const fixLegacyDepositsV2 = onRequest({ timeoutSeconds: 300 }, async (req, res) => {
+    const batch = db.batch();
+    const pensSnap = await db.collection('penalties').where('isPaid', '==', true).get();
+    const userSums: Record<string, number> = {};
+    pensSnap.forEach(p => {
+        const data = p.data();
+        if (data.reconciledAt && data.reconciledAt._seconds < 1779800000) {
+            userSums[data.userId] = (userSums[data.userId] || 0) + (data.amount || 0);
+        }
+    });
+    const ledgersSnap = await db.collection('ledger_entries').where('type', '==', 'paypal_deposit').get();
+    let count = 0;
+    ledgersSnap.forEach(l => {
+        const data = l.data();
+        if (data.description && data.description.includes('(Altsystem)')) {
+            const userId = data.userId;
+            if (userSums[userId]) {
+                const newAmount = data.amount + userSums[userId];
+                batch.update(l.ref, { amount: newAmount, originalAmount: data.amount, adjustedForPrepaidPenalties: true });
+                count++;
+            }
+        }
+    });
+    await batch.commit();
+    res.json({ success: true, count, userSums });
+});
+export const checkMarcelPens = onRequest({ timeoutSeconds: 300 }, async (req, res) => { const s = await db.collection('penalties').where('userId', '==', 'VA4Rfwi83sYfbNYfPxrquz2SHcr1').get(); res.json(s.docs.map(d=>d.data())); });
+
+export const fixMarcelBalanceAndCashPot = onRequest({ cors: true }, async (req, res) => {
+    try {
+        await db.collection('ledger_entries').doc('HEffqcFFVgcubLX6dnyO').delete();
+        await db.doc('config/cash').set({ startingBalance: 645.66 }, { merge: true });
+        res.json({ success: true, message: 'Deleted ledger HEffqcFFVgcubLX6dnyO and updated startingBalance to 645.66' });
+    } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+export const cleanDuplicates = onRequest({ cors: true, timeoutSeconds: 120 }, async (req, res) => {
+    try {
+        const penSnap = await db.collection('penalties').where('isPaid', '==', false).get();
+        if (penSnap.empty) {
+            res.json({ success: true, message: 'No unpaid penalties found.' });
+            return;
+        }
+
+        let deletedCount = 0;
+        const batch = db.batch();
+
+        for (const penDoc of penSnap.docs) {
+            const penId = penDoc.id;
+
+            // Get all ledger entries for this penalty
+            const ledgers = await db.collection('ledger_entries')
+                .where('linkedDocId', '==', penId)
+                .get();
+
+            // If there's more than 1, delete the extras
+            if (ledgers.docs.length > 1) {
+                // Sort by createdAt just to be deterministic, keep the first one
+                const sorted = ledgers.docs.sort((a, b) => {
+                    const tA = a.data().createdAt?._seconds || 0;
+                    const tB = b.data().createdAt?._seconds || 0;
+                    return tA - tB;
+                });
+
+                // Delete all but the first
+                for (let i = 1; i < sorted.length; i++) {
+                    batch.delete(sorted[i].ref);
+                    deletedCount++;
+                }
+            }
+        }
+
+        await batch.commit();
+
+        res.json({ success: true, deletedCount, message: `Deleted ${deletedCount} duplicate ledger entries.` });
+    } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
