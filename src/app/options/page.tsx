@@ -97,21 +97,15 @@ export default function OptionsPage() {
     };
 
     // --- RANDOM AVATAR UTILITY (Temporary/Admin) ---
-    const AVATAR_ICONS = [
-        "Dog", "Cat", "Bird", "Fish", "Bug", "Squirrel", "Rabbit",
-        "Beer", "Coffee", "Gamepad2", "Music", "Camera", "Palette", "Book", "Bike", "Car",
-        "Dumbbell", "Trophy", "Target", "Dice5", "Plane", "Mountain",
-        "Star", "Heart", "Zap", "Flame", "Sun", "Moon", "Sparkles",
-        "User", "UserCircle", "Smile", "Ghost"
-    ];
-
     const AVATAR_COLORS = [
-        "bg-purple-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-red-500",
-        "bg-pink-500", "bg-indigo-500", "bg-teal-500", "bg-orange-500"
+        "bg-rose-400", "bg-red-600", "bg-orange-500", "bg-amber-500",
+        "bg-yellow-400", "bg-lime-500", "bg-emerald-400", "bg-emerald-600",
+        "bg-teal-500", "bg-cyan-500", "bg-sky-500", "bg-blue-600",
+        "bg-indigo-500", "bg-violet-500", "bg-fuchsia-500", "bg-pink-400"
     ];
 
     const assignRandomAvatars = async () => {
-        if (!confirm("Dies wird allen Mitgliedern ein zufälliges Avatar (Icon & Farbe) zuweisen. Fortfahren?")) return;
+        if (!confirm("Dies wird allen Mitgliedern eine zufällige Avatar-Farbe zuweisen. Fortfahren?")) return;
 
         setIsResetting(true);
         setStatus("Assigning random avatars...");
@@ -128,12 +122,11 @@ export default function OptionsPage() {
             let chunkCount = 0;
 
             membersSnap.docs.forEach((docSnap) => {
-                const randomIcon = AVATAR_ICONS[Math.floor(Math.random() * AVATAR_ICONS.length)];
                 const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
                 currentChunk.update(doc(db, "members", docSnap.id), {
                     avatar: {
-                        icon: randomIcon,
+                        icon: "",
                         bgColor: randomColor
                     }
                 });

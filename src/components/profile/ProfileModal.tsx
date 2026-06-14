@@ -363,6 +363,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 <AvatarPicker
                     currentIcon={avatarIcon}
                     currentColor={avatarColor}
+                    memberName={name}
                     onSelect={handleAvatarSelect}
                     onClose={() => setShowAvatarPicker(false)}
                 />

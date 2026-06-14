@@ -367,6 +367,7 @@ function ProfilePageContent() {
                 <AvatarPicker
                     currentIcon={avatarIcon}
                     currentColor={avatarColor}
+                    memberName={name}
                     onSelect={handleAvatarSelect}
                     onClose={() => setShowAvatarPicker(false)}
                 />
