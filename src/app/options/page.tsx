@@ -97,15 +97,10 @@ export default function OptionsPage() {
     };
 
     // --- RANDOM AVATAR UTILITY (Temporary/Admin) ---
-    const AVATAR_COLORS = [
-        "bg-rose-400", "bg-red-600", "bg-orange-500", "bg-amber-500",
-        "bg-yellow-400", "bg-lime-500", "bg-emerald-400", "bg-emerald-600",
-        "bg-teal-500", "bg-cyan-500", "bg-sky-500", "bg-blue-600",
-        "bg-indigo-500", "bg-violet-500", "bg-fuchsia-500", "bg-pink-400"
-    ];
-
     const assignRandomAvatars = async () => {
         if (!confirm("Dies wird allen Mitgliedern eine zufällige Avatar-Farbe zuweisen. Fortfahren?")) return;
+
+        const { AVATAR_COLOR_KEYS } = await import("@/lib/avatarColors");
 
         setIsResetting(true);
         setStatus("Assigning random avatars...");
@@ -122,12 +117,12 @@ export default function OptionsPage() {
             let chunkCount = 0;
 
             membersSnap.docs.forEach((docSnap) => {
-                const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+                const randomKey = AVATAR_COLOR_KEYS[Math.floor(Math.random() * AVATAR_COLOR_KEYS.length)];
 
                 currentChunk.update(doc(db, "members", docSnap.id), {
                     avatar: {
                         icon: "",
-                        bgColor: randomColor
+                        bgColor: randomKey
                     }
                 });
 

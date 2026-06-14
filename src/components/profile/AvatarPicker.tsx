@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AVATAR_COLORS, getAvatarColorHex } from "@/lib/avatarColors";
 
 // ============================================
 // TYPES & INTERFACES
@@ -10,56 +11,31 @@ import { cn } from "@/lib/utils";
 
 interface AvatarPickerProps {
     currentIcon: string;
-    currentColor: string;
+    currentColor: string;   // Now a color KEY, e.g. "lachs", "indigo"
     memberName?: string;
     onSelect: (icon: string, bgColor: string) => void;
     onClose: () => void;
 }
 
 // ============================================
-// CONSTANTS
-// ============================================
-
-const AVATAR_COLORS = [
-    { name: "Lachs", class: "bg-rose-400" },
-    { name: "Kaminrot", class: "bg-red-600" },
-    { name: "Orange", class: "bg-orange-500" },
-    { name: "Bernstein", class: "bg-amber-500" },
-    { name: "Zitrone", class: "bg-yellow-400" },
-    { name: "Limette", class: "bg-lime-500" },
-    { name: "Minze", class: "bg-emerald-400" },
-    { name: "Smaragd", class: "bg-emerald-600" },
-    { name: "Türkis", class: "bg-teal-500" },
-    { name: "Cyan", class: "bg-cyan-500" },
-    { name: "Himmelblau", class: "bg-sky-500" },
-    { name: "Ozeanblau", class: "bg-blue-600" },
-    { name: "Indigo", class: "bg-indigo-500" },
-    { name: "Violett", class: "bg-violet-500" },
-    { name: "Fuchsia", class: "bg-fuchsia-500" },
-    { name: "Pink", class: "bg-pink-400" },
-] as const;
-
-// ============================================
 // COMPONENT
 // ============================================
 
 export function AvatarPicker({ currentIcon, currentColor, memberName, onSelect, onClose }: AvatarPickerProps) {
-    const [selectedColor, setSelectedColor] = useState(currentColor || "bg-primary");
+    const [selectedKey, setSelectedKey] = useState(currentColor || "indigo");
 
     const handleConfirm = () => {
-        // Keep currentIcon or pass empty string, the icon is not used anymore anyway
-        onSelect(currentIcon || "", selectedColor);
+        onSelect(currentIcon || "", selectedKey);
         onClose();
     };
 
     // Calculate initials for preview
     const nameParts = (memberName || "??").trim().split(/\s+/);
-    let initials = "";
-    if (nameParts.length > 1) {
-        initials = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
-    } else {
-        initials = nameParts[0].substring(0, 2).toUpperCase();
-    }
+    const initials = nameParts.length > 1
+        ? (nameParts[0][0] + nameParts[1][0]).toUpperCase()
+        : nameParts[0].substring(0, 2).toUpperCase();
+
+    const selectedHex = getAvatarColorHex(selectedKey);
 
     return (
         <div
@@ -79,32 +55,35 @@ export function AvatarPicker({ currentIcon, currentColor, memberName, onSelect, 
                 </div>
 
                 <div className="p-6 space-y-6">
-                    {/* Color Selection */}
+                    {/* Color Grid */}
                     <div className="space-y-3">
                         <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                             Farbe auswählen
                         </label>
                         <div className="grid grid-cols-4 gap-4">
-                            {AVATAR_COLORS.map((color) => (
-                                <button
-                                    key={color.class}
-                                    onClick={() => setSelectedColor(color.class)}
-                                    className={cn(
-                                        "h-16 w-full rounded-2xl transition-all flex items-center justify-center relative",
-                                        color.class,
-                                        selectedColor === color.class
-                                            ? "ring-4 ring-offset-2 ring-primary ring-offset-background scale-105 shadow-lg z-10"
-                                            : "hover:scale-105 shadow hover:shadow-md"
-                                    )}
-                                    title={color.name}
-                                >
-                                    {selectedColor === color.class && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-2xl">
-                                            <Check className="h-8 w-8 text-white drop-shadow-md" />
-                                        </div>
-                                    )}
-                                </button>
-                            ))}
+                            {AVATAR_COLORS.map((color) => {
+                                const isSelected = selectedKey === color.key;
+                                return (
+                                    <button
+                                        key={color.key}
+                                        onClick={() => setSelectedKey(color.key)}
+                                        className={cn(
+                                            "h-16 w-full rounded-2xl transition-all flex items-center justify-center relative",
+                                            isSelected
+                                                ? "ring-4 ring-offset-2 ring-primary ring-offset-background scale-105 shadow-lg z-10"
+                                                : "hover:scale-105 shadow hover:shadow-md"
+                                        )}
+                                        style={{ backgroundColor: color.hex }}
+                                        title={color.name}
+                                    >
+                                        {isSelected && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-2xl">
+                                                <Check className="h-8 w-8 text-white drop-shadow-md" />
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -115,10 +94,8 @@ export function AvatarPicker({ currentIcon, currentColor, memberName, onSelect, 
                         </label>
                         <div className="flex justify-center">
                             <div
-                                className={cn(
-                                    "h-24 w-24 rounded-full flex items-center justify-center text-white text-4xl font-bold uppercase tracking-wider shadow-lg",
-                                    selectedColor
-                                )}
+                                className="h-24 w-24 rounded-full flex items-center justify-center text-white text-4xl font-bold uppercase tracking-wider shadow-lg select-none"
+                                style={{ backgroundColor: selectedHex }}
                             >
                                 {initials}
                             </div>
