@@ -18,9 +18,9 @@ const messaging = firebase.messaging();
 // ============================================
 // CACHING STRATEGY
 // ============================================
-// v9: Force clear all old caches including JS bundles with broken test-user mock.
+// v10: Force clear all old caches to flush stale avatar JS bundles.
 // NEVER cache page HTML (navigation requests).
-const CACHE_NAME = 'kp-v9';
+const CACHE_NAME = 'kp-v10';
 const STATIC_ASSETS = [
     '/manifest.json',
     '/kanpai-icon.jpg',
@@ -75,7 +75,7 @@ self.addEventListener('fetch', (event) => {
                 }
                 return response;
             })
-            .catch(() => caches.match(event.request))
+            .catch(() => caches.match(event.request).then(cached => cached ?? new Response('', { status: 503, statusText: 'Offline' })))
     );
 });
 

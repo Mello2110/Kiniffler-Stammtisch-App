@@ -17,8 +17,8 @@ export interface Member {
     joinYear?: number; // Added joinYear
     avatarUrl?: string;
     avatar?: {
-        icon: string;      // Lucide icon name, e.g., "Beer", "Dog", "Star"
-        bgColor: string;   // Tailwind color class, e.g., "bg-purple-500"
+        icon: string;      // Legacy: unused. Kept for backward compat.
+        bgColor: string;   // Semantic color key, e.g. "lachs", "indigo" — resolved to hex in MemberAvatar
     };
     points: number;
     isAdmin?: boolean;
