@@ -29,8 +29,8 @@ function ProfilePageContent() {
 
     // --- Form State ---
     const [name, setName] = useState("");
-    const [avatarIcon, setAvatarIcon] = useState("User");
-    const [avatarColor, setAvatarColor] = useState("bg-primary");
+    const [avatarIcon, setAvatarIcon] = useState("");
+    const [avatarColor, setAvatarColor] = useState("indigo"); // color key, e.g. "lachs"
     const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
     // --- Password State ---
@@ -57,8 +57,8 @@ function ProfilePageContent() {
                     const data = docSnap.data() as Member;
                     setMember({ ...data, id: docSnap.id });
                     setName(data.name || "");
-                    setAvatarIcon(data.avatar?.icon || "User");
-                    setAvatarColor(data.avatar?.bgColor || "bg-primary");
+                    setAvatarIcon(data.avatar?.icon || "");
+                    setAvatarColor(data.avatar?.bgColor || "indigo");
                 } else {
                     setError("Profil nicht gefunden");
                 }
@@ -74,9 +74,21 @@ function ProfilePageContent() {
     }, [user]);
 
     // --- Handlers ---
-    const handleAvatarSelect = (icon: string, bgColor: string) => {
+    // Write avatar color immediately to Firestore when user picks it in the Picker.
+    // This way the change persists even if the user doesn't click the main "Save" button.
+    const handleAvatarSelect = async (icon: string, bgColor: string) => {
         setAvatarIcon(icon);
         setAvatarColor(bgColor);
+
+        if (!user?.uid) return;
+        try {
+            const ref = doc(db, "members", user.uid);
+            await updateDoc(ref, {
+                avatar: { icon, bgColor },
+            });
+        } catch (err) {
+            console.error("Error saving avatar color:", err);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
