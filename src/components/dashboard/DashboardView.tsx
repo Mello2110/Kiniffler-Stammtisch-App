@@ -133,8 +133,9 @@ export function DashboardView() {
     // Fetch ALL ledgers
     const { entries: allLedgers } = useAllLedgers();
     
-    // Total unpaid balances
+    // Total unpaid balances (real members only — 'system' is tracked separately)
     const [totalNegativeBalance, setTotalNegativeBalance] = useState(0);
+    const [systemLedgerTotal, setSystemLedgerTotal] = useState(0);
 
     useEffect(() => {
         let pensTotal = 0;
@@ -152,14 +153,18 @@ export function DashboardView() {
         setPenaltiesPaidTotal(pensTotal);
         setContributionsTotal(contTotal);
 
-        // Calculate per-member net balance, then sum up negative (outstanding) balances
+        // Calculate per-member net balance, then sum up negative (outstanding) balances.
+        // Only real members are included — 'system' entries are handled via systemLedgerTotal
+        // to avoid double-counting (a negative system entry would otherwise be subtracted twice).
         const balancesByMember: { [uid: string]: number } = {};
         allLedgers.forEach(entry => {
             balancesByMember[entry.userId] = (balancesByMember[entry.userId] || 0) + entry.amount;
         });
 
+        const memberIdSet = new Set(members.map(m => m.id));
         let negativeSum = 0;
-        Object.values(balancesByMember).forEach(bal => {
+        Object.entries(balancesByMember).forEach(([uid, bal]) => {
+            if (!memberIdSet.has(uid)) return; // Exclude 'system' and unknown IDs
             if (bal < 0) {
                 negativeSum += Math.abs(bal);
             }
@@ -167,12 +172,19 @@ export function DashboardView() {
         
         setTotalNegativeBalance(negativeSum);
 
+        // Sum of all system-level ledger entries (unmatched PayPal transactions, Kasse bookings, Auszahlungen).
+        // Positive entries increase the cash balance; negative entries decrease it.
+        const sysTotal = allLedgers
+            .filter(e => e.userId === 'system')
+            .reduce((sum, e) => sum + e.amount, 0);
+        setSystemLedgerTotal(sysTotal);
+
         const dons = donationsData.reduce((sum, d) => sum + (d.amount || 0), 0);
         setDonationsTotal(dons);
 
         const exp = expensesData.reduce((sum, e) => sum + (e.amount || 0), 0);
         setExpensesTotal(exp);
-    }, [allLedgers, donationsData, expensesData]);
+    }, [allLedgers, donationsData, expensesData, members]);
 
     // 11. Shiny Encounter Trigger
     // We check if the user HAS a shiny balance but hasn't seen the popup yet.
@@ -274,12 +286,25 @@ export function DashboardView() {
     const { dict } = useLanguage();
     const { title: sidebarTitle } = useTitle();
 
-    // Cash balance = starting amount + all inflows - all outflows
-    // penaltiesPaidTotal: absolute sum of penalty ledger entries (collected fines)
-    // totalNegativeBalance: sum of what members still owe (not yet in the pot)
-    // We rely purely on the ledger. Expenses automatically create a "system" debt in the ledger,
-    // which is automatically picked up by totalNegativeBalance.
-    const currentCashBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesPaidTotal - totalNegativeBalance;
+    // Current Cash Balance = PayPal balance - member credits (prepaid money belonging to members).
+    // Only paypal_deposit and paypal_withdrawal are real PayPal movements.
+    const paypalBalance = startingBalance + allLedgers.reduce((sum, e) => {
+        if (e.type === 'paypal_deposit' || e.type === 'paypal_withdrawal') return sum + e.amount;
+        return sum;
+    }, 0);
+
+    // Subtract positive member balances (credits) — that money belongs to members, not the club.
+    const memberBalancesMap: { [uid: string]: number } = {};
+    const memberIdSet2 = new Set(members.map(m => m.id));
+    allLedgers.forEach(e => {
+        if (memberIdSet2.has(e.userId)) {
+            memberBalancesMap[e.userId] = (memberBalancesMap[e.userId] || 0) + e.amount;
+        }
+    });
+    let totalMemberCredits = 0;
+    Object.values(memberBalancesMap).forEach(bal => { if (bal > 0) totalMemberCredits += bal; });
+
+    const currentCashBalance = paypalBalance - totalMemberCredits;
 
     // Current member: resolved once to avoid repeated .find() in JSX
     const currentMember = members.find(m => m.id === user?.uid);

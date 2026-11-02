@@ -222,7 +222,11 @@ export async function processPayPalEmails(db: admin.firestore.Firestore) {
 
                 console.log(`Final nameOrEmail: "${nameOrEmail}"`);
 
-                const isKasse = /kasse/i.test(text) || /kasse/i.test(subject);
+                // Some PayPal emails omit the custom note from the plain text fallback.
+                // We should also search the raw HTML just in case.
+                const htmlContent = (parsedEmail.html === true ? '' : (parsedEmail.html || '')).toString();
+                
+                const isKasse = /kasse/i.test(text) || /kasse/i.test(subject) || /kasse/i.test(htmlContent);
 
                 if (isKasse) {
                     console.log(`'Kasse' keyword found in email. Booking as system deposit instead of personal member balance.`);
@@ -242,13 +246,53 @@ export async function processPayPalEmails(db: admin.firestore.Firestore) {
                     continue; // Skip the personal member lookup
                 }
 
+                // 'Auszahlung' keyword: a group payout to a member that should NOT touch their personal balance.
+                // The cash register (Kasse) pays out, so the amount is deducted from the system ledger
+                // but the member's individual app balance remains unchanged.
+                const isAuszahlung = /auszahlung/i.test(text) || /auszahlung/i.test(subject) || /auszahlung/i.test(htmlContent);
+
+                if (isAuszahlung) {
+                    console.log(`'Auszahlung' keyword found. Booking as system withdrawal — member balance untouched.`);
+                    // Auszahlungen are always withdrawals from the Kasse (outgoing)
+                    const finalAmount = data.isDeposit ? data.amount : -data.amount;
+                    const type = 'paypal_withdrawal';
+                    const description = `Stammtisch Auszahlung via PayPal (${nameOrEmail})`;
+
+                    const success = await createLedgerEntry(db, 'system', finalAmount, type, description, data.transactionId);
+
+                    if (success) {
+                        processedCount++;
+                        console.log(`✓ Ledger entry (System/Auszahlung): ${finalAmount}€ → ${nameOrEmail} (txId: ${data.transactionId})`);
+                    } else {
+                        console.log(`Skip (already processed): txId ${data.transactionId}`);
+                    }
+                    continue; // Skip the personal member lookup
+                }
+
                 // Match member: PayPal display name first (primary), then email/name fallback
                 let memberId = await findMemberIdByPayPalName(db, nameOrEmail);
                 if (!memberId) memberId = await findMemberIdByEmail(db, nameOrEmail);
                 if (!memberId) memberId = await findMemberIdByName(db, nameOrEmail);
 
                 if (!memberId) {
-                    console.warn(`No member found for: "${nameOrEmail}" — ${data.amount}€ unassigned`);
+                    // No member matched — book as a system entry so the cash balance stays accurate.
+                    // This covers external payments (e.g. food orders via PayPal) where the recipient
+                    // is not a club member. Nothing is lost; the transaction is fully visible in the
+                    // transaction history with 'Kasse / System' as the participant.
+                    console.warn(`No member found for: "${nameOrEmail}" — booking as system entry instead.`);
+                    const finalAmount = data.isDeposit ? data.amount : -data.amount;
+                    const type = data.isDeposit ? 'paypal_deposit' : 'paypal_withdrawal';
+                    const label = data.isDeposit ? 'Sonstige Einzahlung' : 'Sonstige Auszahlung';
+                    const description = `${label} via PayPal (unbekannt: ${nameOrEmail})`;
+
+                    const success = await createLedgerEntry(db, 'system', finalAmount, type, description, data.transactionId);
+
+                    if (success) {
+                        processedCount++;
+                        console.log(`✓ Ledger entry (System/Unbekannt): ${finalAmount}€ for "${nameOrEmail}" (txId: ${data.transactionId})`);
+                    } else {
+                        console.log(`Skip (already processed): txId ${data.transactionId}`);
+                    }
                     continue;
                 }
 

@@ -1,64 +1,75 @@
 "use client";
 
 import { useMemo } from "react";
-import { collection, query, doc } from "firebase/firestore";
+import { doc, collection, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { useFirestoreDocument } from "@/hooks/useFirestoreDocument";
-import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
+import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import { Wallet, TrendingDown, Users, CreditCard, Receipt, PiggyBank, Scale } from "lucide-react";
 import { useAllLedgers } from "@/hooks/useLedger";
-import type { Member } from "@/types";
+import type { Member, Penalty, Donation, Expense } from "@/types";
 
 export function CashBalance({ members = [], totalOutstanding = 0 }: { members?: Member[]; totalOutstanding?: number }) {
     // 1. Fetch All Ledgers
     const { entries: allLedgers } = useAllLedgers();
+
+    // 2. Fetch Additional Stats (Penalties, Donations, Expenses)
     const qPenalties = useMemo(() => query(collection(db, "penalties")), []);
-    const { data: penalties } = useFirestoreQuery<{ amount: number; isPaid: boolean }>(qPenalties);
+    const { data: penalties } = useFirestoreQuery<Penalty>(qPenalties);
 
-    // 2. Fetch Contributions
-    const qContributions = useMemo(() => query(collection(db, "contributions")), []);
-    const { data: contributions } = useFirestoreQuery(qContributions);
-
-    // 3. Fetch Expenses
-    const qExpenses = useMemo(() => query(collection(db, "expenses")), []);
-    const { data: expenses } = useFirestoreQuery<{ amount: number }>(qExpenses);
-
-    // 3.1 Fetch Donations
     const qDonations = useMemo(() => query(collection(db, "donations")), []);
-    const { data: donations } = useFirestoreQuery<{ amount: number }>(qDonations);
+    const { data: donations } = useFirestoreQuery<Donation>(qDonations);
 
-    // 4. Fetch Start Balance Config
+    const qExpenses = useMemo(() => query(collection(db, "expenses")), []);
+    const { data: expenses } = useFirestoreQuery<Expense>(qExpenses);
+
+    // 3. Fetch Start Balance Config
     const configRef = useMemo(() => doc(db, "config", "cash"), []);
     const { data: configData } = useFirestoreDocument<{ startingBalance: number }>(configRef);
 
     // Calculations
     const startingBalance = configData?.startingBalance || 0;
     
-    let penaltiesTotal = 0;
-    let contributionsTotal = 0;
+    // The startingBalance (stored in config/cash) represents the cumulative PayPal account
+    // balance up to the point where ledger tracking started. It already incorporates all
+    // historical expenses, outflows, and inflows.
+    //
+    // Since then, only paypal_deposit and paypal_withdrawal entries represent actual movements
+    // of real money in/out of the PayPal account. Penalties, contributions, and expense
+    // reimbursement entries are INTERNAL bookkeeping only and must NOT affect this total.
+    const realCashFlowSum = allLedgers.reduce((sum, entry) => {
+        if (entry.type === 'paypal_deposit' || entry.type === 'paypal_withdrawal') {
+            return sum + entry.amount;
+        }
+        return sum;
+    }, 0);
     
-    allLedgers.forEach(entry => {
-        if (entry.type === 'penalty') penaltiesTotal += Math.abs(entry.amount);
-        if (entry.type === 'contribution') contributionsTotal += Math.abs(entry.amount);
-    });
+    // Real physical PayPal cash balance = historical balance + all PayPal transactions since tracking started
+    const realCashBalance = startingBalance + realCashFlowSum;
 
+    // Per-member net balances
     const balancesByMember: { [uid: string]: number } = {};
     allLedgers.forEach(entry => {
         balancesByMember[entry.userId] = (balancesByMember[entry.userId] || 0) + entry.amount;
     });
 
-    let totalNegativeBalance = 0;
-    Object.values(balancesByMember).forEach(bal => {
+    const memberIds = new Set(members.map(m => m.id));
+    
+    let totalPositiveMemberBalance = 0; // Member credits (prepaid money in PayPal belonging to members)
+    let totalNegativeBalance = 0;        // Member debts (unpaid contributions/penalties)
+
+    Object.entries(balancesByMember).forEach(([uid, bal]) => {
+        if (!memberIds.has(uid)) return; // Exclude 'system' and unknown IDs
+        if (bal > 0) totalPositiveMemberBalance += bal;
         if (bal < 0) totalNegativeBalance += Math.abs(bal);
     });
 
+    // Net Treasury / Club equity = real cash balance minus member credits
+    const netTreasuryBalance = realCashBalance - totalPositiveMemberBalance;
+
     const donationsTotal = donations?.reduce((acc, d) => acc + (d.amount || 0), 0) || 0;
     const expensesTotal = expenses?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0;
-
-    // We rely PURELY on the ledger system. 
-    // Expenses automatically create a "system" debt in the ledger, which is picked up by totalNegativeBalance.
-    // No explicit subtraction is needed.
-    const currentBalance = startingBalance + contributionsTotal + donationsTotal + penaltiesTotal - totalNegativeBalance;
+    const penaltiesTotal = penalties?.reduce((acc, p) => acc + (p.amount || 0), 0) || 0;
 
     return (
         <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 shadow-sm">
@@ -69,48 +80,56 @@ export function CashBalance({ members = [], totalOutstanding = 0 }: { members?: 
                 <div>
                     <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Current Cash Balance</h2>
                     <div className="text-4xl font-extrabold flex items-center gap-1">
-                        €{currentBalance.toFixed(2)}
+                        €{netTreasuryBalance.toFixed(2)}
                     </div>
                 </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-primary/10 pt-4">
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 border-t border-primary/10 pt-4">
                 <div>
-                    <div className="text-xs text-muted-foreground mb-1">Contributions</div>
+                    <div className="text-xs text-muted-foreground mb-1">PayPal Kontostand</div>
                     <div className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        €{contributionsTotal.toFixed(2)}
+                        <CreditCard className="h-3 w-3" />
+                        €{realCashBalance.toFixed(2)}
                     </div>
                 </div>
                 <div>
-                    <div className="text-xs text-muted-foreground mb-1">Strafen</div>
-                    <div className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        €{penaltiesTotal.toFixed(2)}
+                    <div className="text-xs text-muted-foreground mb-1">Davon Mitgliederguthaben</div>
+                    <div className="font-semibold text-blue-500 flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        €{totalPositiveMemberBalance.toFixed(2)}
                     </div>
                 </div>
                 <div>
-                    <div className="text-xs text-muted-foreground mb-1">Ausstehende Zahlungen</div>
+                    <div className="text-xs text-muted-foreground mb-1">Ausstehende Forderungen</div>
                     <div className="font-semibold text-orange-500 flex items-center gap-1">
                         <TrendingDown className="h-3 w-3" />
-                        €{totalOutstanding.toFixed(2)}
+                        €{(totalOutstanding || totalNegativeBalance).toFixed(2)}
                     </div>
                 </div>
                 <div>
-                    <div className="text-xs text-muted-foreground mb-1">Donations</div>
-                    <div className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
+                    <div className="text-xs text-muted-foreground mb-1">Ausgaben gesamt</div>
+                    <div className="font-semibold text-red-500 flex items-center gap-1">
+                        <Receipt className="h-3 w-3" />
+                        €{expensesTotal.toFixed(2)}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-xs text-muted-foreground mb-1">Spenden gesamt</div>
+                    <div className="font-semibold text-purple-500 flex items-center gap-1">
+                        <PiggyBank className="h-3 w-3" />
                         €{donationsTotal.toFixed(2)}
                     </div>
                 </div>
                 <div>
-                    <div className="text-xs text-muted-foreground mb-1">Expenses</div>
-                    <div className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
-                        <TrendingDown className="h-3 w-3" />
-                        €{expensesTotal.toFixed(2)}
+                    <div className="text-xs text-muted-foreground mb-1">Strafen gesamt</div>
+                    <div className="font-semibold text-yellow-600 dark:text-yellow-500 flex items-center gap-1">
+                        <Scale className="h-3 w-3" />
+                        €{penaltiesTotal.toFixed(2)}
                     </div>
                 </div>
             </div>
         </div>
     );
 }
+

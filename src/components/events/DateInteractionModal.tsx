@@ -89,7 +89,8 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
     const handleAddEvent = async (data: any) => {
         setIsSubmitting(true);
         try {
-            const writePromise = addDoc(collection(db, "set_events"), {
+            // Write event first, then award token — both must succeed
+            await addDoc(collection(db, "set_events"), {
                 title: data.title,
                 description: data.description,
                 date: dateStr,
@@ -101,13 +102,10 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                 createdAt: serverTimestamp()
             });
 
-            // Award token to host if specified
+            // Award hosting token reliably — only after event is confirmed written
             if (data.hostId && data.hostId !== "neutral") {
                 await TokenService.awardToken(data.hostId, `Hosting: ${data.title}`, "hosting");
             }
-
-            const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));
-            await Promise.race([writePromise, timeoutPromise]);
 
             onClose();
         } catch (error) {

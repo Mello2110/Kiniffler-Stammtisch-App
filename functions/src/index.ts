@@ -323,10 +323,10 @@ export const earlyVoterTokenBonus = onSchedule({
                 year: currentYear
             });
 
+            // Use atomic increment to avoid race conditions with stale snapshot data
             const updateField = isShiny ? 'tokenShinyBalance' : 'tokenBalance';
-            const currentBalance = memberData[updateField] || 0;
             batch.update(memberDoc.ref, {
-                [updateField]: currentBalance + 1
+                [updateField]: admin.firestore.FieldValue.increment(1)
             });
 
             await batch.commit();
