@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
@@ -29,38 +29,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            // Set user and loading immediately so the app can render!
-            setUser(currentUser);
-            setLoading(false);
+            if (!currentUser) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
 
             try {
-                if (currentUser) {
-                    // Auto-create/update member profile asynchronously
-                    const userRef = doc(db, "members", currentUser.uid);
-                    const userSnap = await getDoc(userRef);
+                // Verify user is an authorized member
+                const userRef = doc(db, "members", currentUser.uid);
+                const userSnap = await getDoc(userRef);
 
-                    if (!userSnap.exists()) {
-                        // Create new profile
-                        await setDoc(userRef, {
-                            uid: currentUser.uid,
-                            email: currentUser.email,
-                            name: currentUser.displayName || currentUser.email?.split('@')[0] || "New Member",
-                            avatarUrl: currentUser.photoURL || null,
-                            role: "FussVolk",
-                            roles: [],
-                            points: 0,
-                            joinYear: new Date().getFullYear(),
-                            createdAt: serverTimestamp(),
-                        });
-                    } else {
-                        // Update existing profile with latest auth info if needed
-                        await setDoc(userRef, {
-                            email: currentUser.email,
-                        }, { merge: true });
-                    }
+                if (!userSnap.exists()) {
+                    // Registration paused: Unauthorized users are immediately signed out
+                    console.warn("Unauthorized login rejected - user not in members:", currentUser.uid);
+                    await signOut(auth);
+                    setUser(null);
+                    setLoading(false);
+                    return;
                 }
+
+                // Update existing profile with latest auth info if needed
+                await setDoc(userRef, {
+                    email: currentUser.email,
+                }, { merge: true });
+
+                setUser(currentUser);
             } catch (error) {
                 console.error("Error in auth state change:", error);
+                setUser(null);
+            } finally {
+                setLoading(false);
             }
         });
         return () => unsubscribe();
@@ -78,8 +77,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const loginWithGoogle = async () => {
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-            router.push("/");
+            const res = await signInWithPopup(auth, provider);
+
+            // Double check member document
+            const userRef = doc(db, "members", res.user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                await signOut(auth);
+                throw new Error("NOT_REGISTERED");
+            }
+
+            router.push("/dashboard");
         } catch (error) {
             console.error("Google login failed", error);
             throw error;

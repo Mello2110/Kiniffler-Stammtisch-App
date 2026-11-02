@@ -4,9 +4,10 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { Loader2, Mail, Lock, AlertCircle, ArrowLeft } from "lucide-react";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { Loader2, Mail, Lock, AlertCircle, ArrowLeft, ShieldAlert } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function LoginPage() {
@@ -14,12 +15,28 @@ export default function LoginPage() {
     const { dict } = useLanguage();
     const router = useRouter();
 
-    const [isRegistering, setIsRegistering] = useState(false);
     const [showEmailForm, setShowEmailForm] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    const handleGoogleLogin = async () => {
+        setError("");
+        setIsLoading(true);
+        try {
+            await loginWithGoogle();
+        } catch (err: any) {
+            console.error("Google login failed:", err);
+            if (err.message === "NOT_REGISTERED") {
+                setError("Registrierungen sind derzeit geschlossen. Dieser Google-Account ist keinem Stammtisch zugeordnet.");
+            } else if (err.code !== "auth/popup-closed-by-user") {
+                setError(dict?.auth?.errors?.default || "Anmeldung mit Google fehlgeschlagen.");
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,23 +44,23 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            if (isRegistering) {
-                await createUserWithEmailAndPassword(auth, email, password);
-            } else {
-                await signInWithEmailAndPassword(auth, email, password);
+            const cred = await signInWithEmailAndPassword(auth, email, password);
+            const userRef = doc(db, "members", cred.user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                await signOut(auth);
+                setError("Registrierungen sind derzeit geschlossen. Dieser Account ist nicht als Mitglied freigeschaltet.");
+                return;
             }
+
             router.push("/dashboard");
         } catch (err: any) {
             console.error("Auth error:", err);
-            // Simple mapping for common errors
             if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-                setError(dict?.auth?.errors?.invalid || "Invalid credentials");
-            } else if (err.code === "auth/email-already-in-use") {
-                setError(dict?.auth?.errors?.emailInUse || "Email already in use");
-            } else if (err.code === "auth/weak-password") {
-                setError(dict?.auth?.errors?.weakPass || "Password too weak");
+                setError(dict?.auth?.errors?.invalid || "Ungültige Anmeldedaten");
             } else {
-                setError(dict?.auth?.errors?.default || "An error occurred");
+                setError(dict?.auth?.errors?.default || "Ein Fehler ist aufgetreten");
             }
         } finally {
             setIsLoading(false);
@@ -52,7 +69,6 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-background text-foreground">
-            {/* --- VISUALS COPIED FROM LANDING PAGE --- */}
             {/* Background Decor */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none opacity-50" />
 
@@ -78,12 +94,25 @@ export default function LoginPage() {
                 </h1>
 
                 {/* Slogan */}
-                <p className="text-lg md:text-xl font-sans text-muted-foreground mb-8">
-                    {showEmailForm ? (isRegistering ? "Create Account" : "Welcome Back") : "Login to continue"}
+                <p className="text-lg md:text-xl font-sans text-muted-foreground mb-6">
+                    {showEmailForm ? "Willkommen zurück" : "Anmelden um fortzufahren"}
                 </p>
 
-                {/* --- LOGIN CONTENT --- */}
+                {/* Notice banner: Registration closed */}
+                <div className="mb-6 flex items-center justify-center gap-2 text-xs text-muted-foreground bg-secondary/30 py-2 px-3.5 rounded-full border border-secondary/50">
+                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Neue Registrierungen vorübergehend pausiert</span>
+                </div>
 
+                {/* Error Message */}
+                {error && (
+                    <div className="w-full mb-4 flex items-center gap-2 p-3 text-sm text-red-400 bg-red-950/20 border border-red-900/50 rounded-lg text-left">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                {/* --- LOGIN CONTENT --- */}
                 {!showEmailForm ? (
                     /* INITIAL STATE: 2 BIG BUTTONS */
                     <div className="flex flex-col gap-4 w-full">
@@ -98,8 +127,9 @@ export default function LoginPage() {
 
                         {/* Button 2: Google */}
                         <button
-                            onClick={loginWithGoogle}
-                            className="w-full px-8 py-4 rounded-xl bg-white text-gray-800 hover:bg-gray-100 font-semibold text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                            onClick={handleGoogleLogin}
+                            disabled={isLoading}
+                            className="w-full px-8 py-4 rounded-xl bg-white text-gray-800 hover:bg-gray-100 font-semibold text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             <svg className="h-5 w-5" viewBox="0 0 24 24">
                                 <path
@@ -119,7 +149,7 @@ export default function LoginPage() {
                                     fill="#EA4335"
                                 />
                             </svg>
-                            Mit Google anmelden
+                            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Mit Google anmelden"}
                         </button>
                     </div>
                 ) : (
@@ -151,33 +181,17 @@ export default function LoginPage() {
                             />
                         </div>
 
-                        {/* Error Message */}
-                        {error && (
-                            <div className="flex items-center gap-2 p-3 text-sm text-red-400 bg-red-950/20 border border-red-900/50 rounded-lg">
-                                <AlertCircle className="h-4 w-4" />
-                                {error}
-                            </div>
-                        )}
-
                         {/* Submit Button */}
                         <button
                             type="submit"
                             disabled={isLoading}
                             className="w-full px-8 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 flex items-center justify-center"
                         >
-                            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRegistering ? "Registrieren" : "Anmelden")}
+                            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Anmelden"}
                         </button>
 
-                        {/* Bottom Links */}
+                        {/* Back Link */}
                         <div className="flex flex-col gap-3 mt-4 text-sm font-medium">
-                            <button
-                                type="button"
-                                onClick={() => setIsRegistering(!isRegistering)}
-                                className="text-primary hover:text-primary/80 transition-colors"
-                            >
-                                {isRegistering ? "Bereits einen Account? Anmelden" : "Keinen Account? Registrieren"}
-                            </button>
-
                             <button
                                 type="button"
                                 onClick={() => setShowEmailForm(false)}
