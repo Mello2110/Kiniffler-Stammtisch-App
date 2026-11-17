@@ -59,6 +59,7 @@ export interface ScorecardComponentProps<TState = any> {
     session: UniversalGameSession<TState>;
     members: Member[];
     clubId: string;
+    isFullscreen?: boolean;
     onAddPenalty?: (proposal: PenaltyProposal) => Promise<void>;
 }
 

@@ -24,6 +24,7 @@ import { KniffelYearNav } from "@/components/kniffel/KniffelYearNav";
 import { KniffelSheetList } from "@/components/kniffel/KniffelSheetList";
 import { AddSheetModal } from "@/components/kniffel/AddSheetModal";
 import { PlayerSelectionModal } from "@/components/kniffel/PlayerSelectionModal";
+import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import {
     Dice5,
     Flame,
@@ -73,6 +74,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(initialSessionId || null);
     const [fullscreenSessionId, setFullscreenSessionId] = useState<string | null>(null);
+    const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
     useEffect(() => {
         if (typeof document === "undefined") return;
@@ -164,10 +166,10 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
     };
 
     const handleDeleteUniversalSession = async (sessionId: string) => {
-        if (!confirm(dict.kniffel.confirmDelete)) return;
         try {
             await deleteDoc(clubDoc("gameSessions", sessionId));
             if (expandedSessionId === sessionId) setExpandedSessionId(null);
+            if (fullscreenSessionId === sessionId) setFullscreenSessionId(null);
         } catch (err) {
             console.error("Error deleting session:", err);
         }
@@ -366,7 +368,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                                                             onClick={e => {
                                                                 e.stopPropagation();
                                                                 if (fullscreenSessionId === sess.id) setFullscreenSessionId(null);
-                                                                handleDeleteUniversalSession(sess.id);
+                                                                setDeletingSessionId(sess.id);
                                                             }}
                                                             className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer"
                                                             title="Runde löschen"
@@ -417,12 +419,13 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                                                             </button>
                                                         </div>
 
-                                                        <div className="flex-1 overflow-auto p-3 sm:p-6 pb-20">
-                                                            <div className="max-w-7xl mx-auto">
+                                                        <div className="flex-1 overflow-auto p-3 sm:p-5 pb-16">
+                                                            <div className="w-full">
                                                                 <ScorecardComp
                                                                     session={sess}
                                                                     members={members}
                                                                     clubId={clubId}
+                                                                    isFullscreen={true}
                                                                 />
                                                             </div>
                                                         </div>
@@ -440,6 +443,18 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                                 onClose={() => setIsAddModalOpen(false)}
                                 members={members}
                                 onCreateGame={handleCreateUniversalSession}
+                            />
+
+                            <DeleteConfirmationModal
+                                isOpen={!!deletingSessionId}
+                                onClose={() => setDeletingSessionId(null)}
+                                onConfirm={async () => {
+                                    if (deletingSessionId) {
+                                        await handleDeleteUniversalSession(deletingSessionId);
+                                    }
+                                }}
+                                title={`${activePlugin.title}-Runde löschen`}
+                                description={dict.kniffel.confirmDelete}
                             />
                         </>
                     )}

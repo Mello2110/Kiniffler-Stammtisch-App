@@ -919,7 +919,7 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
                 <button
                     type="button"
                     onClick={calculateMatrixPoints}
-                    className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 transition-all touch-target cursor-pointer"
+                    className="h-9 flex items-center gap-1.5 px-3 text-xs font-semibold rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 transition-all cursor-pointer"
                 >
                     <ArrowUpRight className="h-4 w-4" />
                     <span>{dict.kniffel.transferToMatrix}</span>
@@ -930,7 +930,7 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
                     type="button"
                     onClick={() => setIsReorderMode(!isReorderMode)}
                     className={cn(
-                        "flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer",
+                        "h-9 flex items-center gap-1.5 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer",
                         isReorderMode
                             ? "bg-primary/20 border-primary text-primary"
                             : "bg-white/5 hover:bg-white/10 border-white/10"
@@ -946,7 +946,7 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
                     <button
                         type="button"
                         onClick={() => setShowSortDropdown(!showSortDropdown)}
-                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
+                        className="h-9 flex items-center gap-1.5 px-3 text-xs font-semibold rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
                     >
                         {getSortIcon()}
                         <span className="hidden sm:inline">{dict.kniffel.sort}: {getSortLabel()}</span>

@@ -8,6 +8,7 @@ import { useClub } from "@/contexts/ClubContext";
 import { ChevronDown, ChevronRight, Trash2, Calendar, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KniffelScorecard } from "./KniffelScorecard";
+import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import type { Member, KniffelSheet } from "@/types";
 
 interface KniffelSheetListProps {
@@ -30,10 +31,9 @@ export function KniffelSheetList({
     const [expandedSheet, setExpandedSheet] = useState<string | null>(null);
     const [fullscreenSheetId, setFullscreenSheetId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     const handleDelete = async (sheetId: string) => {
-        if (!confirm(dict.kniffel.confirmDelete)) return;
-
         setDeletingId(sheetId);
         try {
             await deleteDoc(clubDoc("kniffelSheets", sheetId));
@@ -79,6 +79,7 @@ export function KniffelSheetList({
     }
 
     return (
+        <>
         <div className="space-y-3">
             {sheets.map((sheet, index) => {
                 const isExpanded = expandedSheet === sheet.id;
@@ -132,7 +133,7 @@ export function KniffelSheetList({
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         if (fullscreenSheetId === sheet.id) setFullscreenSheetId(null);
-                                        handleDelete(sheet.id);
+                                        setConfirmDeleteId(sheet.id);
                                     }}
                                     disabled={isDeleting}
                                     className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-colors disabled:opacity-50 cursor-pointer"
@@ -157,5 +158,17 @@ export function KniffelSheetList({
                 );
             })}
         </div>
+        <DeleteConfirmationModal
+            isOpen={!!confirmDeleteId}
+            onClose={() => setConfirmDeleteId(null)}
+            onConfirm={async () => {
+                if (confirmDeleteId) {
+                    await handleDelete(confirmDeleteId);
+                }
+            }}
+            title="Kniffel-Sheet löschen"
+            description={dict.kniffel.confirmDelete}
+        />
+    </>
     );
 }

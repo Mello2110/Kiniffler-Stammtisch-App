@@ -114,7 +114,7 @@ export function createInitialKegelnState(playerIds: string[], pudelPenaltyEur: n
     };
 }
 
-function KegelnScorecard({ session, members }: ScorecardComponentProps<KegelnState>) {
+function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentProps<KegelnState>) {
     const { clubId, club, clubCollection, clubDoc } = useClub();
     const rules = club?.ruleset?.kegeln ?? DEFAULT_CLUB_RULESET.kegeln;
     const { toast, showToast, hideToast } = useToast();
@@ -491,7 +491,7 @@ function KegelnScorecard({ session, members }: ScorecardComponentProps<KegelnSta
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={handleTransferToMatrix}
-                                className="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold px-3.5 py-2 rounded-xl text-xs transition-colors cursor-pointer"
+                                className="h-9 px-3 text-xs font-semibold rounded-xl flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 transition-colors cursor-pointer"
                             >
                                 <Trophy className="h-4 w-4" />
                                 In Saison-Matrix übertragen

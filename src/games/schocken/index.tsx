@@ -137,7 +137,7 @@ export function createInitialSchockenState(playerIds: string[], stockCoasters: n
     };
 }
 
-function SchockenScorecard({ session, members }: ScorecardComponentProps<SchockenState>) {
+function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponentProps<SchockenState>) {
     const { clubId, club, clubCollection, clubDoc } = useClub();
     const rules = club?.ruleset?.schocken ?? DEFAULT_CLUB_RULESET.schocken;
     const { toast, showToast, hideToast } = useToast();
@@ -556,7 +556,7 @@ function SchockenScorecard({ session, members }: ScorecardComponentProps<Schocke
 
                         <button
                             onClick={handleTransferToMatrix}
-                            className="text-xs flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
+                            className="h-9 px-3 text-xs font-semibold rounded-xl flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 transition-colors cursor-pointer"
                         >
                             <Trophy className="h-3.5 w-3.5" />
                             In Saison-Matrix übertragen
@@ -645,7 +645,7 @@ function SchockenScorecard({ session, members }: ScorecardComponentProps<Schocke
             </div>
 
             {/* Spieler-Karten mit Live-Deckelzähler & Direktaktionen */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={cn("grid gap-3 sm:gap-4", isFullscreen ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
                 {players.map(player => {
                     const coasters = state.coastersByPlayer[player.id] || 0;
                     const pStats = state.statsByPlayer[player.id] || {

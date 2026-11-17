@@ -139,6 +139,30 @@
   caption {
     @apply mt-4 text-sm text-muted-foreground;
   }
+
+  /* Clean, subtle custom scrollbars matching the dark Rosewood & Cream theme */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(245, 240, 235, 0.16) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(245, 240, 235, 0.16);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, hsl(var(--primary)) 65%, transparent);
+  }
 }
 
 @layer components {
