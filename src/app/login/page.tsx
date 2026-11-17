@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Loader2, Mail, Lock, AlertCircle, ArrowLeft, ShieldAlert, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -41,7 +41,26 @@ export default function LoginPage() {
     }, []);
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [resetMessage, setResetMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    const handlePasswordReset = async () => {
+        setError("");
+        setResetMessage("");
+        if (!email.trim()) {
+            setError("Bitte gib zuerst deine E-Mail-Adresse ein.");
+            return;
+        }
+        setIsLoading(true);
+        try {
+            await sendPasswordResetEmail(auth, email.trim());
+            setResetMessage("Wir haben dir eine E-Mail zum Zurücksetzen deines Passworts gesendet.");
+        } catch (err: any) {
+            setError(err?.message || "Passwort-Reset fehlgeschlagen.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const canRegister = isInviteFlow || isOnboardingFlow;
 
@@ -162,6 +181,11 @@ export default function LoginPage() {
                     <div className="w-full mb-4 flex items-center gap-2 p-3 text-sm text-red-400 bg-red-950/20 border border-red-900/50 rounded-lg text-left">
                         <AlertCircle className="h-4 w-4 shrink-0" />
                         <span>{error}</span>
+                    </div>
+                )}
+                {resetMessage && (
+                    <div className="w-full mb-4 p-3 text-sm text-emerald-300 bg-emerald-950/20 border border-emerald-900/50 rounded-lg text-left">
+                        {resetMessage}
                     </div>
                 )}
 
@@ -290,6 +314,16 @@ export default function LoginPage() {
 
                         {/* Back Link */}
                         <div className="flex flex-col gap-3 mt-4 text-sm font-medium">
+                            {!(isRegisterMode && canRegister) && (
+                                <button
+                                    type="button"
+                                    onClick={handlePasswordReset}
+                                    disabled={isLoading}
+                                    className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                                >
+                                    Passwort vergessen?
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => setShowEmailForm(false)}

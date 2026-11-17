@@ -8,6 +8,7 @@ import { httpsCallable } from "firebase/functions";
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    sendPasswordResetEmail,
     GoogleAuthProvider,
     signInWithPopup,
     signOut,
@@ -45,6 +46,7 @@ export default function JoinClubPage() {
     const [displayName, setDisplayName] = useState("");
     const [isJoining, setIsJoining] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [resetMessage, setResetMessage] = useState<string | null>(null);
     const [joinedClubName, setJoinedClubName] = useState<string | null>(null);
 
     useEffect(() => {
@@ -186,10 +188,29 @@ export default function JoinClubPage() {
 
     const handleSwitchAccount = async () => {
         setError(null);
+        setResetMessage(null);
         await signOut(auth);
         setDisplayName("");
         setEmail("");
         setPassword("");
+    };
+
+    const handlePasswordReset = async () => {
+        setError(null);
+        setResetMessage(null);
+        if (!email.trim()) {
+            setError("Bitte gib zuerst deine E-Mail-Adresse ein.");
+            return;
+        }
+        setIsJoining(true);
+        try {
+            await sendPasswordResetEmail(auth, email.trim());
+            setResetMessage("Wir haben dir eine E-Mail zum Zurücksetzen deines Passworts gesendet.");
+        } catch (err: any) {
+            setError(err?.message || "Passwort-Reset fehlgeschlagen.");
+        } finally {
+            setIsJoining(false);
+        }
     };
 
     return (
@@ -246,6 +267,11 @@ export default function JoinClubPage() {
                         {error && (
                             <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400 text-left">
                                 {error}
+                            </div>
+                        )}
+                        {resetMessage && (
+                            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 text-left">
+                                {resetMessage}
                             </div>
                         )}
 
@@ -341,6 +367,16 @@ export default function JoinClubPage() {
                                             ? "Konto erstellen & beitreten"
                                             : "Anmelden & beitreten"}
                                     </button>
+                                    {authMode === "login" && (
+                                        <button
+                                            type="button"
+                                            onClick={handlePasswordReset}
+                                            disabled={isJoining}
+                                            className="w-full text-center text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer pt-1"
+                                        >
+                                            Passwort vergessen?
+                                        </button>
+                                    )}
                                 </form>
 
                                 <div className="relative flex items-center py-1">

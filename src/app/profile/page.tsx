@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, User, Save, KeyRound, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
+import { Loader2, User, Save, KeyRound, ChevronDown, ChevronUp, ArrowLeft, Trash2 } from "lucide-react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { reauthenticateWithCredential, EmailAuthProvider, updatePassword } from "firebase/auth";
-import { db, auth } from "@/lib/firebase";
+import { reauthenticateWithCredential, EmailAuthProvider, updatePassword, signOut } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
+import { db, auth, functions } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
 import { useRouter } from "next/navigation";
@@ -12,6 +13,7 @@ import type { Member } from "@/types";
 import { MemberAvatar } from "@/components/common/MemberAvatar";
 import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 
 // ============================================
 // COMPONENT
@@ -41,6 +43,9 @@ function ProfilePageContent() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
 
     // --- Fetch member data on mount ---
     useEffect(() => {
@@ -388,6 +393,57 @@ function ProfilePageContent() {
                     onClose={() => setShowAvatarPicker(false)}
                 />
             )}
+
+            {/* Danger Zone: Delete Own Account */}
+            <div className="mt-8 bg-card border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-4">
+                <div className="space-y-1">
+                    <h2 className="text-lg font-bold text-red-400">Eigenen Account löschen</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                        Entfernt dein persönliches KANPAI-Konto sowie deine Mitgliedschaften aus allen Vereinen dauerhaft. Andere Nutzer oder Admins können deinen Account nicht löschen.
+                    </p>
+                </div>
+
+                {deleteAccountError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400">
+                        {deleteAccountError}
+                    </div>
+                )}
+
+                <button
+                    type="button"
+                    disabled={isDeletingAccount}
+                    onClick={() => {
+                        setDeleteAccountError(null);
+                        setShowDeleteAccountModal(true);
+                    }}
+                    className="px-5 py-3 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 text-sm font-bold inline-flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                    {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    {isDeletingAccount ? "Konto wird gelöscht..." : "Mein Konto dauerhaft löschen"}
+                </button>
+            </div>
+
+            <DeleteConfirmationModal
+                isOpen={showDeleteAccountModal}
+                onClose={() => setShowDeleteAccountModal(false)}
+                onConfirm={async () => {
+                    setIsDeletingAccount(true);
+                    setDeleteAccountError(null);
+                    try {
+                        const fn = httpsCallable<undefined, { success: boolean }>(functions, "deleteOwnAccount");
+                        await fn();
+                        await signOut(auth).catch(() => {});
+                        router.push("/");
+                    } catch (err: any) {
+                        setDeleteAccountError(err?.message || "Account konnte nicht gelöscht werden.");
+                        setShowDeleteAccountModal(false);
+                    } finally {
+                        setIsDeletingAccount(false);
+                    }
+                }}
+                title="Eigenen Account unwiderruflich löschen?"
+                description="Dein KANPAI-Login und alle deine Vereins-Mitgliedschaften werden dauerhaft gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden."
+            />
         </div>
     );
 }

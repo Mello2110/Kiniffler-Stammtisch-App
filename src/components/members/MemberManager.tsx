@@ -1,61 +1,36 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { query, orderBy } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
-import { db } from "@/lib/firebase";
-import { UserPlus, Trash2, Loader2, Users, Pencil, Award, Calendar, Cake } from "lucide-react";
+import { useAdmin } from "@/hooks/useAdmin";
+import { functions } from "@/lib/firebase";
+import { Loader2, Users, Pencil, Award, Calendar, Cake, UserMinus, ShieldCheck } from "lucide-react";
 import type { Member } from "@/types";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { EditMemberModal } from "./EditMemberModal";
 import { EditableHeader } from "@/components/common/EditableHeader";
 import { MemberAvatar } from "@/components/common/MemberAvatar";
+import { ClubInviteManager } from "@/components/settings/ClubInviteManager";
 
 export function MemberManager() {
     const { user } = useAuth();
-    const { clubId, clubCollection, clubDoc } = useClub();
-    const [newName, setNewName] = useState("");
-    const [isAdding, setIsAdding] = useState(false);
+    const { clubId, clubCollection } = useClub();
+    const { isAdmin } = useAdmin();
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [deletingMember, setDeletingMember] = useState<Member | null>(null);
-    const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     const q = useMemo(() => query(clubCollection("members"), orderBy("name", "asc")), [clubId, clubCollection]);
     const { data: members, loading: isLoading } = useFirestoreQuery<Member>(q);
 
-    const currentMember = members.find(m => m.id === user?.uid);
-    const isAdmin = true; // GLOBAL ACCESS UNLOCKED FOR EVENT
+    const confirmRemoveFromClub = async () => {
+        if (!deletingMember || !isAdmin || !clubId) return;
+        setActionError(null);
 
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newName.trim()) return;
-
-        setIsAdding(true);
-        try {
-            const payload = {
-                name: newName.trim(),
-                joinedAt: serverTimestamp(),
-                points: 0,
-                penalties: 0,
-                role: "Mitglied",
-                joinYear: new Date().getFullYear()
-            };
-            const newDoc = await addDoc(clubCollection("members"), payload);
-            if (clubId === "club_original") {
-                await setDoc(doc(db, "members", newDoc.id), payload).catch(() => {});
-            }
-            setNewName("");
-        } catch (error) {
-            console.error("Error adding member:", error);
-        } finally {
-            setIsAdding(false);
-        }
-    };
-
-    const confirmDelete = async () => {
-        if (!deletingMember) return;
         const isDeletingAdmin =
             deletingMember.isAdmin === true ||
             deletingMember.roles?.includes("Admin") ||
@@ -64,18 +39,22 @@ export function MemberManager() {
             (m) => m.id !== deletingMember.id && (m.isAdmin === true || m.roles?.includes("Admin") || m.role === "Admin")
         );
         if (isDeletingAdmin && otherAdmins.length === 0) {
-            alert("Der letzte Admin kann nicht gelöscht werden. Bitte übertrage die Admin-Rechte zuerst auf ein anderes Mitglied.");
+            setActionError("Der letzte Admin kann nicht entfernt werden. Bitte übertrage die Admin-Rechte zuerst auf ein anderes Mitglied.");
             setDeletingMember(null);
             return;
         }
+
         try {
-            await deleteDoc(clubDoc("members", deletingMember.id));
-            if (clubId === "club_original") {
-                await deleteDoc(doc(db, "members", deletingMember.id)).catch(() => {});
-            }
+            const fn = httpsCallable<{ clubId: string; targetMemberId: string }, { success: boolean }>(
+                functions,
+                "removeClubMember"
+            );
+            await fn({ clubId, targetMemberId: deletingMember.id });
             setDeletingMember(null);
-        } catch (error) {
-            console.error("Error deleting member:", error);
+        } catch (error: any) {
+            console.error("Error removing member from club:", error);
+            setActionError(error?.message || "Mitglied konnte nicht aus dem Verein entfernt werden.");
+            setDeletingMember(null);
         }
     };
 
@@ -90,37 +69,23 @@ export function MemberManager() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
-            {/* Add Member Form */}
-            <div className="bg-card border rounded-2xl p-6 shadow-sm">
-                <div className="mb-6 flex items-center gap-2">
-                    <UserPlus className="h-5 w-5 text-primary" />
-                    <EditableHeader
-                        pageId="members"
-                        headerId="add-member-title"
-                        defaultText="Neues Mitglied hinzufügen"
-                        as="h2"
-                        className="text-xl font-bold"
-                    />
+            {/* Invite Links (Admin only) */}
+            {isAdmin ? (
+                <ClubInviteManager />
+            ) : (
+                <div className="rounded-2xl border border-white/10 bg-card/60 p-4 sm:p-5 flex items-center gap-3 text-xs sm:text-sm text-muted-foreground">
+                    <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+                    <span>
+                        Neue Mitglieder treten über einen Vereins-Einladungslink bei. Nur Vereins-Admins können Einladungslinks erstellen oder Mitglieder entfernen.
+                    </span>
                 </div>
-                <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-4">
-                    <input
-                        type="text"
-                        placeholder="Vollständiger Name"
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        className="flex-1 p-3 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                        required
-                    />
-                    <button
-                        type="submit"
-                        disabled={isAdding || !newName.trim()}
-                        className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-all"
-                    >
-                        {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                        Hinzufügen
-                    </button>
-                </form>
-            </div>
+            )}
+
+            {actionError && (
+                <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+                    {actionError}
+                </div>
+            )}
 
             {/* Member List */}
             <div className="bg-card border rounded-2xl overflow-hidden shadow-sm">
@@ -178,19 +143,19 @@ export function MemberManager() {
                                     {(user?.uid === member.id || isAdmin) && (
                                         <button
                                             onClick={() => setEditingMember(member)}
-                                            className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                            title="Edit"
+                                            className="p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                                            title="Bearbeiten"
                                         >
                                             <Pencil className="h-4 w-4" />
                                         </button>
                                     )}
-                                    {isAdmin && (
+                                    {isAdmin && user?.uid !== member.id && (
                                         <button
                                             onClick={() => setDeletingMember(member)}
-                                            className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                                            title="Delete"
+                                            className="p-2 text-muted-foreground hover:text-red-400 transition-colors cursor-pointer"
+                                            title="Aus Verein entfernen"
                                         >
-                                            <Trash2 className="h-4 w-4" />
+                                            <UserMinus className="h-4 w-4" />
                                         </button>
                                     )}
                                 </div>
@@ -215,9 +180,9 @@ export function MemberManager() {
             <DeleteConfirmationModal
                 isOpen={!!deletingMember}
                 onClose={() => setDeletingMember(null)}
-                onConfirm={confirmDelete}
-                title="Mitglied löschen"
-                description={`Bist du sicher, dass du ${deletingMember?.name} unwiderruflich löschen möchtest? Alle Statistiken gehen verloren.`}
+                onConfirm={confirmRemoveFromClub}
+                title="Mitglied aus Verein entfernen"
+                description={`Möchtest du ${deletingMember?.name} wirklich aus diesem Verein entfernen? Der eigene KANPAI-Account der Person bleibt dabei bestehen.`}
             />
         </div>
     );

@@ -1270,3 +1270,154 @@ export const createClub = onCall(async (request) => {
         inviteCode,
     };
 });
+
+export const removeClubMember = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Anmeldung erforderlich.');
+    }
+
+    const callerUid = request.auth.uid;
+    const clubId = typeof request.data?.clubId === 'string' ? request.data.clubId.trim() : '';
+    const targetMemberId = typeof request.data?.targetMemberId === 'string' ? request.data.targetMemberId.trim() : '';
+
+    if (!clubId || !targetMemberId) {
+        throw new HttpsError('invalid-argument', 'clubId und targetMemberId sind erforderlich.');
+    }
+
+    const clubRef = db.collection('clubs').doc(clubId);
+    const [callerSnap, targetSnap, allMembersSnap] = await Promise.all([
+        clubRef.collection('members').doc(callerUid).get(),
+        clubRef.collection('members').doc(targetMemberId).get(),
+        clubRef.collection('members').get(),
+    ]);
+
+    if (!callerSnap.exists) {
+        throw new HttpsError('permission-denied', 'Du bist kein Mitglied dieses Vereins.');
+    }
+
+    const callerData = callerSnap.data() || {};
+    const callerIsAdmin =
+        callerData.isAdmin === true ||
+        callerData.role === 'Admin' ||
+        (Array.isArray(callerData.roles) && callerData.roles.includes('Admin'));
+
+    if (!callerIsAdmin) {
+        throw new HttpsError('permission-denied', 'Nur Vereins-Admins dürfen Mitglieder aus dem Verein entfernen.');
+    }
+
+    if (!targetSnap.exists) {
+        throw new HttpsError('not-found', 'Dieses Mitglied existiert in diesem Verein nicht.');
+    }
+
+    const targetData = targetSnap.data() || {};
+    const targetIsAdmin =
+        targetData.isAdmin === true ||
+        targetData.role === 'Admin' ||
+        (Array.isArray(targetData.roles) && targetData.roles.includes('Admin'));
+
+    const otherAdmins = allMembersSnap.docs.filter((d) => {
+        if (d.id === targetMemberId) return false;
+        const data = d.data() || {};
+        return data.isAdmin === true || data.role === 'Admin' || (Array.isArray(data.roles) && data.roles.includes('Admin'));
+    });
+
+    if (targetIsAdmin && otherAdmins.length === 0) {
+        throw new HttpsError(
+            'failed-precondition',
+            'Der letzte Admin kann nicht entfernt werden. Bitte übertrage die Admin-Rechte zuerst auf ein anderes Mitglied.'
+        );
+    }
+
+    const userRef = db.collection('users').doc(targetMemberId);
+    await db.runTransaction(async (tx) => {
+        const userSnap = await tx.get(userRef);
+
+        tx.delete(targetSnap.ref);
+        if (clubId === 'club_original') {
+            tx.delete(db.collection('members').doc(targetMemberId));
+        }
+
+        if (userSnap.exists) {
+            const existingClubIds: string[] = Array.isArray(userSnap.data()?.clubIds) ? userSnap.data()!.clubIds : [];
+            const nextClubIds = existingClubIds.filter((id) => id !== clubId);
+            const currentDefault = userSnap.data()?.defaultClubId;
+            const nextDefault = currentDefault === clubId ? (nextClubIds[0] || '') : (currentDefault || nextClubIds[0] || '');
+
+            tx.update(userRef, {
+                clubIds: nextClubIds,
+                defaultClubId: nextDefault,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+    });
+
+    return { success: true };
+});
+
+export const deleteOwnAccount = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Anmeldung erforderlich.');
+    }
+
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    const userSnap = await userRef.get();
+
+    const clubIds = new Set<string>();
+    if (userSnap.exists && Array.isArray(userSnap.data()?.clubIds)) {
+        for (const cid of userSnap.data()!.clubIds) {
+            if (typeof cid === 'string' && cid.trim()) {
+                clubIds.add(cid.trim());
+            }
+        }
+    }
+
+    // Check legacy club_original membership as well
+    const originalMemberSnap = await db.collection('clubs').doc('club_original').collection('members').doc(uid).get();
+    if (originalMemberSnap.exists) {
+        clubIds.add('club_original');
+    }
+
+    // Last-admin guard across all clubs the user belongs to
+    for (const clubId of clubIds) {
+        const clubRef = db.collection('clubs').doc(clubId);
+        const membersSnap = await clubRef.collection('members').get();
+        const myDoc = membersSnap.docs.find((d) => d.id === uid);
+        if (!myDoc) continue;
+
+        const myData = myDoc.data() || {};
+        const amIAdmin =
+            myData.isAdmin === true ||
+            myData.role === 'Admin' ||
+            (Array.isArray(myData.roles) && myData.roles.includes('Admin'));
+        const otherAdmins = membersSnap.docs.filter((d) => {
+            if (d.id === uid) return false;
+            const data = d.data() || {};
+            return data.isAdmin === true || data.role === 'Admin' || (Array.isArray(data.roles) && data.roles.includes('Admin'));
+        });
+
+        if (amIAdmin && otherAdmins.length === 0 && membersSnap.size > 1) {
+            const clubSnap = await clubRef.get();
+            const clubName = clubSnap.data()?.name || clubId;
+            throw new HttpsError(
+                'failed-precondition',
+                `Du bist der einzige Admin in "${clubName}". Bitte übertrage die Admin-Rechte dort zuerst an ein anderes Mitglied, bevor du deinen Account löschst.`
+            );
+        }
+    }
+
+    const batch = db.batch();
+    for (const clubId of clubIds) {
+        batch.delete(db.collection('clubs').doc(clubId).collection('members').doc(uid));
+    }
+    batch.delete(db.collection('members').doc(uid));
+    if (userSnap.exists) {
+        batch.delete(userRef);
+    }
+    await batch.commit();
+
+    // Delete the Firebase Authentication user record
+    await admin.auth().deleteUser(uid);
+
+    return { success: true };
+});
