@@ -7,7 +7,7 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileSidebar } from "./MobileSidebar";
 import { useTitle } from "@/contexts/TitleContext";
-import { SyncStatusBadge } from "@/components/common/SyncStatusBadge";
+// SyncStatusBadge removed
 
 export function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
@@ -41,7 +41,7 @@ export function Navbar() {
                 </Link>
 
                 <div className="flex items-center gap-2">
-                    <SyncStatusBadge />
+                    {/* SyncStatusBadge removed */}
                     {/* Hamburger Button - 48x48px touch target */}
                     <button
                         onClick={() => setIsOpen(!isOpen)}

@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useClub } from "@/contexts/ClubContext";
-import { SyncStatusBadge } from "@/components/common/SyncStatusBadge";
 
 interface MobileSidebarProps {
     isOpen: boolean;
@@ -97,12 +96,9 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             )}>
                 {/* Header - Close Button */}
                 <div className="flex items-center justify-between h-16 px-5 border-b border-white/10">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xl font-black text-[#F5F0EB] outfit">
-                            Menü
-                        </span>
-                        <SyncStatusBadge />
-                    </div>
+                    <span className="text-xl font-black text-[#F5F0EB] outfit">
+                        Menü
+                    </span>
                     <button
                         onClick={onClose}
                         className="flex items-center justify-center w-11 h-11 rounded-xl text-muted-foreground hover:bg-white/10 active:bg-primary/20 transition-colors"

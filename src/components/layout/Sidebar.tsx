@@ -24,7 +24,6 @@ import {
 
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useClub } from "@/contexts/ClubContext";
-import { SyncStatusBadge } from "@/components/common/SyncStatusBadge";
 import { useTitle } from "@/contexts/TitleContext";
 
 export function Sidebar({ className }: { className?: string }) {
@@ -161,21 +160,20 @@ export function Sidebar({ className }: { className?: string }) {
             </div>
 
             <div className="border-t border-border/60 p-4 space-y-2">
-                <div className="flex items-center justify-between px-1 pb-1">
-                    <SyncStatusBadge />
-                    {availableClubs.length > 1 && (
+                {availableClubs.length > 1 && (
+                    <div className="px-1 pb-1">
                         <select
                             value={clubId}
                             onChange={(e) => switchClub(e.target.value)}
-                            className="text-xs font-bold bg-background border border-primary/30 rounded-lg px-2 py-1 text-primary max-w-[115px] truncate"
+                            className="w-full text-xs font-bold bg-background border border-primary/30 rounded-lg px-2 py-1.5 text-primary truncate"
                             title="Verein / Mandant wechseln"
                         >
                             {availableClubs.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </select>
-                    )}
-                </div>
+                    </div>
+                )}
 
                 {user && (
                     <div
