@@ -377,17 +377,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                                                 </div>
 
                                                 {isExpanded && (
-                                                    <div className="border-t border-white/10 p-3 sm:p-4 space-y-3">
-                                                        <div className="flex justify-end">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setFullscreenSessionId(sess.id)}
-                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary text-xs font-bold transition-colors cursor-pointer"
-                                                            >
-                                                                <Maximize2 className="h-3.5 w-3.5" />
-                                                                Vollbildmodus
-                                                            </button>
-                                                        </div>
+                                                    <div className="border-t border-white/10 p-3 sm:p-4">
                                                         <ScorecardComp
                                                             session={sess}
                                                             members={members}

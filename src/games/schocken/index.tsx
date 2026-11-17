@@ -556,7 +556,7 @@ function SchockenScorecard({ session, members }: ScorecardComponentProps<Schocke
 
                         <button
                             onClick={handleTransferToMatrix}
-                            className="text-xs flex items-center gap-1.5 bg-primary/20 text-primary hover:bg-primary/30 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                            className="text-xs flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
                         >
                             <Trophy className="h-3.5 w-3.5" />
                             In Saison-Matrix übertragen

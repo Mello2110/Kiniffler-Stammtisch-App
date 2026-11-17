@@ -5,7 +5,7 @@ import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useClub } from "@/contexts/ClubContext";
-import { ChevronDown, ChevronRight, Trash2, Calendar } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2, Calendar, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KniffelScorecard } from "./KniffelScorecard";
 import type { Member, KniffelSheet } from "@/types";
@@ -28,6 +28,7 @@ export function KniffelSheetList({
     const { dict } = useLanguage();
     const { clubId, clubDoc } = useClub();
     const [expandedSheet, setExpandedSheet] = useState<string | null>(null);
+    const [fullscreenSheetId, setFullscreenSheetId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const handleDelete = async (sheetId: string) => {
@@ -113,24 +114,42 @@ export function KniffelSheetList({
                                 </div>
                             </div>
 
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(sheet.id);
-                                }}
-                                disabled={isDeleting}
-                                className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-colors disabled:opacity-50"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedSheet(sheet.id);
+                                        setFullscreenSheetId(sheet.id);
+                                    }}
+                                    className="p-2 rounded-lg text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer"
+                                    title={dict.kniffel.enterFullscreen}
+                                >
+                                    <Maximize2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (fullscreenSheetId === sheet.id) setFullscreenSheetId(null);
+                                        handleDelete(sheet.id);
+                                    }}
+                                    disabled={isDeleting}
+                                    className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-colors disabled:opacity-50 cursor-pointer"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Expanded Scorecard */}
-                        {isExpanded && (
-                            <div className="border-t border-white/10 p-4">
+                        {(isExpanded || fullscreenSheetId === sheet.id) && (
+                            <div className="border-t border-white/10 p-3 sm:p-4">
                                 <KniffelScorecard
                                     sheet={sheet}
                                     members={members}
+                                    externalFullscreen={fullscreenSheetId === sheet.id}
+                                    onExitFullscreen={() => setFullscreenSheetId(null)}
                                 />
                             </div>
                         )}

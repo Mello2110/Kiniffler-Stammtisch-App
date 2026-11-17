@@ -35,6 +35,8 @@ import { NumpadEntryModal } from "./NumpadEntryModal";
 interface KniffelScorecardProps {
     sheet: KniffelSheet;
     members: Member[];
+    externalFullscreen?: boolean;
+    onExitFullscreen?: () => void;
 }
 
 type ScoreField = keyof KniffelScores;
@@ -108,7 +110,7 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, isActive, d
     );
 }
 
-export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
+export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFullscreen }: KniffelScorecardProps) {
     const { dict } = useLanguage();
     const { clubId, club, clubCollection, clubDoc } = useClub();
     const rules = club?.ruleset?.kniffel ?? DEFAULT_CLUB_RULESET.kniffel;
@@ -125,7 +127,13 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const [matrixPointsData, setMatrixPointsData] = useState<{ member: Member, rank: number, points: number, breakdown: { placement: number, kniffel: number, highestChance: number, lowestChance: number } }[]>([]);
     const [isTransferring, setIsTransferring] = useState(false);
 
-    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(Boolean(externalFullscreen));
+
+    useEffect(() => {
+        if (externalFullscreen !== undefined) {
+            setIsFullscreen(externalFullscreen);
+        }
+    }, [externalFullscreen]);
 
     // Modal States
     const [diceCountModal, setDiceCountModal] = useState<{
@@ -196,8 +204,12 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
     // Fullscreen toggle handler - CSS-based for better mobile support
     const toggleFullscreen = useCallback(() => {
-        setIsFullscreen(prev => !prev);
-    }, []);
+        setIsFullscreen(prev => {
+            const next = !prev;
+            if (!next) onExitFullscreen?.();
+            return next;
+        });
+    }, [onExitFullscreen]);
 
     // Lock body scroll when in fullscreen
     useEffect(() => {
@@ -898,25 +910,27 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 isFullscreen && compactMode
             )}
         >
-            {/* Sort and Reorder Controls */}
+            {/* Sort, Reorder and Matrix Controls — einheitlich oben */}
             <div className={cn(
-                "flex justify-end gap-2 mb-3 relative fullscreen-controls",
+                "flex flex-wrap items-center justify-end gap-2 mb-3 relative fullscreen-controls",
                 isFullscreen && "p-4 pb-0"
             )}>
                 {/* Submit to Matrix Button */}
                 <button
+                    type="button"
                     onClick={calculateMatrixPoints}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-300 transition-all touch-target"
+                    className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 transition-all touch-target cursor-pointer"
                 >
                     <ArrowUpRight className="h-4 w-4" />
-                    <span className="hidden md:inline">{dict.kniffel.transferToMatrix}</span>
+                    <span>{dict.kniffel.transferToMatrix}</span>
                 </button>
 
                 {/* Reorder Columns Button */}
                 <button
+                    type="button"
                     onClick={() => setIsReorderMode(!isReorderMode)}
                     className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all",
+                        "flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer",
                         isReorderMode
                             ? "bg-primary/20 border-primary text-primary"
                             : "bg-white/5 hover:bg-white/10 border-white/10"
@@ -930,8 +944,9 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 {/* Sort Dropdown */}
                 <div className="relative">
                     <button
+                        type="button"
                         onClick={() => setShowSortDropdown(!showSortDropdown)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all h-full"
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
                     >
                         {getSortIcon()}
                         <span className="hidden sm:inline">{dict.kniffel.sort}: {getSortLabel()}</span>
@@ -940,10 +955,11 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     </button>
 
                     {showSortDropdown && (
-                        <div className="absolute top-full right-0 mt-1 z-10 bg-secondary border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[180px]">
+                        <div className="absolute top-full right-0 mt-1 z-20 bg-secondary border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[180px]">
                             {(["scoreHigh", "scoreLow", "alphabet", "manual"] as SortMethod[]).map(method => (
                                 <button
                                     key={method}
+                                    type="button"
                                     onClick={() => {
                                         setSortMethod(method);
                                         setShowSortDropdown(false);
@@ -963,35 +979,27 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                     )}
                 </div>
 
-                {/* Fullscreen Toggle Button - Now on the far right */}
-                <button
-                    onClick={toggleFullscreen}
-                    className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all touch-target",
-                        isFullscreen
-                            ? "bg-red-500/20 hover:bg-red-500/30 border-red-500/40 text-red-300"
-                            : "bg-white/5 hover:bg-white/10 border-white/10"
-                    )}
-                    title={isFullscreen ? dict.kniffel.exitFullscreen : dict.kniffel.enterFullscreen}
-                >
-                    {isFullscreen ? (
-                        <>
-                            <X className="h-5 w-5" />
-                            <span className="hidden sm:inline">{dict.kniffel.exitFullscreen}</span>
-                        </>
-                    ) : (
-                        <Maximize className="h-4 w-4" />
-                    )}
-                </button>
+                {/* Exit Fullscreen Button (nur im Vollbild sichtbar; Starten ist einheitlich in der Sheet-Kopfzeile) */}
+                {isFullscreen && (
+                    <button
+                        type="button"
+                        onClick={toggleFullscreen}
+                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-primary text-primary-foreground shadow transition-all touch-target cursor-pointer"
+                        title={dict.kniffel.exitFullscreen}
+                    >
+                        <X className="h-4 w-4" />
+                        <span>{dict.kniffel.exitFullscreen}</span>
+                    </button>
+                )}
             </div>
 
-            <DndContext
+                        <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleColumnReorder}
             >
                 <div className={cn("kniffel-table-wrapper", isFullscreen && "flex-1 overflow-auto px-4 pb-4")}>
-                    <table style={{ tableLayout: 'fixed', width: '100%' }} className={cn("text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.08)]")}>
+                    <table style={{ tableLayout: 'fixed', width: '100%' }} className={cn("text-sm border-separate border-spacing-0 border-2 border-white/15 rounded-xl overflow-hidden shadow-lg")}>
                         <thead>
                             <tr>
                                 <th style={{ width: '110px', minWidth: '100px', maxWidth: '140px' }} className="text-left p-2 font-semibold sticky left-0 z-20 bg-secondary shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] sticky-col"></th>

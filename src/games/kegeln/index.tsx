@@ -491,7 +491,7 @@ function KegelnScorecard({ session, members }: ScorecardComponentProps<KegelnSta
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={handleTransferToMatrix}
-                                className="flex items-center gap-1.5 bg-primary/20 text-primary hover:bg-primary/30 font-bold px-4 py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+                                className="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold px-3.5 py-2 rounded-xl text-xs transition-colors cursor-pointer"
                             >
                                 <Trophy className="h-4 w-4" />
                                 In Saison-Matrix übertragen
