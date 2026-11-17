@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { getDocs } from "firebase/firestore";
 import { useClub } from "@/contexts/ClubContext";
-import { Crown, Medal, Banknote, Calendar, Coins, Sparkles, Dice5, Zap, Gamepad2 } from "lucide-react";
-import type { Member, Donation, Penalty, SetEvent, KniffelSheet, PointEntry } from "@/types";
+import { Crown, Banknote, Calendar, Coins, Sparkles, Dice5, Zap, Gamepad2, Trophy } from "lucide-react";
+import { DEFAULT_HALL_OF_FAME_CATEGORIES } from "@/lib/defaultRuleset";
+import type { Member, Donation, Penalty, SetEvent, KniffelSheet, PointEntry, HallOfFameCategoryId } from "@/types";
+import type { UniversalGameSession } from "@/games/types";
 import { cn } from "@/lib/utils";
 import { EditableHeader } from "@/components/common/EditableHeader";
 
@@ -16,7 +18,8 @@ interface RankedMember {
 }
 
 export default function HallOfFamePage() {
-    const { clubId, clubCollection } = useClub();
+    const { clubId, club, clubCollection } = useClub();
+    const [topDayWinners, setTopDayWinners] = useState<RankedMember[]>([]);
     const [topDonors, setTopDonors] = useState<RankedMember[]>([]);
     const [topPenaltyPayers, setTopPenaltyPayers] = useState<RankedMember[]>([]);
     const [topHosts, setTopHosts] = useState<RankedMember[]>([]);
@@ -29,13 +32,14 @@ export default function HallOfFamePage() {
         const fetchAll = async () => {
             try {
                 // Parallel Fetching for maximum speed (club-scoped)
-                const [memSnap, donSnap, penSnap, evSnap, sheetSnap, pointSnap] = await Promise.all([
+                const [memSnap, donSnap, penSnap, evSnap, sheetSnap, pointSnap, sessionSnap] = await Promise.all([
                     getDocs(clubCollection("members")),
                     getDocs(clubCollection("donations")),
                     getDocs(clubCollection("penalties")),
                     getDocs(clubCollection("set_events")),
                     getDocs(clubCollection("kniffelSheets")),
-                    getDocs(clubCollection("points"))
+                    getDocs(clubCollection("points")),
+                    getDocs(clubCollection("gameSessions"))
                 ]);
 
                 const members = memSnap.docs.map(d => ({ id: d.id, ...d.data() } as Member));
@@ -46,6 +50,7 @@ export default function HallOfFamePage() {
                 const events = evSnap.docs.map(d => ({ id: d.id, ...d.data() } as SetEvent));
                 const sheets = sheetSnap.docs.map(d => ({ id: d.id, ...d.data() } as KniffelSheet));
                 const points = pointSnap.docs.map(d => ({ id: d.id, ...d.data() } as PointEntry));
+                const gameSessions = sessionSnap.docs.map(d => ({ id: d.id, ...d.data() } as UniversalGameSession));
 
                 // Identify ALL submitted sheet IDs (for backfill logic)
                 const submittedSheetIds = new Set<string>();
@@ -168,6 +173,65 @@ export default function HallOfFamePage() {
                     .slice(0, 3);
                 setTopKniffels(sortedKniffels);
 
+                // G. Tagessieger (nur Siege aus Spielen, die in die Saison-Matrix eingetragen wurden)
+                const dayWinStats: Record<string, number> = {};
+
+                // Kniffeln (rankedSheets)
+                rankedSheets.forEach(s => {
+                    if (!s.scores) return;
+                    const candidates: { uid: string; total: number }[] = [];
+                    Object.entries(s.scores).forEach(([uid, scoreObj]) => {
+                        if (!memberMap.has(uid)) return;
+                        candidates.push({ uid, total: calcTotal(scoreObj) });
+                    });
+                    if (candidates.length === 0) return;
+                    const maxScore = Math.max(...candidates.map(x => x.total));
+                    if (maxScore > 0) {
+                        candidates.filter(x => x.total === maxScore).forEach(w => {
+                            dayWinStats[w.uid] = (dayWinStats[w.uid] || 0) + 1;
+                        });
+                    }
+                });
+
+                // Schocken & Kegeln (submitted gameSessions)
+                gameSessions.filter(gs => gs.isSubmitted === true).forEach(gs => {
+                    const state: any = (gs as any).state;
+                    const players: any[] = state?.players || [];
+                    if (gs.gameType === "schocken") {
+                        const candidates = players
+                            .filter(pl => memberMap.has(pl.id))
+                            .map(pl => ({ uid: pl.id, halves: Number(pl.halvesLost ?? 0), finals: Number(pl.finalLosses ?? 0) }));
+                        if (candidates.length === 0) return;
+                        const minHalves = Math.min(...candidates.map(x => x.halves));
+                        const bestHalves = candidates.filter(x => x.halves === minHalves);
+                        const minFinals = Math.min(...bestHalves.map(x => x.finals));
+                        bestHalves.filter(x => x.finals === minFinals).forEach(w => {
+                            dayWinStats[w.uid] = (dayWinStats[w.uid] || 0) + 1;
+                        });
+                    } else if (gs.gameType === "kegeln") {
+                        const candidates = players
+                            .filter(pl => memberMap.has(pl.id))
+                            .map(pl => {
+                                const rounds: number[] = Array.isArray(pl.rounds) ? pl.rounds : [];
+                                const sum = rounds.reduce((acc, v) => acc + (Number(v) || 0), 0);
+                                return { uid: pl.id, total: Number(pl.totalPins ?? sum) };
+                            });
+                        if (candidates.length === 0) return;
+                        const maxPins = Math.max(...candidates.map(x => x.total));
+                        if (maxPins > 0) {
+                            candidates.filter(x => x.total === maxPins).forEach(w => {
+                                dayWinStats[w.uid] = (dayWinStats[w.uid] || 0) + 1;
+                            });
+                        }
+                    }
+                });
+
+                const sortedDayWinners = Object.entries(dayWinStats)
+                    .map(([uid, val]) => ({ id: uid, name: memberMap.get(uid)?.name || "Unknown", value: val }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 3);
+                setTopDayWinners(sortedDayWinners);
+
             } catch (err) {
                 console.error("Error fetching HoF data", err);
             } finally {
@@ -261,6 +325,9 @@ export default function HallOfFamePage() {
         </div>
     );
 
+    const activeCategories: HallOfFameCategoryId[] = club?.hallOfFameCategories && club.hallOfFameCategories.length > 0 ? club.hallOfFameCategories : DEFAULT_HALL_OF_FAME_CATEGORIES;
+    const isCatEnabled = (id: HallOfFameCategoryId) => activeCategories.includes(id);
+
     if (isLoading) return <div className="p-10 text-center animate-pulse text-muted-foreground">Loading Hall of Fame...</div>;
 
     return (
@@ -284,7 +351,7 @@ export default function HallOfFamePage() {
 
                     <div className="flex items-center gap-4 text-muted-foreground">
                         <div className="flex flex-col items-end">
-                            <span className="text-2xl font-black text-foreground outfit">6</span>
+                            <span className="text-2xl font-black text-foreground outfit">{activeCategories.length}</span>
                             <span className="text-xs uppercase font-bold tracking-widest">Kategorien</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
@@ -298,54 +365,76 @@ export default function HallOfFamePage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
-                <RankCard
-                    title="Top Donors"
-                    headerId="top-donors-title"
-                    icon={Coins}
-                    data={topDonors}
-                    unit="€"
-                    colorHex="#D4A017"
-                />
-                <RankCard
-                    title="Top Penalty Payers"
-                    headerId="top-penalty-payers-title"
-                    icon={Banknote}
-                    data={topPenaltyPayers}
-                    unit="€"
-                    colorHex="#C62828"
-                />
-                <RankCard
-                    title="Best Hosts"
-                    headerId="best-hosts-title"
-                    icon={Calendar}
-                    data={topHosts}
-                    unit="x"
-                    colorHex="#1A5C2E"
-                />
-                <RankCard
-                    title="Most Active"
-                    headerId="most-active-title"
-                    icon={Gamepad2}
-                    data={topParticipations}
-                    unit="Spiele"
-                    colorHex="#00BCD4"
-                />
-                <RankCard
-                    title="Highscore"
-                    headerId="highscore-title"
-                    icon={Zap}
-                    data={topScores}
-                    unit="Pkt"
-                    colorHex="#FF9800"
-                />
-                <RankCard
-                    title="Kniffel Kings"
-                    headerId="kniffel-kings-title"
-                    icon={Dice5}
-                    data={topKniffels}
-                    unit="x"
-                    colorHex="#9C27B0"
-                />
+                {isCatEnabled("dayWinners") && (
+                    <RankCard
+                        title="Tagessieger"
+                        headerId="day-winners-title"
+                        icon={Trophy}
+                        data={topDayWinners}
+                        unit="Siege"
+                        colorHex="#854d59"
+                    />
+                )}
+                {isCatEnabled("topDonors") && (
+                    <RankCard
+                        title="Top Donors"
+                        headerId="top-donors-title"
+                        icon={Coins}
+                        data={topDonors}
+                        unit="€"
+                        colorHex="#D4A017"
+                    />
+                )}
+                {isCatEnabled("topPenaltyPayers") && (
+                    <RankCard
+                        title="Top Penalty Payers"
+                        headerId="top-penalty-payers-title"
+                        icon={Banknote}
+                        data={topPenaltyPayers}
+                        unit="€"
+                        colorHex="#C62828"
+                    />
+                )}
+                {isCatEnabled("topHosts") && (
+                    <RankCard
+                        title="Best Hosts"
+                        headerId="best-hosts-title"
+                        icon={Calendar}
+                        data={topHosts}
+                        unit="x"
+                        colorHex="#1A5C2E"
+                    />
+                )}
+                {isCatEnabled("topParticipations") && (
+                    <RankCard
+                        title="Most Active"
+                        headerId="most-active-title"
+                        icon={Gamepad2}
+                        data={topParticipations}
+                        unit="Spiele"
+                        colorHex="#00BCD4"
+                    />
+                )}
+                {isCatEnabled("topScores") && (
+                    <RankCard
+                        title="Highscore"
+                        headerId="highscore-title"
+                        icon={Zap}
+                        data={topScores}
+                        unit="Pkt"
+                        colorHex="#FF9800"
+                    />
+                )}
+                {isCatEnabled("topKniffels") && (
+                    <RankCard
+                        title="Kniffel Kings"
+                        headerId="kniffel-kings-title"
+                        icon={Dice5}
+                        data={topKniffels}
+                        unit="x"
+                        colorHex="#578d8e"
+                    />
+                )}
             </div>
         </div>
     );

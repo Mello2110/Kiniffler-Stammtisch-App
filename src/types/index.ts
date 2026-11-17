@@ -346,6 +346,7 @@ export interface ClubTenant {
     paymentConfig: ClubPaymentConfig;
     cashConfig: CashConfig;
     ruleset?: ClubRulesetConfig;
+    hallOfFameCategories?: HallOfFameCategoryId[];
     createdAt?: any;
     migratedAt?: any;
 }
@@ -385,3 +386,12 @@ export interface PendingDeposit {
     resolvedAt?: any;
     resolvedBy?: string;
 }
+
+export type HallOfFameCategoryId =
+    | "dayWinners"
+    | "topDonors"
+    | "topPenaltyPayers"
+    | "topHosts"
+    | "topParticipations"
+    | "topScores"
+    | "topKniffels";

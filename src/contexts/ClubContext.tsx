@@ -18,14 +18,15 @@ import {
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_CLUB_ID, getClubCollection, getClubDoc } from "@/lib/clubPaths";
-import { DEFAULT_CLUB_RULESET, DEFAULT_PRIMARY_HEX, DEFAULT_ACCENT_HEX } from "@/lib/defaultRuleset";
+import { DEFAULT_CLUB_RULESET, DEFAULT_HALL_OF_FAME_CATEGORIES, DEFAULT_PRIMARY_HEX, DEFAULT_ACCENT_HEX } from "@/lib/defaultRuleset";
 import type {
     ClubTenant,
     ClubThemeConfig,
     ClubPaymentConfig,
     ClubRulesetConfig,
     GameDisciplineId,
-    GlobalUserProfile
+    GlobalUserProfile,
+    HallOfFameCategoryId
 } from "@/types";
 
 interface ClubContextType {
@@ -47,6 +48,7 @@ interface ClubContextType {
     updateClubGames: (enabledGames: GameDisciplineId[], defaultGame?: GameDisciplineId) => Promise<void>;
     updateClubPaymentConfig: (paymentConfig: Partial<ClubPaymentConfig>) => Promise<void>;
     updateClubRuleset: (ruleset: ClubRulesetConfig) => Promise<void>;
+    updateClubHallOfFameCategories: (categories: HallOfFameCategoryId[]) => Promise<void>;
     clubCollection: <T = any>(collectionName: string, ...segments: string[]) => CollectionReference<T>;
     clubDoc: <T = any>(collectionName: string, docId: string, ...segments: string[]) => DocumentReference<T>;
 }
@@ -89,6 +91,7 @@ const ClubContext = createContext<ClubContextType>({
     updateClubGames: async () => {},
     updateClubPaymentConfig: async () => {},
     updateClubRuleset: async () => {},
+    updateClubHallOfFameCategories: async () => {},
     clubCollection: (col, ...seg) => getClubCollection(DEFAULT_CLUB_ID, col, ...seg),
     clubDoc: (col, id, ...seg) => getClubDoc(DEFAULT_CLUB_ID, col, id, ...seg),
 });
@@ -194,7 +197,10 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
                             schocken: { ...DEFAULT_CLUB_RULESET.schocken, ...(data.ruleset?.schocken || {}) },
                             kegeln: { ...DEFAULT_CLUB_RULESET.kegeln, ...(data.ruleset?.kegeln || {}) },
                             customPenaltyCatalog: data.ruleset?.customPenaltyCatalog || DEFAULT_CLUB_RULESET.customPenaltyCatalog
-                        }
+                        },
+                        hallOfFameCategories: Array.isArray(data.hallOfFameCategories)
+                            ? data.hallOfFameCategories
+                            : DEFAULT_HALL_OF_FAME_CATEGORIES
                     } as ClubTenant);
                 } else if (clubId === DEFAULT_CLUB_ID) {
                     setClub(DEFAULT_CLUB_FALLBACK);
@@ -363,6 +369,13 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         });
     }, [clubId]);
 
+    const updateClubHallOfFameCategories = useCallback(async (hallOfFameCategories: HallOfFameCategoryId[]) => {
+        if (!clubId) return;
+        await updateDoc(doc(db, "clubs", clubId), {
+            hallOfFameCategories
+        });
+    }, [clubId]);
+
     const clubCollectionHelper = useCallback(
         <T = any>(collectionName: string, ...segments: string[]) => getClubCollection<T>(clubId, collectionName, ...segments),
         [clubId]
@@ -384,6 +397,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         updateClubGames,
         updateClubPaymentConfig,
         updateClubRuleset,
+        updateClubHallOfFameCategories,
         clubCollection: clubCollectionHelper,
         clubDoc: clubDocHelper
     }), [
@@ -397,6 +411,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         updateClubGames,
         updateClubPaymentConfig,
         updateClubRuleset,
+        updateClubHallOfFameCategories,
         clubCollectionHelper,
         clubDocHelper
     ]);

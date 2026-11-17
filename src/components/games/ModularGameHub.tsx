@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { query, where, orderBy, addDoc, deleteDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
@@ -32,7 +33,9 @@ import {
     ChevronRight,
     Trash2,
     Calendar,
-    CheckCircle2
+    CheckCircle2,
+    Maximize2,
+    Minimize2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +72,24 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(initialSessionId || null);
+    const [fullscreenSessionId, setFullscreenSessionId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (typeof document === "undefined") return;
+        if (fullscreenSessionId) {
+            document.body.style.overflow = "hidden";
+            const onKeyDown = (e: KeyboardEvent) => {
+                if (e.key === "Escape") setFullscreenSessionId(null);
+            };
+            window.addEventListener("keydown", onKeyDown);
+            return () => {
+                document.body.style.overflow = "";
+                window.removeEventListener("keydown", onKeyDown);
+            };
+        } else {
+            document.body.style.overflow = "";
+        }
+    }, [fullscreenSessionId]);
 
     // 1. Lade alle Club-Mitglieder
     const qMembers = useMemo(
@@ -327,25 +348,96 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                                                         </div>
                                                     </div>
 
-                                                    <button
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            handleDeleteUniversalSession(sess.id);
-                                                        }}
-                                                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <button
+                                                            type="button"
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                setExpandedSessionId(sess.id);
+                                                                setFullscreenSessionId(sess.id);
+                                                            }}
+                                                            className="p-2 rounded-lg text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer"
+                                                            title="Vollbildmodus"
+                                                        >
+                                                            <Maximize2 className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                if (fullscreenSessionId === sess.id) setFullscreenSessionId(null);
+                                                                handleDeleteUniversalSession(sess.id);
+                                                            }}
+                                                            className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer"
+                                                            title="Runde löschen"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 {isExpanded && (
-                                                    <div className="border-t border-white/10 p-4">
+                                                    <div className="border-t border-white/10 p-3 sm:p-4 space-y-3">
+                                                        <div className="flex justify-end">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setFullscreenSessionId(sess.id)}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary text-xs font-bold transition-colors cursor-pointer"
+                                                            >
+                                                                <Maximize2 className="h-3.5 w-3.5" />
+                                                                Vollbildmodus
+                                                            </button>
+                                                        </div>
                                                         <ScorecardComp
                                                             session={sess}
                                                             members={members}
                                                             clubId={clubId}
                                                         />
                                                     </div>
+                                                )}
+
+                                                {fullscreenSessionId === sess.id && typeof document !== "undefined" && createPortal(
+                                                    <div className="fixed inset-0 z-[9999] bg-background flex flex-col overflow-hidden">
+                                                        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 bg-card/85 backdrop-blur-xl shrink-0">
+                                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                                <div className="p-2 rounded-xl bg-primary/15 text-primary shrink-0">
+                                                                    {React.createElement(getDisciplineIcon(activeDiscipline), { className: "h-4 w-4" })}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <h3 className="font-bold text-sm sm:text-base truncate">
+                                                                            {activePlugin.title} #{disciplineSessions.length - idx}
+                                                                        </h3>
+                                                                        {sess.isSubmitted && (
+                                                                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold shrink-0">
+                                                                                <CheckCircle2 className="h-3 w-3" /> In Matrix
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-[11px] text-muted-foreground truncate">{dateStr}</div>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setFullscreenSessionId(null)}
+                                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow cursor-pointer shrink-0"
+                                                            >
+                                                                <Minimize2 className="h-4 w-4" />
+                                                                <span>Vollbild beenden</span>
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="flex-1 overflow-auto p-3 sm:p-6 pb-20">
+                                                            <div className="max-w-7xl mx-auto">
+                                                                <ScorecardComp
+                                                                    session={sess}
+                                                                    members={members}
+                                                                    clubId={clubId}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>,
+                                                    document.body
                                                 )}
                                             </div>
                                         );

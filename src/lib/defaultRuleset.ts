@@ -45,3 +45,13 @@ export const DEFAULT_CLUB_RULESET: ClubRulesetConfig = {
         { id: "pen_late", label: "Zu spät zum Stammtisch", amountEur: 2.0, gameType: "general" },
     ],
 };
+
+export const DEFAULT_HALL_OF_FAME_CATEGORIES: import("@/types").HallOfFameCategoryId[] = [
+    "dayWinners",
+    "topDonors",
+    "topPenaltyPayers",
+    "topHosts",
+    "topParticipations",
+    "topScores",
+    "topKniffels",
+];

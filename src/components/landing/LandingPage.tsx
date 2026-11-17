@@ -19,10 +19,10 @@ export const LandingPage = () => {
     };
 
     return (
-        <div className="h-screen w-full overflow-y-auto snap-y snap-mandatory scroll-smooth bg-background text-foreground no-scrollbar">
+        <div className="min-h-screen md:h-screen w-full overflow-y-auto md:snap-y md:snap-mandatory scroll-smooth bg-background text-foreground no-scrollbar">
 
             {/* --- SECTION 1: HERO (KANPAI) --- */}
-            <section className="h-screen w-full snap-start flex flex-col items-center justify-center relative overflow-hidden">
+            <section className="min-h-[100dvh] md:h-screen w-full md:snap-start flex flex-col items-center justify-center relative overflow-hidden">
                 {/* Background Decor */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none opacity-50" />
 
@@ -81,13 +81,13 @@ export const LandingPage = () => {
 
 
             {/* --- SECTION 2: FEATURES --- */}
-            <section className="h-screen w-full snap-start flex flex-col items-center justify-center relative overflow-hidden bg-background px-4 md:px-6">
+            <section className="min-h-[100dvh] md:h-screen w-full md:snap-start flex flex-col items-center justify-center relative overflow-hidden bg-background px-4 py-14 md:py-0 md:px-6">
                 {/* Background Decor - Deeper/More Detailed */}
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
 
                 <div className="z-10 w-full max-w-6xl flex flex-col items-center">
-                    <h2 className="text-3xl md:text-5xl font-heading font-bold mb-12 text-center tracking-tight text-foreground flex items-center gap-4">
+                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-heading font-bold mb-8 md:mb-12 text-center tracking-tight text-foreground flex items-center gap-3 md:gap-4">
                         <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden shadow-lg border-2 border-primary/20">
                             <Image
                                 src="/landing-icon.jpg"
@@ -99,7 +99,7 @@ export const LandingPage = () => {
                         KANPAI Features
                     </h2>
 
-                    <div className="flex flex-wrap justify-center gap-6 w-full max-w-7xl">
+                    <div className="flex flex-wrap justify-center gap-4 md:gap-6 w-full max-w-7xl">
                         {/* Card 1 */}
                         <div className="p-6 rounded-2xl border border-secondary/50 bg-secondary/30 backdrop-blur-md shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -171,7 +171,7 @@ export const LandingPage = () => {
                         </div>
                     </div>
 
-                    <footer className="absolute bottom-6 text-sm text-muted-foreground opacity-60">
+                    <footer className="mt-10 md:mt-0 md:absolute md:bottom-6 text-sm text-muted-foreground opacity-60">
                         &copy; 2025 KANPAI App
                     </footer>
                 </div>

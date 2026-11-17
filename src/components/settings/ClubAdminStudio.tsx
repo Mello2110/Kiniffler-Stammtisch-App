@@ -5,11 +5,11 @@ import { useClub } from "@/contexts/ClubContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ALL_GAME_PLUGINS } from "@/games/registry";
 import { generateClubThemeTokens } from "@/lib/oklchTheme";
-import { DEFAULT_PRIMARY_HEX, DEFAULT_ACCENT_HEX } from "@/lib/defaultRuleset";
+import { DEFAULT_PRIMARY_HEX, DEFAULT_ACCENT_HEX, DEFAULT_HALL_OF_FAME_CATEGORIES } from "@/lib/defaultRuleset";
 import { ClubRulesetEditor } from "./ClubRulesetEditor";
 import { ClubInviteManager } from "./ClubInviteManager";
 import { triggerHaptic } from "@/lib/haptics";
-import type { GameDisciplineId } from "@/types";
+import type { GameDisciplineId, HallOfFameCategoryId } from "@/types";
 import {
     Palette,
     Gamepad2,
@@ -19,7 +19,8 @@ import {
     Sparkles,
     Plus,
     Link2,
-    BookOpen
+    BookOpen,
+    Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ export function ClubAdminStudio() {
         updateClubTheme,
         updateClubGames,
         updateClubPaymentConfig,
+        updateClubHallOfFameCategories,
     } = useClub();
 
     const [activeTab, setActiveTab] = useState<StudioTab>("design");
@@ -57,6 +59,12 @@ export function ClubAdminStudio() {
     );
     const [defaultGame, setDefaultGame] = useState<GameDisciplineId>(club?.defaultGame || "kniffel");
     const [gamesSaved, setGamesSaved] = useState(false);
+
+    // 2b. Hall of Fame Categories State
+    const [hofCategories, setHofCategories] = useState<HallOfFameCategoryId[]>(
+        club?.hallOfFameCategories || DEFAULT_HALL_OF_FAME_CATEGORIES
+    );
+    const [hofSaved, setHofSaved] = useState(false);
 
     // 3. Payment Self-Service State
     const [paypalHandle, setPaypalHandle] = useState(club?.paymentConfig?.paypalMeHandle || "");
@@ -80,6 +88,7 @@ export function ClubAdminStudio() {
         setAccentColor(club.theme?.accentColor || DEFAULT_ACCENT_HEX);
         setEnabledGames(club.enabledGames || ["kniffel", "schocken", "kegeln"]);
         setDefaultGame(club.defaultGame || "kniffel");
+        setHofCategories(club.hallOfFameCategories || DEFAULT_HALL_OF_FAME_CATEGORIES);
         setPaypalHandle(club.paymentConfig?.paypalMeHandle || "");
         setTreasuryEmail(club.paymentConfig?.treasuryEmail || "");
         setMonthlyContrib(club.paymentConfig?.monthlyContributionEur ?? 15);
@@ -132,6 +141,24 @@ export function ClubAdminStudio() {
         await updateClubGames(enabledGames, defaultGame);
         setGamesSaved(true);
         setTimeout(() => setGamesSaved(false), 2500);
+    };
+
+    const toggleHofCategory = (catId: HallOfFameCategoryId) => {
+        triggerHaptic("tap");
+        setHofCategories((prev) => {
+            if (prev.includes(catId)) {
+                if (prev.length === 1) return prev;
+                return prev.filter((c) => c !== catId);
+            }
+            return [...prev, catId];
+        });
+    };
+
+    const handleSaveHofCategories = async () => {
+        triggerHaptic("success");
+        await updateClubHallOfFameCategories(hofCategories);
+        setHofSaved(true);
+        setTimeout(() => setHofSaved(false), 2500);
     };
 
     const handleSavePayment = async () => {
@@ -357,6 +384,66 @@ export function ClubAdminStudio() {
                                 </div>
                             );
                         })}
+                    </div>
+
+                    {/* Hall of Fame Kategorien */}
+                    <div className="pt-4 mt-2 border-t border-white/10 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <div className="flex items-center gap-2 text-sm sm:text-base font-bold">
+                                    <Trophy className="h-4 w-4 text-primary shrink-0" />
+                                    Hall of Fame Kategorien
+                                </div>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                    Wähle, welche Ranglisten in der Hall of Fame eures Vereins angezeigt werden.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleSaveHofCategories}
+                                className="px-3.5 py-2 rounded-xl bg-primary/20 hover:bg-primary/30 text-primary font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                            >
+                                {hofSaved ? <Check className="h-3.5 w-3.5" /> : null}
+                                {hofSaved ? "Gespeichert!" : "Kategorien speichern"}
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {(
+                                [
+                                    { id: "dayWinners", label: "Tagessieger (Saison-Siege)", desc: "Siege aus gewerteten Matrix-Spielen" },
+                                    { id: "topDonors", label: "Top Spender", desc: "Meiste Spenden (€)" },
+                                    { id: "topPenaltyPayers", label: "Strafen-Könige", desc: "Bezahlte Strafen (€)" },
+                                    { id: "topHosts", label: "Top Gastgeber", desc: "Meiste ausgerichtete Abende" },
+                                    { id: "topParticipations", label: "Meiste Teilnahmen", desc: "Gewertete Spielabende" },
+                                    { id: "topScores", label: "Highscore", desc: "Höchste Einzel-Punktzahl" },
+                                    { id: "topKniffels", label: "Kniffel-Könige", desc: "Meiste gewürfelte Kniffel" },
+                                ] as { id: HallOfFameCategoryId; label: string; desc: string }[]
+                            ).map((cat) => {
+                                const enabled = hofCategories.includes(cat.id);
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        type="button"
+                                        onClick={() => toggleHofCategory(cat.id)}
+                                        className={cn(
+                                            "flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer",
+                                            enabled
+                                                ? "border-primary/40 bg-primary/10 text-foreground"
+                                                : "border-white/10 bg-black/20 text-muted-foreground opacity-65"
+                                        )}
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="text-xs font-bold truncate">{cat.label}</div>
+                                            <div className="text-[10px] text-muted-foreground truncate">{cat.desc}</div>
+                                        </div>
+                                        <div className={cn("w-8 h-4 rounded-full p-0.5 shrink-0 transition-colors", enabled ? "bg-primary" : "bg-white/20")}>
+                                            <div className={cn("w-3 h-3 rounded-full bg-white transition-transform", enabled ? "translate-x-4" : "translate-x-0")} />
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             )}
