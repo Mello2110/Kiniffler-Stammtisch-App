@@ -30,19 +30,7 @@ export const useAuth = () => useContext(AuthContext);
 
 async function checkUserMembership(currentUser: User): Promise<boolean> {
     const globalUserRef = doc(db, "users", currentUser.uid);
-    const legacyUserRef = doc(db, "members", currentUser.uid);
-
-    const [globalUserSnap, legacyUserSnap] = await Promise.all([
-        getDoc(globalUserRef),
-        getDoc(legacyUserRef),
-    ]);
-
-    if (legacyUserSnap.exists()) {
-        if (legacyUserSnap.data()?.email !== currentUser.email) {
-            setDoc(legacyUserRef, { email: currentUser.email }, { merge: true }).catch(() => {});
-        }
-        return true;
-    }
+    const globalUserSnap = await getDoc(globalUserRef);
 
     if (globalUserSnap.exists()) {
         const data = globalUserSnap.data();
@@ -50,22 +38,44 @@ async function checkUserMembership(currentUser: User): Promise<boolean> {
         const targetClubId = data?.defaultClubId || clubIds[0];
 
         if (targetClubId) {
-            const clubMemberRef = doc(db, "clubs", targetClubId, "members", currentUser.uid);
-            const clubMemberSnap = await getDoc(clubMemberRef);
-            if (clubMemberSnap.exists()) {
-                if (clubMemberSnap.data()?.email !== currentUser.email) {
-                    setDoc(clubMemberRef, { email: currentUser.email }, { merge: true }).catch(() => {});
+            try {
+                const clubMemberRef = doc(db, "clubs", targetClubId, "members", currentUser.uid);
+                const clubMemberSnap = await getDoc(clubMemberRef);
+                if (clubMemberSnap.exists()) {
+                    if (clubMemberSnap.data()?.email !== currentUser.email) {
+                        setDoc(clubMemberRef, { email: currentUser.email }, { merge: true }).catch(() => {});
+                    }
+                    return true;
                 }
-                return true;
+            } catch {
+                // Ignore transient permission errors if rules haven't propagated yet
             }
         }
         return clubIds.length > 0;
     }
 
-    // Fallback check for legacy club_original members without /users doc
-    const originalMemberRef = doc(db, "clubs", "club_original", "members", currentUser.uid);
-    const originalMemberSnap = await getDoc(originalMemberRef);
-    return originalMemberSnap.exists();
+    // Legacy fallback ONLY when /users/{uid} does not exist yet
+    try {
+        const legacyUserRef = doc(db, "members", currentUser.uid);
+        const legacyUserSnap = await getDoc(legacyUserRef);
+        if (legacyUserSnap.exists()) {
+            if (legacyUserSnap.data()?.email !== currentUser.email) {
+                setDoc(legacyUserRef, { email: currentUser.email }, { merge: true }).catch(() => {});
+            }
+            return true;
+        }
+    } catch {
+        // Expected permission-denied for non-legacy users
+    }
+
+    try {
+        const originalMemberRef = doc(db, "clubs", "club_original", "members", currentUser.uid);
+        const originalMemberSnap = await getDoc(originalMemberRef);
+        return originalMemberSnap.exists();
+    } catch {
+        // Expected permission-denied for non-club_original users
+        return false;
+    }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

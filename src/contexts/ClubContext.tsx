@@ -120,10 +120,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
             setLoading(true);
             try {
                 const storedClubId = typeof window !== "undefined" ? localStorage.getItem("kanpai_active_club_id") : null;
-                const [userProfileSnap, legacyMemberSnap] = await Promise.all([
-                    getDoc(doc(db, "users", user.uid)),
-                    getDoc(doc(db, "members", user.uid)),
-                ]);
+                const userProfileSnap = await getDoc(doc(db, "users", user.uid));
 
                 let clubIds: string[] = [];
                 let defaultId = "";
@@ -136,14 +133,27 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
                     if (data.defaultClubId) {
                         defaultId = data.defaultClubId;
                     }
-                } else if (legacyMemberSnap.exists()) {
-                    clubIds = [DEFAULT_CLUB_ID];
-                    defaultId = DEFAULT_CLUB_ID;
                 } else {
-                    const originalMemberSnap = await getDoc(doc(db, "clubs", DEFAULT_CLUB_ID, "members", user.uid));
-                    if (originalMemberSnap.exists()) {
-                        clubIds = [DEFAULT_CLUB_ID];
-                        defaultId = DEFAULT_CLUB_ID;
+                    try {
+                        const legacyMemberSnap = await getDoc(doc(db, "members", user.uid));
+                        if (legacyMemberSnap.exists()) {
+                            clubIds = [DEFAULT_CLUB_ID];
+                            defaultId = DEFAULT_CLUB_ID;
+                        }
+                    } catch {
+                        // Expected permission-denied for non-legacy users
+                    }
+
+                    if (clubIds.length === 0) {
+                        try {
+                            const originalMemberSnap = await getDoc(doc(db, "clubs", DEFAULT_CLUB_ID, "members", user.uid));
+                            if (originalMemberSnap.exists()) {
+                                clubIds = [DEFAULT_CLUB_ID];
+                                defaultId = DEFAULT_CLUB_ID;
+                            }
+                        } catch {
+                            // Expected permission-denied for non-club_original users
+                        }
                     }
                 }
 
