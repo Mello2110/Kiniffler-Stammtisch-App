@@ -200,7 +200,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                         <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
                             {activePlugin.title} <span className="text-primary italic">Arena</span>
                         </h1>
-                        <p className="text-muted-foreground text-lg leading-relaxed">
+                        <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed min-h-[3.5rem] line-clamp-2 flex items-start">
                             {activePlugin.subtitle}
                         </p>
                     </div>

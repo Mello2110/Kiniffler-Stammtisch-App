@@ -81,31 +81,35 @@ export default function StatsPage() {
     ];
 
     return (
-        <div className="space-y-6 max-w-full overflow-x-hidden">
-            {/* Top Hub Header + Segmented Control */}
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                    <div>
+        <div className="space-y-6 pb-10 max-w-full overflow-x-hidden">
+            {/* Einheitlicher Hero Banner mit integriertem Hub-Switcher */}
+            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner border border-white/10 p-6 sm:p-8 md:p-10">
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                    <div className="space-y-3 max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold tracking-wider uppercase border border-primary/25">
+                            <Trophy className="h-3 w-3" />
+                            Saison &amp; Statistik
+                        </div>
                         <EditableHeader
                             pageId="stats"
                             headerId="stats-title"
                             defaultText={`Saison & Statistik ${currentYear}`}
                             as="h1"
-                            className="text-3xl font-bold tracking-tight"
+                            className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight outfit text-[#F5F0EB]"
                         />
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Rangliste, Detail-Analysen und Hall of Fame
+                        <p className="text-sm sm:text-base text-muted-foreground">
+                            Rangliste, Detail-Analysen und Hall of Fame auf einen Blick.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-card/70 border border-white/10 backdrop-blur-md w-full sm:w-auto">
+                    <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md w-full lg:w-auto shrink-0">
                         {hubTabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 type="button"
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+                                    "flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
                                     activeTab === tab.id
                                         ? "bg-primary text-primary-foreground shadow-sm"
                                         : "text-muted-foreground hover:text-foreground hover:bg-white/5"

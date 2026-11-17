@@ -17,9 +17,9 @@ export default function MembersPage() {
     const { data: members } = useFirestoreQuery<Member>(qMembers);
 
     return (
-        <div className="max-w-4xl mx-auto space-y-10 pb-20">
+        <div className="w-full max-w-full overflow-x-hidden space-y-8 pb-10">
             {/* Header Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+            <div className="kanpai-hero-banner rounded-3xl border border-white/10 p-6 sm:p-8 md:p-10">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
@@ -44,9 +44,9 @@ export default function MembersPage() {
                     </div>
                 </div>
 
-                {/* Decorative background elements */}
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+
+
+
             </div>
 
             <MemberManager />

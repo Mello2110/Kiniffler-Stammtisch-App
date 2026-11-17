@@ -175,9 +175,9 @@ export default function FeedbackPage() {
     ];
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto pb-20">
+        <div className="space-y-6 w-full max-w-full overflow-x-hidden pb-16">
             {/* Header */}
-            <div className="flex flex-col gap-1">
+            <div className="kanpai-hero-banner rounded-3xl border border-white/10 p-6 sm:p-8 md:p-10 flex flex-col gap-2">
                 <div className="flex items-center gap-3">
                     <MessageSquarePlus className="h-8 w-8 text-primary" />
                     <EditableHeader
