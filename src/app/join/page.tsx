@@ -13,7 +13,7 @@ import { Beer, CheckCircle2, Loader2, AlertCircle, UserPlus, LogIn } from "lucid
 
 export default function JoinClubPage() {
     const router = useRouter();
-    const { user, loading: authLoading, refreshMembership } = useAuth();
+    const { user, loading: authLoading, confirmMembership, refreshMembership } = useAuth();
     const { switchClub } = useClub();
 
     const [code, setCode] = useState("");
@@ -84,7 +84,8 @@ export default function JoinClubPage() {
             );
             const res = await fn({ code, displayName: displayName.trim() });
             setJoinedClubName(res.data.clubName);
-            await refreshMembership();
+            confirmMembership();
+            refreshMembership().catch(() => {});
             await switchClub(res.data.clubId);
             setTimeout(() => {
                 router.push("/dashboard");

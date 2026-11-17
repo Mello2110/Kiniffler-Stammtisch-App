@@ -13,6 +13,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     loginWithGoogle: (redirectTo?: string) => Promise<void>;
     refreshMembership: () => Promise<boolean>;
+    confirmMembership: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
     logout: async () => { },
     loginWithGoogle: async () => { },
     refreshMembership: async () => false,
+    confirmMembership: () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -71,6 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [hasClubMembership, setHasClubMembership] = useState(false);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+
+    const confirmMembership = () => {
+        setHasClubMembership(true);
+    };
 
     const refreshMembership = async (): Promise<boolean> => {
         if (!auth.currentUser) {
@@ -150,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, hasClubMembership, loading, logout, loginWithGoogle, refreshMembership }}>
+        <AuthContext.Provider value={{ user, hasClubMembership, loading, logout, loginWithGoogle, refreshMembership, confirmMembership }}>
             {children}
         </AuthContext.Provider>
     );

@@ -36,8 +36,8 @@ const THEME_PRESETS = [
 
 export default function OnboardingPage() {
     const router = useRouter();
-    const { user, loading: authLoading, logout } = useAuth();
-    const { createNewClub } = useClub();
+    const { user, hasClubMembership, loading: authLoading, logout } = useAuth();
+    const { createNewClub, availableClubs } = useClub();
 
     const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -97,6 +97,7 @@ export default function OnboardingPage() {
             .replace(/^-|-$/g, "") || "mein-verein";
 
     const handleCreateClub = async () => {
+        if (isCreating) return;
         if (!clubName.trim() || clubName.trim().length < 2) {
             setError("Bitte gib einen Vereinsnamen (mindestens 2 Zeichen) ein.");
             setStep(1);
@@ -187,6 +188,19 @@ export default function OnboardingPage() {
                 {error && (
                     <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400">
                         {error}
+                    </div>
+                )}
+
+                {step < 3 && hasClubMembership && availableClubs.length > 0 && (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-200 flex items-center justify-between gap-2">
+                        <span>Du bist bereits Mitglied bei <strong>{availableClubs[0].name}</strong>.</span>
+                        <button
+                            type="button"
+                            onClick={() => router.push("/dashboard")}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 font-bold text-emerald-100 shrink-0 cursor-pointer"
+                        >
+                            Zum Dashboard &rarr;
+                        </button>
                     </div>
                 )}
 

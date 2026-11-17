@@ -100,7 +100,7 @@ const ClubContext = createContext<ClubContextType>({
 });
 
 export function ClubProvider({ children }: { children: React.ReactNode }) {
-    const { user, refreshMembership } = useAuth();
+    const { user, confirmMembership, refreshMembership } = useAuth();
     const [clubId, setClubId] = useState<string>("");
     const [club, setClub] = useState<ClubTenant | null>(DEFAULT_CLUB_FALLBACK);
     const [availableClubs, setAvailableClubs] = useState<ClubTenant[]>([]);
@@ -281,25 +281,39 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
             "createClub"
         );
         const res = await fn(params);
-        const { clubId: newClubId, inviteCode } = res.data;
+        const { clubId: newClubId, inviteCode, slug, clubName } = res.data;
 
-        const clubSnap = await getDoc(doc(db, "clubs", newClubId));
-        if (clubSnap.exists()) {
-            const loadedClub = { id: clubSnap.id, ...clubSnap.data() } as ClubTenant;
-            setAvailableClubs((prev) => {
-                const withoutDup = prev.filter((c) => c.id !== newClubId);
-                return [...withoutDup, loadedClub];
-            });
-        }
-
+        confirmMembership();
         setClubId(newClubId);
         if (typeof window !== "undefined") {
             localStorage.setItem("kanpai_active_club_id", newClubId);
         }
-        await refreshMembership();
+
+        try {
+            const clubSnap = await getDoc(doc(db, "clubs", newClubId));
+            if (clubSnap.exists()) {
+                const loadedClub = { id: clubSnap.id, ...clubSnap.data() } as ClubTenant;
+                setAvailableClubs((prev) => {
+                    const withoutDup = prev.filter((c) => c.id !== newClubId);
+                    return [...withoutDup, loadedClub];
+                });
+            }
+        } catch (err) {
+            console.warn("Could not immediately fetch newly created club doc, onSnapshot will sync:", err);
+            const fallbackTenant: ClubTenant = {
+                ...DEFAULT_CLUB_FALLBACK,
+                id: newClubId,
+                slug: slug || params.slug || "club",
+                name: clubName || params.name,
+                creatorUid: user.uid,
+            };
+            setAvailableClubs((prev) => [...prev.filter((c) => c.id !== newClubId), fallbackTenant]);
+        }
+
+        refreshMembership().catch(() => {});
 
         return { clubId: newClubId, inviteCode };
-    }, [user, refreshMembership]);
+    }, [user, confirmMembership, refreshMembership]);
 
     const updateClubTheme = useCallback(async (theme: ClubThemeConfig) => {
         if (!clubId) return;

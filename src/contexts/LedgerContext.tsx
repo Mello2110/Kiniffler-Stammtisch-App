@@ -21,6 +21,11 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!clubId) {
+            setEntries([]);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         const q = query(clubCollection("ledger_entries"));
         const unsubscribe = onSnapshot(
