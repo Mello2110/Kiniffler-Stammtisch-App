@@ -1,20 +1,21 @@
 "use client";
 
 import { useMemo } from "react";
-import { collection, query, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { query, orderBy } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import type { Member } from "@/types";
 import { PayPalLedger } from "@/components/cash/PayPalLedger";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import { Wallet, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function LedgerPage() {
     const { user } = useAuth();
+    const { clubId, clubCollection } = useClub();
 
     // Fetch members for assignment lookup
-    const qMembers = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
+    const qMembers = useMemo(() => query(clubCollection("members"), orderBy("name", "asc")), [clubId, clubCollection]);
     const { data: members } = useFirestoreQuery<Member>(qMembers);
 
     return (

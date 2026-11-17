@@ -1,7 +1,8 @@
 "use client";
 
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import { PlayerSelectionModal } from "./PlayerSelectionModal";
 import type { Member, KniffelScores, GuestPlayer } from "@/types";
 
@@ -20,6 +21,8 @@ export function AddSheetModal({
     selectedYear,
     selectedMonth
 }: AddSheetModalProps) {
+    const { clubId, clubCollection } = useClub();
+
     const handleCreateGame = async (data: { selectedPlayerIds: string[]; guests: GuestPlayer[] }) => {
         const { selectedPlayerIds, guests } = data;
 
@@ -50,8 +53,7 @@ export function AddSheetModal({
             // Filter out guest IDs to get only member IDs
             const memberIds = selectedPlayerIds.filter(id => !id.startsWith('guest_'));
 
-            // Create the game sheet in Firestore
-            await addDoc(collection(db, "kniffelSheets"), {
+            const sheetPayload = {
                 year: selectedYear,
                 month: selectedMonth,
                 memberSnapshot: memberIds, // Only member IDs
@@ -59,7 +61,13 @@ export function AddSheetModal({
                 guests: guests, // Guest player data
                 scores,
                 createdAt: serverTimestamp()
-            });
+            };
+
+            // Create the game sheet in club-scoped Firestore collection
+            const newDoc = await addDoc(clubCollection("kniffelSheets"), sheetPayload);
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "kniffelSheets", newDoc.id), sheetPayload).catch(() => {});
+            }
         } catch (error) {
             console.error("Error creating game sheet:", error);
         }

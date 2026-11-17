@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import { NotificationPreferences } from "@/types";
 import { Bell, Mail, Smartphone, Calendar, Vote, CalendarDays, TestTube, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
 
 export default function NotificationSettings() {
     const { user } = useAuth();
+    const { clubId, clubDoc } = useClub();
     const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export default function NotificationSettings() {
 
         const fetchPreferences = async () => {
             try {
-                const docRef = doc(db, "members", user.uid);
+                const docRef = clubDoc("members", user.uid);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -51,7 +53,7 @@ export default function NotificationSettings() {
         };
 
         fetchPreferences();
-    }, [user]);
+    }, [user, clubId, clubDoc]);
 
     const updatePreferences = async (newPrefs: Partial<NotificationPreferences>) => {
         if (!user) return;
@@ -60,10 +62,13 @@ export default function NotificationSettings() {
         setPreferences(prev => ({ ...prev, ...newPrefs }));
 
         try {
-            const docRef = doc(db, "members", user.uid);
-            await updateDoc(docRef, {
+            const payload = {
                 notificationPreferences: { ...preferences, ...newPrefs }
-            });
+            };
+            await updateDoc(clubDoc("members", user.uid), payload);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "members", user.uid), payload).catch(() => {});
+            }
         } catch (err) {
             console.error("Error updating preferences:", err);
             setError("Fehler beim Speichern der Einstellungen.");
@@ -81,7 +86,7 @@ export default function NotificationSettings() {
 
                 if (token) {
                     setPushPermissionStatus("granted");
-                    await subscribeToPush(user!.uid, token);
+                    await subscribeToPush(user!.uid, token, clubId);
                     updatePreferences({ pushEnabled: true, fcmToken: token });
                     console.log("Push enabled successfully.");
                 } else {
@@ -96,7 +101,7 @@ export default function NotificationSettings() {
             }
         } else {
             console.log("Unsubscribing...");
-            await unsubscribeFromPush(user!.uid);
+            await unsubscribeFromPush(user!.uid, clubId);
             updatePreferences({ pushEnabled: false, fcmToken: undefined });
             console.log("Unsubscribed.");
         }

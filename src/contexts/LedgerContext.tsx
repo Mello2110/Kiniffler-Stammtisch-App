@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { collection, query, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { query, onSnapshot } from "firebase/firestore";
 import { LedgerEntry } from "@/types";
+import { useClub } from "@/contexts/ClubContext";
 
 interface LedgerContextType {
     entries: LedgerEntry[];
@@ -16,11 +16,13 @@ const LedgerContext = createContext<LedgerContextType>({
 });
 
 export function LedgerProvider({ children }: { children: ReactNode }) {
+    const { clubId, clubCollection } = useClub();
     const [entries, setEntries] = useState<LedgerEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const q = query(collection(db, "ledger_entries"));
+        setLoading(true);
+        const q = query(clubCollection("ledger_entries"));
         const unsubscribe = onSnapshot(
             q,
             (snapshot) => {
@@ -32,12 +34,12 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
                 setLoading(false);
             },
             (err) => {
-                console.error("LedgerContext: error fetching ledger_entries", err);
+                console.error(`LedgerContext (${clubId}): error fetching ledger_entries`, err);
                 setLoading(false);
             }
         );
         return () => unsubscribe();
-    }, []);
+    }, [clubId, clubCollection]);
 
     return (
         <LedgerContext.Provider value={{ entries, loading }}>

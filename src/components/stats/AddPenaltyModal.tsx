@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { X, Loader2, DollarSign } from "lucide-react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
+import { DEFAULT_CLUB_RULESET } from "@/lib/defaultRuleset";
 import type { Member } from "@/types";
 
 interface AddPenaltyModalProps {
@@ -12,6 +14,8 @@ interface AddPenaltyModalProps {
 }
 
 export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
+    const { clubId, club, clubCollection } = useClub();
+    const catalog = club?.ruleset?.customPenaltyCatalog ?? DEFAULT_CLUB_RULESET.customPenaltyCatalog;
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form State
@@ -26,9 +30,7 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
         setIsSubmitting(true);
         try {
             const parsedAmount = parseFloat(amount);
-
-            // 1. Create penalty record (for PenaltyTable / audit trail)
-            const penaltyRef = await addDoc(collection(db, "penalties"), {
+            const penaltyPayload = {
                 userId: selectedMember,
                 amount: parsedAmount,
                 reason,
@@ -36,11 +38,12 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
                 paidViaReconciliation: false,
                 date: new Date().toISOString(),
                 createdAt: serverTimestamp()
-            });
+            };
 
-            // 2. Create negative ledger entry so penalty shows in OutstandingPayments.
-            //    The ledger is the source of truth for all balance calculations.
-            await addDoc(collection(db, "ledger_entries"), {
+            // 1. Create penalty record in club-scoped collection
+            const penaltyRef = await addDoc(clubCollection("penalties"), penaltyPayload);
+
+            const ledgerPayload = {
                 userId: selectedMember,
                 amount: -parsedAmount,
                 type: "penalty",
@@ -48,7 +51,15 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
                 date: new Date().toISOString(),
                 createdAt: serverTimestamp(),
                 linkedDocId: penaltyRef.id,
-            });
+            };
+
+            // 2. Create negative ledger entry in club-scoped collection
+            await addDoc(clubCollection("ledger_entries"), ledgerPayload);
+
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "penalties", penaltyRef.id), penaltyPayload).catch(() => {});
+                await addDoc(collection(db, "ledger_entries"), ledgerPayload).catch(() => {});
+            }
 
             onClose();
         } catch (error) {
@@ -75,6 +86,30 @@ export function AddPenaltyModal({ onClose, members }: AddPenaltyModalProps) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {catalog.length > 0 && (
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Schnellauswahl (Strafenkatalog)
+                            </label>
+                            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                                {catalog.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setReason(item.label);
+                                            setAmount(item.amountEur.toFixed(2));
+                                        }}
+                                        className="px-2.5 py-1 rounded-full text-xs font-medium border border-white/10 bg-white/5 hover:bg-primary/20 hover:border-primary/40 transition-colors cursor-pointer flex items-center gap-1"
+                                    >
+                                        <span>{item.label}</span>
+                                        <span className="text-accent font-bold">{item.amountEur.toFixed(2)}€</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Mitglied</label>
                         <select

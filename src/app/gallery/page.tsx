@@ -19,9 +19,9 @@ export default function GalleryPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-10 pb-20">
+        <div className="max-w-7xl mx-auto space-y-6 pb-20 overflow-x-hidden">
             {/* Header Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner border border-white/10 p-6 sm:p-8 md:p-10">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
@@ -97,7 +97,7 @@ export default function GalleryPage() {
             </section>
 
             {/* Year Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4 sm:px-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 px-4 sm:px-0">
                 {years.map((year) => (
                     <YearCard
                         key={year}

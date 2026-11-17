@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ThumbsUp, CalendarPlus, X, Loader2, ThumbsDown } from "lucide-react";
 import { collection, addDoc, doc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
@@ -7,6 +7,7 @@ import { db, auth } from "@/lib/firebase";
 import { signInAnonymously } from "firebase/auth";
 import type { StammtischVote } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useClub } from "@/contexts/ClubContext";
 import { enUS, de, pl } from "date-fns/locale";
 import { EventForm } from "./EventForm";
 import { TokenService } from "@/lib/TokenService";
@@ -22,9 +23,11 @@ interface DateInteractionModalProps {
 
 export function DateInteractionModal({ date, onClose, currentUserId, existingVotes = [], members = [], initialMode = "select" }: DateInteractionModalProps) {
     const { dict, language } = useLanguage();
+    const { clubId, clubCollection, clubDoc } = useClub();
     const locales: any = { en: enUS, de: de, pl: pl };
 
     const [mode, setMode] = useState<"select" | "add-event">(initialMode);
+    useEffect(() => { setMode(initialMode); }, [initialMode, date]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const dateStr = format(date, "yyyy-MM-dd");
@@ -44,15 +47,18 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
             }
 
             const voteId = `${userId}_${dateStr}`;
-            const voteRef = doc(db, "stammtisch_votes", voteId);
-
-            const writePromise = setDoc(voteRef, {
+            const votePayload = {
                 userId,
                 date: dateStr,
                 month: date.getMonth(),
                 year: date.getFullYear(),
                 createdAt: serverTimestamp()
-            });
+            };
+
+            const writePromise = setDoc(clubDoc("stammtisch_votes", voteId), votePayload);
+            if (clubId === "club_original") {
+                setDoc(doc(db, "stammtisch_votes", voteId), votePayload).catch(() => {});
+            }
 
             const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));
             await Promise.race([writePromise, timeoutPromise]);
@@ -74,9 +80,10 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
             if (!userId) return;
 
             const voteId = `${userId}_${dateStr}`;
-            const voteRef = doc(db, "stammtisch_votes", voteId);
-
-            await deleteDoc(voteRef);
+            await deleteDoc(clubDoc("stammtisch_votes", voteId));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "stammtisch_votes", voteId)).catch(() => {});
+            }
             onClose();
         } catch (error) {
             console.error("Error unvoting:", error);
@@ -89,22 +96,27 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
     const handleAddEvent = async (data: any) => {
         setIsSubmitting(true);
         try {
-            // Write event first, then award token — both must succeed
-            await addDoc(collection(db, "set_events"), {
+            const effectiveDateStr = data.date || dateStr;
+            const effectiveDate = data.date ? new Date(`${data.date}T12:00:00`) : date;
+            const eventPayload = {
                 title: data.title,
                 description: data.description,
-                date: dateStr,
+                date: effectiveDateStr,
                 time: data.time,
                 location: data.location,
-                month: date.getMonth(),
-                year: date.getFullYear(),
+                month: effectiveDate.getMonth(),
+                year: effectiveDate.getFullYear(),
                 hostId: data.hostId,
                 createdAt: serverTimestamp()
-            });
+            };
+            const newEvRef = await addDoc(clubCollection("set_events"), eventPayload);
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "set_events", newEvRef.id), eventPayload).catch(() => {});
+            }
 
             // Award hosting token reliably — only after event is confirmed written
             if (data.hostId && data.hostId !== "neutral") {
-                await TokenService.awardToken(data.hostId, `Hosting: ${data.title}`, "hosting");
+                await TokenService.awardToken(data.hostId, `Hosting: ${data.title}`, "hosting", undefined, clubId);
             }
 
             onClose();
@@ -165,9 +177,9 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
 
                         <button
                             onClick={() => setMode("add-event")}
-                            className="flex items-center gap-4 rounded-lg border border-border p-4 transition-all hover:border-purple-500 hover:bg-purple-500/5"
+                            className="flex items-center gap-4 rounded-lg border border-border p-4 transition-all hover:border-accent hover:bg-accent/5"
                         >
-                            <div className="rounded-full bg-purple-500/10 p-3 text-purple-500">
+                            <div className="rounded-full bg-accent/15 p-3 text-accent">
                                 <CalendarPlus className="h-6 w-6" />
                             </div>
                             <div className="text-left">

@@ -5,7 +5,6 @@
 // when a member's total expenses cover them.
 
 import {
-    collection,
     query,
     where,
     getDocs,
@@ -13,23 +12,9 @@ import {
     serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { DEFAULT_CLUB_ID, getClubCollection } from "@/lib/clubPaths";
 
-/**
- * Reconcile a member's balance by auto-paying penalties from expenses.
- *
- * Algorithm:
- * 1. Fetch all expenses for this member → totalExpenses
- * 2. Fetch all penalties for this member, sort in memory by date ASC
- * 3. Reset ALL paidViaReconciliation flags
- * 4. Re-apply FIFO auto-payment from available credit
- * 5. Atomic write via Firestore batch
- *
- * This function is IDEMPOTENT — safe to call multiple times.
- *
- * NOTE: We sort in memory instead of using orderBy() to avoid
- * requiring a Firestore composite index on (userId, date).
- */
-export async function reconcileMemberBalance(memberId: string): Promise<void> {
+export async function reconcileMemberBalance(memberId: string, clubId: string = DEFAULT_CLUB_ID): Promise<void> {
     if (!memberId) return;
 
     try {
@@ -37,7 +22,7 @@ export async function reconcileMemberBalance(memberId: string): Promise<void> {
 
         // --- Step 1: Fetch all expenses for this member ---
         const expensesQuery = query(
-            collection(db, "expenses"),
+            getClubCollection(clubId, "expenses"),
             where("memberId", "==", memberId)
         );
         const expensesSnap = await getDocs(expensesQuery);
@@ -47,9 +32,8 @@ export async function reconcileMemberBalance(memberId: string): Promise<void> {
         );
 
         // --- Step 2: Fetch ALL penalties for this member ---
-        // No orderBy to avoid composite index requirement
         const penaltiesQuery = query(
-            collection(db, "penalties"),
+            getClubCollection(clubId, "penalties"),
             where("userId", "==", memberId)
         );
         const penaltiesSnap = await getDocs(penaltiesQuery);

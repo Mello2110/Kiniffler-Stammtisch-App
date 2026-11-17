@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import { db } from "@/lib/firebase";
 import { UserPlus, Trash2, Loader2, Users, Pencil, Award, Calendar, Cake } from "lucide-react";
 import type { Member } from "@/types";
@@ -14,24 +15,17 @@ import { MemberAvatar } from "@/components/common/MemberAvatar";
 
 export function MemberManager() {
     const { user } = useAuth();
+    const { clubId, clubCollection, clubDoc } = useClub();
     const [newName, setNewName] = useState("");
     const [isAdding, setIsAdding] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [deletingMember, setDeletingMember] = useState<Member | null>(null);
     const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false);
 
-    const q = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
+    const q = useMemo(() => query(clubCollection("members"), orderBy("name", "asc")), [clubId, clubCollection]);
     const { data: members, loading: isLoading } = useFirestoreQuery<Member>(q);
 
-    // Check if current user is admin
     const currentMember = members.find(m => m.id === user?.uid);
-    // Alternatively, rely on the useEffect below if we trust members list is loaded. 
-    // Actually, `useFirestoreQuery` returns `members`. If the user is in that list, we can just check it.
-    // However, safest to check specifically or derive it.
-
-    // Let's derive it directly from the `members` array since we have it.
-    // Let's derive it directly from the `members` array since we have it.
-    // const isAdmin = members.find(m => m.id === user?.uid || (m.email && m.email === user?.email))?.isAdmin === true;
     const isAdmin = true; // GLOBAL ACCESS UNLOCKED FOR EVENT
 
     const handleAdd = async (e: React.FormEvent) => {
@@ -40,14 +34,18 @@ export function MemberManager() {
 
         setIsAdding(true);
         try {
-            await addDoc(collection(db, "members"), {
+            const payload = {
                 name: newName.trim(),
                 joinedAt: serverTimestamp(),
                 points: 0,
                 penalties: 0,
                 role: "Mitglied",
                 joinYear: new Date().getFullYear()
-            });
+            };
+            const newDoc = await addDoc(clubCollection("members"), payload);
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "members", newDoc.id), payload).catch(() => {});
+            }
             setNewName("");
         } catch (error) {
             console.error("Error adding member:", error);
@@ -58,8 +56,23 @@ export function MemberManager() {
 
     const confirmDelete = async () => {
         if (!deletingMember) return;
+        const isDeletingAdmin =
+            deletingMember.isAdmin === true ||
+            deletingMember.roles?.includes("Admin") ||
+            deletingMember.role === "Admin";
+        const otherAdmins = members.filter(
+            (m) => m.id !== deletingMember.id && (m.isAdmin === true || m.roles?.includes("Admin") || m.role === "Admin")
+        );
+        if (isDeletingAdmin && otherAdmins.length === 0) {
+            alert("Der letzte Admin kann nicht gelöscht werden. Bitte übertrage die Admin-Rechte zuerst auf ein anderes Mitglied.");
+            setDeletingMember(null);
+            return;
+        }
         try {
-            await deleteDoc(doc(db, "members", deletingMember.id));
+            await deleteDoc(clubDoc("members", deletingMember.id));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "members", deletingMember.id)).catch(() => {});
+            }
             setDeletingMember(null);
         } catch (error) {
             console.error("Error deleting member:", error);

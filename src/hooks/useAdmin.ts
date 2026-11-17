@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDoc } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 
 interface UseAdminResult {
     isAdmin: boolean;
@@ -12,6 +12,7 @@ interface UseAdminResult {
 
 export function useAdmin(): UseAdminResult {
     const { user } = useAuth();
+    const { clubId, clubDoc } = useClub();
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -24,11 +25,10 @@ export function useAdmin(): UseAdminResult {
             }
 
             try {
-                const docRef = doc(db, "members", user.uid);
+                const docRef = clubDoc("members", user.uid);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    // Check both isAdmin flag and role === "Admin" for compatibility
                     setIsAdmin(!!data.isAdmin || data.role === "Admin");
                 } else {
                     setIsAdmin(false);
@@ -42,7 +42,7 @@ export function useAdmin(): UseAdminResult {
         };
 
         checkAdmin();
-    }, [user?.uid]);
+    }, [user?.uid, clubId, clubDoc]);
 
     return { isAdmin, loading };
 }

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { Penalty, Member } from "@/types";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 
 interface PenaltyTableProps {
@@ -20,6 +21,7 @@ type SortField = "date" | "amount" | "isPaid";
 type SortOrder = "asc" | "desc";
 
 export function PenaltyTable({ penalties, members, onEdit, canManage }: PenaltyTableProps) {
+    const { clubId, clubDoc } = useClub();
     const [sortField, setSortField] = useState<SortField>("date");
     const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
     const [filter, setFilter] = useState("");
@@ -37,8 +39,10 @@ export function PenaltyTable({ penalties, members, onEdit, canManage }: PenaltyT
     const togglePaidStatus = async (penaltyId: string, currentStatus: boolean) => {
         if (!canManage) return;
         try {
-            const ref = doc(db, "penalties", penaltyId);
-            await updateDoc(ref, { isPaid: !currentStatus });
+            await updateDoc(clubDoc("penalties", penaltyId), { isPaid: !currentStatus });
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "penalties", penaltyId), { isPaid: !currentStatus }).catch(() => {});
+            }
         } catch (error) {
             console.error("Error updating penalty:", error);
         }
@@ -47,7 +51,10 @@ export function PenaltyTable({ penalties, members, onEdit, canManage }: PenaltyT
     const handleDelete = async () => {
         if (!deletingId) return;
         try {
-            await deleteDoc(doc(db, "penalties", deletingId));
+            await deleteDoc(clubDoc("penalties", deletingId));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "penalties", deletingId)).catch(() => {});
+            }
             setDeletingId(null);
         } catch (error) {
             console.error("Error deleting penalty:", error);

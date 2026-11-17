@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, DollarSign, Calendar } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { Expense, Member } from "@/types";
 import { reconcileMemberBalance } from "@/lib/reconciliation";
 
@@ -17,6 +18,7 @@ interface EditExpenseModalProps {
 }
 
 export function EditExpenseModal({ expense, members, onClose }: EditExpenseModalProps) {
+    const { clubId, clubDoc } = useClub();
     // ============================================
     // STATE
     // ============================================
@@ -41,21 +43,24 @@ export function EditExpenseModal({ expense, members, onClose }: EditExpenseModal
         setIsSubmitting(true);
         try {
             const oldMemberId = expense.memberId;
-            const ref = doc(db, "expenses", expense.id);
-
-            await updateDoc(ref, {
+            const payload = {
                 description: desc,
                 amount: parseFloat(amount),
                 date,
                 memberId: selectedMemberId,
                 memberName: member.name,
-            });
+            };
+
+            await updateDoc(clubDoc("expenses", expense.id), payload);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "expenses", expense.id), payload).catch(() => {});
+            }
 
             // Reconcile in background (non-blocking)
             if (oldMemberId && oldMemberId !== selectedMemberId) {
-                reconcileMemberBalance(oldMemberId).catch(console.error);
+                reconcileMemberBalance(oldMemberId, clubId).catch(console.error);
             }
-            reconcileMemberBalance(selectedMemberId).catch(console.error);
+            reconcileMemberBalance(selectedMemberId, clubId).catch(console.error);
 
             onClose();
         } catch (error) {

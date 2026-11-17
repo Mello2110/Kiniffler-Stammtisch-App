@@ -1,43 +1,34 @@
 import { db } from './firebase';
 import { 
-    collection, 
-    addDoc, 
-    updateDoc, 
     doc, 
-    getDoc, 
     getDocs, 
     query, 
     where, 
     increment, 
     serverTimestamp, 
-    writeBatch, 
     runTransaction, 
     limit,
     Timestamp
 } from 'firebase/firestore';
 import { TokenType, TokenTransaction } from '@/types';
+import { DEFAULT_CLUB_ID, getClubCollection, getClubDoc } from '@/lib/clubPaths';
 
 const SHINY_CHANCE = 8192;
 
 export const TokenService = {
-    /**
-     * Rolls for a shiny token.
-     */
     rollForShiny(): boolean {
         return Math.floor(Math.random() * SHINY_CHANCE) === 0;
     },
 
-    /**
-     * Core function to award tokens to a member.
-     */
     async awardToken(
         memberId: string, 
         reason: string, 
         category: TokenTransaction['category'],
-        forceType?: TokenType
+        forceType?: TokenType,
+        clubId: string = DEFAULT_CLUB_ID
     ) {
         return await runTransaction(db, async (transaction) => {
-            const memberRef = doc(db, 'members', memberId);
+            const memberRef = getClubDoc(clubId, 'members', memberId);
             const memberSnap = await transaction.get(memberRef);
             
             if (!memberSnap.exists()) return null;
@@ -46,9 +37,8 @@ export const TokenService = {
             const amount = 1;
             const currentYear = new Date().getFullYear();
 
-            // Create transaction doc
-            const transRef = doc(collection(db, 'tokenTransactions'));
-            transaction.set(transRef, {
+            const transRef = doc(getClubCollection(clubId, 'tokenTransactions'));
+            const txPayload = {
                 id: transRef.id,
                 memberId,
                 amount,
@@ -57,33 +47,36 @@ export const TokenService = {
                 reason,
                 timestamp: serverTimestamp(),
                 year: currentYear
-            });
+            };
+            transaction.set(transRef, txPayload);
 
-            // Update member balance
             const updateField = type === 'shiny' ? 'tokenShinyBalance' : 'tokenBalance';
             transaction.update(memberRef, {
                 [updateField]: increment(amount)
             });
 
+            if (clubId === 'club_original') {
+                transaction.set(doc(db, 'tokenTransactions', transRef.id), txPayload);
+                transaction.update(doc(db, 'members', memberId), {
+                    [updateField]: increment(amount)
+                });
+            }
+
             return { type, isFirstShiny: type === 'shiny' && (memberSnap.data().tokenShinyBalance || 0) === 0 };
         });
     },
 
-    /**
-     * Revoke a token (for host changes)
-     */
-    async revokeToken(memberId: string, reason: string, category: TokenTransaction['category']) {
+    async revokeToken(memberId: string, reason: string, category: TokenTransaction['category'], clubId: string = DEFAULT_CLUB_ID) {
         return await runTransaction(db, async (transaction) => {
-            const memberRef = doc(db, 'members', memberId);
+            const memberRef = getClubDoc(clubId, 'members', memberId);
             const memberSnap = await transaction.get(memberRef);
             if (!memberSnap.exists()) return;
 
             const data = memberSnap.data();
-            // We only revoke regular tokens for host changes usually
             if ((data.tokenBalance || 0) <= 0) return;
 
-            const transRef = doc(collection(db, 'tokenTransactions'));
-            transaction.set(transRef, {
+            const transRef = doc(getClubCollection(clubId, 'tokenTransactions'));
+            const txPayload = {
                 id: transRef.id,
                 memberId,
                 amount: -1,
@@ -92,23 +85,28 @@ export const TokenService = {
                 reason: `Storno: ${reason}`,
                 timestamp: serverTimestamp(),
                 year: new Date().getFullYear()
-            });
+            };
+            transaction.set(transRef, txPayload);
 
             transaction.update(memberRef, {
                 tokenBalance: increment(-1)
             });
+
+            if (clubId === 'club_original') {
+                transaction.set(doc(db, 'tokenTransactions', transRef.id), txPayload);
+                transaction.update(doc(db, 'members', memberId), {
+                    tokenBalance: increment(-1)
+                });
+            }
         });
     },
 
-    /**
-     * Transfer tokens between members
-     */
-    async transferTokens(fromId: string, toId: string, amount: number, reason: string) {
+    async transferTokens(fromId: string, toId: string, amount: number, reason: string, clubId: string = DEFAULT_CLUB_ID) {
         if (amount <= 0) return;
 
         return await runTransaction(db, async (transaction) => {
-            const fromRef = doc(db, 'members', fromId);
-            const toRef = doc(db, 'members', toId);
+            const fromRef = getClubDoc(clubId, 'members', fromId);
+            const toRef = getClubDoc(clubId, 'members', toId);
             
             const fromSnap = await transaction.get(fromRef);
             if (!fromSnap.exists() || (fromSnap.data().tokenBalance || 0) < amount) {
@@ -117,9 +115,8 @@ export const TokenService = {
 
             const currentYear = new Date().getFullYear();
 
-            // From transaction
-            const transFromRef = doc(collection(db, 'tokenTransactions'));
-            transaction.set(transFromRef, {
+            const transFromRef = doc(getClubCollection(clubId, 'tokenTransactions'));
+            const fromPayload = {
                 id: transFromRef.id,
                 memberId: fromId,
                 amount: -amount,
@@ -128,11 +125,11 @@ export const TokenService = {
                 reason: `Gesendet an ${toId} (Deal: ${reason})`,
                 timestamp: serverTimestamp(),
                 year: currentYear
-            });
+            };
+            transaction.set(transFromRef, fromPayload);
 
-            // To transaction
-            const transToRef = doc(collection(db, 'tokenTransactions'));
-            transaction.set(transToRef, {
+            const transToRef = doc(getClubCollection(clubId, 'tokenTransactions'));
+            const toPayload = {
                 id: transToRef.id,
                 memberId: toId,
                 amount: amount,
@@ -141,20 +138,24 @@ export const TokenService = {
                 reason: `Erhalten von ${fromId} (Deal: ${reason})`,
                 timestamp: serverTimestamp(),
                 year: currentYear
-            });
+            };
+            transaction.set(transToRef, toPayload);
 
-            // Update balances
             transaction.update(fromRef, { tokenBalance: increment(-amount) });
             transaction.update(toRef, { tokenBalance: increment(amount) });
+
+            if (clubId === 'club_original') {
+                transaction.set(doc(db, 'tokenTransactions', transFromRef.id), fromPayload);
+                transaction.set(doc(db, 'tokenTransactions', transToRef.id), toPayload);
+                transaction.update(doc(db, 'members', fromId), { tokenBalance: increment(-amount) });
+                transaction.update(doc(db, 'members', toId), { tokenBalance: increment(amount) });
+            }
         });
     },
 
-    /**
-     * Checks if a user has already received a token for a specific month/category
-     */
-    async hasReceivedToken(memberId: string, category: string, uniqueKey: string): Promise<boolean> {
+    async hasReceivedToken(memberId: string, category: string, uniqueKey: string, clubId: string = DEFAULT_CLUB_ID): Promise<boolean> {
         const q = query(
-            collection(db, 'tokenTransactions'),
+            getClubCollection(clubId, 'tokenTransactions'),
             where('memberId', '==', memberId),
             where('category', '==', category),
             where('reason', '==', uniqueKey),
@@ -164,33 +165,23 @@ export const TokenService = {
         return !snap.empty;
     },
 
-    /**
-     * Automated Check for Early Voting
-     * Called by a central logic (Dashboard or Navbar check)
-     */
-    async processMonthlyEarlyVoterBonus() {
-        // We check for the CURRENT month's bonus (voted in previous month)
+    async processMonthlyEarlyVoterBonus(clubId: string = DEFAULT_CLUB_ID) {
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         const bonusKey = `Early Voter Bonus ${currentMonth + 1}/${currentYear}`;
 
-        const membersSnap = await getDocs(collection(db, 'members'));
+        const membersSnap = await getDocs(getClubCollection(clubId, 'members'));
         
         for (const memberDoc of membersSnap.docs) {
             const memberId = memberDoc.id;
             
-            // 1. Check if already rewarded
-            const alreadyDone = await this.hasReceivedToken(memberId, 'planning', bonusKey);
+            const alreadyDone = await this.hasReceivedToken(memberId, 'planning', bonusKey, clubId);
             if (alreadyDone) continue;
 
-            // 2. Check if voted for >= 2 dates in this month before the 1st
-            // Actually, any vote that exists and was created before the 1st of the month counts.
-            // But the user said "voted for at least 2 dates in this month before month start".
-            
             const monthStart = new Date(currentYear, currentMonth, 1, 0, 0, 1);
             const votesQ = query(
-                collection(db, 'stammtisch_votes'),
+                getClubCollection(clubId, 'stammtisch_votes'),
                 where('userId', '==', memberId),
                 where('month', '==', currentMonth),
                 where('year', '==', currentYear),
@@ -199,7 +190,7 @@ export const TokenService = {
             
             const votesSnap = await getDocs(votesQ);
             if (votesSnap.size >= 2) {
-                await this.awardToken(memberId, bonusKey, 'planning');
+                await this.awardToken(memberId, bonusKey, 'planning', undefined, clubId);
                 console.log(`Awarded early voter bonus to ${memberId}`);
             }
         }

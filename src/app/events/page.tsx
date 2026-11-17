@@ -11,11 +11,13 @@ import type { StammtischVote, SetEvent, Member } from "@/types";
 import { startOfMonth, endOfMonth, min, max, format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useClub } from "@/contexts/ClubContext";
 import { Calendar, PartyPopper } from "lucide-react";
 
 export default function EventsPage() {
     const { user } = useAuth();
     const { dict } = useLanguage();
+    const { clubId, clubCollection } = useClub();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [modalInitialMode, setModalInitialMode] = useState<"select" | "add-event">("select");
@@ -32,14 +34,14 @@ export default function EventsPage() {
 
     const [loading, setLoading] = useState(true);
 
-    // Fetch Data
-    const qVotes = useMemo(() => query(collection(db, "stammtisch_votes")), []);
+    // Fetch Data (club-scoped)
+    const qVotes = useMemo(() => query(clubCollection("stammtisch_votes")), [clubId, clubCollection]);
     const { data: votes } = useFirestoreQuery<StammtischVote>(qVotes);
 
-    const qEvents = useMemo(() => query(collection(db, "set_events")), []);
+    const qEvents = useMemo(() => query(clubCollection("set_events")), [clubId, clubCollection]);
     const { data: setEvents } = useFirestoreQuery<SetEvent>(qEvents);
 
-    const qMembers = useMemo(() => query(collection(db, "members")), []);
+    const qMembers = useMemo(() => query(clubCollection("members")), [clubId, clubCollection]);
     const { data: members, loading: loadingMembers } = useFirestoreQuery<Member>(qMembers);
 
     useEffect(() => {
@@ -58,9 +60,9 @@ export default function EventsPage() {
     );
 
     return (
-        <div className="flex flex-col gap-8 pb-10">
+        <div className="flex flex-col gap-8 pb-10 max-w-full overflow-x-hidden">
             {/* Header Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner border border-white/10 p-6 sm:p-8 md:p-10">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">

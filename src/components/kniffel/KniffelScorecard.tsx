@@ -5,6 +5,10 @@ import { createPortal } from "react-dom";
 import { doc, setDoc, updateDoc, addDoc, collection, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useClub } from "@/contexts/ClubContext";
+import { triggerHaptic } from "@/lib/haptics";
+import { DEFAULT_CLUB_RULESET } from "@/lib/defaultRuleset";
+import { placementPoints as calcPlacementPoints } from "@/lib/seasonPoints";
 import { ArrowUpDown, ArrowUp, ArrowDown, X, ChevronDown, AlertCircle, GripVertical, Maximize, Minimize, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Dices, Route, Signpost, Home, TrendingUp, ArrowUpRight, Star, Shuffle, Sigma } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toast, useToast } from "@/components/common/Toast";
@@ -106,6 +110,8 @@ function SortablePlayerHeader({ player, isReorderMode, isFullscreen, isActive, d
 
 export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
     const { dict } = useLanguage();
+    const { clubId, club, clubCollection, clubDoc } = useClub();
+    const rules = club?.ruleset?.kniffel ?? DEFAULT_CLUB_RULESET.kniffel;
     const [localScores, setLocalScores] = useState(sheet.scores);
     const [localChanceTimestamps, setLocalChanceTimestamps] = useState<Record<string, number>>(sheet.chanceTimestamps || {});
     const [sortMethod, setSortMethod] = useState<SortMethod>("manual");
@@ -170,11 +176,16 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
             setLocalPlayerOrder(newOrder);
 
-            // Save to Firestore
+            // Save to Firestore (club-scoped + legacy mirror for club_original)
             try {
-                await updateDoc(doc(db, "kniffelSheets", sheet.id), {
+                await updateDoc(clubDoc("kniffelSheets", sheet.id), {
                     playerOrder: newOrder
                 });
+                if (clubId === "club_original") {
+                    await updateDoc(doc(db, "kniffelSheets", sheet.id), {
+                        playerOrder: newOrder
+                    }).catch(() => {});
+                }
                 showToast(dict.kniffel.orderSaved);
                 setIsReorderMode(false);
             } catch (error) {
@@ -294,7 +305,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
 
     // Calculate bonus (35 if upper sum >= 63)
     const calculateBonus = useCallback((memberId: string): number => {
-        return calculateUpperSum(memberId) >= 63 ? 35 : 0;
+        return calculateUpperSum(memberId) >= rules.upperBonusThreshold ? rules.upperBonusScore : 0;
     }, [calculateUpperSum]);
 
     // Calculate lower section sum for a member
@@ -376,8 +387,19 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
             }
         }
 
+        if (newValue === "stroke") {
+            triggerHaptic("penalty");
+        } else if (field === "kniffel" && typeof newValue === "number" && newValue >= 50) {
+            triggerHaptic("specialThrow");
+        } else if (newValue !== null) {
+            triggerHaptic("tap");
+        }
+
         try {
-            await updateDoc(doc(db, "kniffelSheets", sheet.id), firestoreUpdates);
+            await updateDoc(clubDoc("kniffelSheets", sheet.id), firestoreUpdates);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "kniffelSheets", sheet.id), firestoreUpdates).catch(() => {});
+            }
         } catch (error) {
             console.error("Error updating score:", error);
         }
@@ -439,10 +461,10 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         }
 
         try {
-            // 1. Create penalty record (audit trail / PenaltyTable display)
-            const penaltyRef = await addDoc(collection(db, "penalties"), {
+            triggerHaptic("penalty");
+            const penaltyPayload = {
                 userId: chargeUserId,
-                amount: 1,
+                amount: rules.strokePenaltyEur,
                 reason: isGuestPenalty
                     ? `Strich (${player.name})`
                     : "Strich",
@@ -453,13 +475,14 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 isGuestPenalty: isGuestPenalty,
                 guestId: isGuestPenalty ? player.id : null,
                 guestName: isGuestPenalty ? player.name : null
-            });
+            };
 
-            // 2. Create negative ledger entry — this is what OutstandingPayments reads.
-            //    Without this, the penalty never shows up in the balance.
-            await addDoc(collection(db, "ledger_entries"), {
+            // 1. Create penalty record in club-scoped collection
+            const penaltyRef = await addDoc(clubCollection("penalties"), penaltyPayload);
+
+            const ledgerPayload = {
                 userId: chargeUserId,
-                amount: -1,
+                amount: -rules.strokePenaltyEur,
                 type: "penalty",
                 description: isGuestPenalty
                     ? `Strich (${player.name})`
@@ -467,7 +490,15 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 date: new Date().toISOString().split("T")[0],
                 createdAt: serverTimestamp(),
                 linkedDocId: penaltyRef.id,
-            });
+            };
+
+            // 2. Create negative ledger entry in club-scoped collection
+            await addDoc(clubCollection("ledger_entries"), ledgerPayload);
+
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "penalties", penaltyRef.id), penaltyPayload).catch(() => {});
+                await addDoc(collection(db, "ledger_entries"), ledgerPayload).catch(() => {});
+            }
 
             showToast(`✓ 1€ ${dict.kniffel.penalty} - ${player.name}`);
         } catch (error) {
@@ -571,24 +602,24 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
             // Matrix only for actual members, ignore Guests
             if (isGuest(rp.player)) continue;
             
-            const placementPoints = Math.max(0, maxPoints - rp.rank + 1);
+            const placementPoints = calcPlacementPoints(rp.rank, maxPoints, rules.placementMode);
             const breakdown = { placement: placementPoints, kniffel: 0, highestChance: 0, lowestChance: 0 };
             let totalPoints = placementPoints;
             
             // Kniffel Extra
             if (getKniffelHighlight(rp.player.id)) {
-                breakdown.kniffel = 1;
-                totalPoints += 1;
+                breakdown.kniffel = rules.kniffelBonusPoints;
+                totalPoints += rules.kniffelBonusPoints;
             }
             
             // Chance Extras
             const chanceHighlight = getChanceHighlight(rp.player.id);
             if (chanceHighlight === "highest") {
-                breakdown.highestChance = 1;
-                totalPoints += 1;
+                breakdown.highestChance = rules.highestChanceBonusPoints;
+                totalPoints += rules.highestChanceBonusPoints;
             } else if (chanceHighlight === "lowest") {
-                breakdown.lowestChance = 1;
-                totalPoints += 1;
+                breakdown.lowestChance = rules.lowestChanceBonusPoints;
+                totalPoints += rules.lowestChanceBonusPoints;
             }
             
             matrixData.push({
@@ -608,7 +639,7 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
         try {
             for (const data of matrixPointsData) {
                 const compositeId = `${data.member.id}_${sheet.year}_${sheet.month}`;
-                const pointRef = doc(db, "points", compositeId);
+                const pointRef = clubDoc("points", compositeId);
                 
                 // Fetch the existing document to update sheetContributions
                 const snap = await getDoc(pointRef);
@@ -623,19 +654,26 @@ export function KniffelScorecard({ sheet, members }: KniffelScorecardProps) {
                 // Calculate the new total points dynamically
                 const newTotalPoints = Object.values(sheetContributions).reduce((sum: number, val: any) => sum + (typeof val === 'number' ? val : 0), 0);
                 
-                await setDoc(pointRef, {
+                const pointPayload = {
                     id: compositeId,
                     userId: data.member.id,
                     month: sheet.month,
                     year: sheet.year,
                     points: newTotalPoints,
                     sheetContributions: sheetContributions
-                }, { merge: true });
+                };
+
+                await setDoc(pointRef, pointPayload, { merge: true });
+                if (clubId === "club_original") {
+                    await setDoc(doc(db, "points", compositeId), pointPayload, { merge: true }).catch(() => {});
+                }
             }
 
             // Mark the sheet as submitted
-            const sheetRef = doc(db, "kniffelSheets", sheet.id);
-            await setDoc(sheetRef, { isSubmitted: true }, { merge: true });
+            await setDoc(clubDoc("kniffelSheets", sheet.id), { isSubmitted: true }, { merge: true });
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "kniffelSheets", sheet.id), { isSubmitted: true }, { merge: true }).catch(() => {});
+            }
 
             showToast(dict.kniffel.transferSuccess);
             setTransferModalOpen(false);

@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Info, CheckCircle2, ArrowDownRight, ArrowUpRight, Clock, ChevronDown } from "lucide-react";
-import { collection, query, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { query, orderBy } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import { useClub } from "@/contexts/ClubContext";
 import { LedgerEntry, Member, LedgerTransactionCategory, Expense } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -67,10 +67,11 @@ function formatDate(dateField: any): string {
 }
 
 export function TransactionHistory({ entries, members }: TransactionHistoryProps) {
+    const { clubId, clubCollection } = useClub();
     const [isOpen, setIsOpen] = useState(false);
 
     // Fetch expenses directly — these are Kassen-Abgänge and must appear in the history
-    const qExpenses = useMemo(() => query(collection(db, "expenses"), orderBy("date", "desc")), []);
+    const qExpenses = useMemo(() => query(clubCollection("expenses"), orderBy("date", "desc")), [clubId, clubCollection]);
     const { data: expenses } = useFirestoreQuery<Expense>(qExpenses);
 
     const getMemberName = (userId: string): string => {

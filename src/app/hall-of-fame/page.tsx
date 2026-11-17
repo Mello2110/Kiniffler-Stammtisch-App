@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDocs } from "firebase/firestore";
+import { useClub } from "@/contexts/ClubContext";
 import { Crown, Medal, Banknote, Calendar, Coins, Sparkles, Dice5, Zap, Gamepad2 } from "lucide-react";
 import type { Member, Donation, Penalty, SetEvent, KniffelSheet, PointEntry } from "@/types";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ interface RankedMember {
 }
 
 export default function HallOfFamePage() {
+    const { clubId, clubCollection } = useClub();
     const [topDonors, setTopDonors] = useState<RankedMember[]>([]);
     const [topPenaltyPayers, setTopPenaltyPayers] = useState<RankedMember[]>([]);
     const [topHosts, setTopHosts] = useState<RankedMember[]>([]);
@@ -27,14 +28,14 @@ export default function HallOfFamePage() {
     useEffect(() => {
         const fetchAll = async () => {
             try {
-                // Parallel Fetching for maximum speed
+                // Parallel Fetching for maximum speed (club-scoped)
                 const [memSnap, donSnap, penSnap, evSnap, sheetSnap, pointSnap] = await Promise.all([
-                    getDocs(collection(db, "members")),
-                    getDocs(collection(db, "donations")),
-                    getDocs(collection(db, "penalties")),
-                    getDocs(collection(db, "set_events")),
-                    getDocs(collection(db, "kniffelSheets")),
-                    getDocs(collection(db, "points"))
+                    getDocs(clubCollection("members")),
+                    getDocs(clubCollection("donations")),
+                    getDocs(clubCollection("penalties")),
+                    getDocs(clubCollection("set_events")),
+                    getDocs(clubCollection("kniffelSheets")),
+                    getDocs(clubCollection("points"))
                 ]);
 
                 const members = memSnap.docs.map(d => ({ id: d.id, ...d.data() } as Member));
@@ -175,7 +176,7 @@ export default function HallOfFamePage() {
         };
 
         fetchAll();
-    }, []);
+    }, [clubId, clubCollection]);
 
     const RankCard = ({ title, icon: Icon, data, unit, colorHex, headerId }: any) => (
         <div className="relative group overflow-hidden bg-card border rounded-[2.5rem] hover:border-primary/50 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-primary/20 p-8 flex flex-col gap-6">
@@ -263,9 +264,9 @@ export default function HallOfFamePage() {
     if (isLoading) return <div className="p-10 text-center animate-pulse text-muted-foreground">Loading Hall of Fame...</div>;
 
     return (
-        <div className="space-y-8 pb-10">
+        <div className="space-y-8 pb-10 max-w-full overflow-x-hidden">
             {/* Header Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner border border-white/10 p-8 md:p-12">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">

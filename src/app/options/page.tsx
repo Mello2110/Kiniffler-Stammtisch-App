@@ -3,11 +3,14 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, doc, writeBatch, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Trash2, AlertTriangle, Settings, Languages, Database, Users, ShieldAlert } from "lucide-react";
+import Link from "next/link";
+import { Trash2, AlertTriangle, Settings, Languages, Database, Users, ShieldAlert, Image as ImageIcon, MessageSquarePlus, User, ArrowUpRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import { cn } from "@/lib/utils";
 import NotificationSettings from "@/components/settings/NotificationSettings";
+import { ClubAdminStudio } from "@/components/settings/ClubAdminStudio";
 
 const COLLECTIONS_TO_RESET = [
     "members",
@@ -23,6 +26,7 @@ const COLLECTIONS_TO_RESET = [
 export default function OptionsPage() {
     const { dict, language, setLanguage } = useLanguage();
     const { user } = useAuth();
+    const { clubId, clubCollection, clubDoc } = useClub();
     const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
@@ -31,7 +35,7 @@ export default function OptionsPage() {
                 setIsAdmin(false);
                 return;
             }
-            const docRef = doc(db, "members", user.uid);
+            const docRef = clubDoc("members", user.uid);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists() && docSnap.data().isAdmin) {
                 setIsAdmin(true);
@@ -40,7 +44,7 @@ export default function OptionsPage() {
             }
         };
         checkAdmin();
-    }, [user]);
+    }, [user, clubId, clubDoc]);
 
     // Reset Logic
     const [status, setStatus] = useState<string>("");
@@ -59,7 +63,7 @@ export default function OptionsPage() {
         try {
             for (const colName of COLLECTIONS_TO_RESET) {
                 addLog(`Fetching ${colName}...`);
-                const snap = await getDocs(collection(db, colName));
+                const snap = await getDocs(clubCollection(colName));
 
                 if (snap.empty) {
                     addLog(`Populated 0 ${colName}. Skipping.`);
@@ -73,7 +77,7 @@ export default function OptionsPage() {
                 let count = 0;
 
                 snap.docs.forEach((docSnap) => {
-                    currentChunk.delete(doc(db, colName, docSnap.id));
+                    currentChunk.delete(clubDoc(colName, docSnap.id));
                     count++;
                     if (count === 499) {
                         chunks.push(currentChunk);
@@ -108,7 +112,7 @@ export default function OptionsPage() {
         addLog("Starting avatar randomization...");
 
         try {
-            const membersSnap = await getDocs(collection(db, "members"));
+            const membersSnap = await getDocs(clubCollection("members"));
             addLog(`Found ${membersSnap.size} members.`);
 
             let updatedCount = 0;
@@ -119,7 +123,7 @@ export default function OptionsPage() {
             membersSnap.docs.forEach((docSnap) => {
                 const randomKey = AVATAR_COLOR_KEYS[Math.floor(Math.random() * AVATAR_COLOR_KEYS.length)];
 
-                currentChunk.update(doc(db, "members", docSnap.id), {
+                currentChunk.update(clubDoc("members", docSnap.id), {
                     avatar: {
                         icon: "",
                         bgColor: randomKey
@@ -152,9 +156,9 @@ export default function OptionsPage() {
     };
 
     return (
-        <div className="space-y-8 pb-10 max-w-7xl mx-auto">
+        <div className="space-y-8 pb-10 max-w-7xl mx-auto w-full overflow-x-hidden">
             {/* Header */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12 shadow-sm">
+            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner border border-white/10 p-6 sm:p-8 md:p-10 shadow-sm">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
@@ -172,52 +176,78 @@ export default function OptionsPage() {
                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
             </div>
 
-            {/* Grid Layout - 3 Columns on Large Screens */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Vereins-Schnellzugriff (besonders praktisch am Smartphone über Tab 'Club') */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                    { href: "/members", label: "Mitglieder", desc: "Kader & Rollen", icon: Users },
+                    { href: "/gallery", label: "Galerie", desc: "Fotos & Abende", icon: ImageIcon },
+                    { href: "/feedback", label: "Feedback", desc: "Ideen & Bugs", icon: MessageSquarePlus },
+                    { href: "/profile", label: "Mein Profil", desc: "Avatar & Konto", icon: User },
+                ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className="group rounded-2xl border border-white/10 bg-card/60 hover:bg-card/90 hover:border-primary/40 p-3.5 sm:p-4 transition-all flex items-center justify-between gap-2"
+                        >
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="p-2 rounded-xl bg-primary/15 text-primary shrink-0">
+                                    <Icon className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-sm font-bold truncate">{item.label}</div>
+                                    <div className="text-[11px] text-muted-foreground truncate">{item.desc}</div>
+                                </div>
+                            </div>
+                            <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
+                        </Link>
+                    );
+                })}
+            </div>
 
-                {/* 1. Language Settings */}
-                <div className="flex flex-col h-full">
-                    <div className="flex-1 bg-card/50 backdrop-blur-sm border border-border p-6 rounded-3xl flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-2 text-xl font-bold">
-                            <Languages className="w-6 h-6 text-primary" />
+            {/* Phase 2, 3, 5 & 6: KANPAI Multi-Tenant Club, Design & Regelwerk Studio */}
+            <ClubAdminStudio />
+
+            {/* Grid Layout - 3 Columns on Large Screens */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
+                {/* 1. Language Settings (kompakt) */}
+                <div className="bg-card/60 backdrop-blur-sm border border-white/10 p-5 rounded-3xl flex flex-col justify-between gap-4">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-base font-bold">
+                            <Languages className="w-5 h-5 text-primary" />
                             {dict.options.language}
                         </div>
-                        <p className="text-sm text-muted-foreground flex-1">{dict.options.languageDesc}</p>
+                        <p className="text-xs text-muted-foreground">{dict.options.languageDesc}</p>
+                    </div>
 
-                        <div className="grid grid-cols-3 gap-3">
-                            {[
-                                { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
-                                { code: 'en', flag: '🇺🇸', label: 'English' },
-                                { code: 'pl', flag: '🇵🇱', label: 'Polski' }
-                            ].map((lang) => (
-                                <button
-                                    key={lang.code}
-                                    onClick={() => setLanguage(lang.code as any)}
-                                    className={cn(
-                                        "aspect-square p-2 rounded-2xl border-2 transition-all hover:border-primary/50 flex flex-col items-center justify-center gap-2",
-                                        language === lang.code
-                                            ? "border-primary bg-primary/10 scale-105 shadow-md shadow-primary/10 ring-2 ring-primary/20"
-                                            : "border-border bg-card/50 hover:bg-muted/50"
-                                    )}
-                                >
-                                    <span className="text-3xl filter drop-shadow-sm">{lang.flag}</span>
-                                    <span className="font-bold text-sm text-foreground/80">{lang.label}</span>
-                                </button>
-                            ))}
-                        </div>
+                    <div className="grid grid-cols-3 gap-2">
+                        {[
+                            { code: "de", flag: "🇩🇪", label: "DE" },
+                            { code: "en", flag: "🇺🇸", label: "EN" },
+                            { code: "pl", flag: "🇵🇱", label: "PL" }
+                        ].map((lang) => (
+                            <button
+                                key={lang.code}
+                                onClick={() => setLanguage(lang.code as any)}
+                                className={cn(
+                                    "py-2.5 px-3 rounded-xl border transition-all flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer",
+                                    language === lang.code
+                                        ? "border-primary bg-primary/15 text-[#F5F0EB] shadow-sm"
+                                        : "border-white/10 bg-black/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                                )}
+                            >
+                                <span className="text-base">{lang.flag}</span>
+                                <span>{lang.label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* 2. Notification Settings - Spans 2 cols on XL if needed or just 1 */}
-                <div className="flex flex-col h-full space-y-4 xl:col-span-2">
+                {/* 2. Notification Settings */}
+                <div className="lg:col-span-2 flex flex-col">
                     <NotificationSettings />
                 </div>
-
-                {/* 3. Data Management (Admin) */}
-                <div className="flex flex-col h-full space-y-4 xl:col-span-3"> {/* Full width on very large screens for admin stuff, or adapt */}
-                    {/* Actually, let's put it back to normal grid flow for better responsiveness */}
-                </div>
-
             </div>
 
             {/* Admin Section Separated for Safety */}
@@ -252,8 +282,8 @@ export default function OptionsPage() {
                         </div>
 
                         {/* Random Avatars Card */}
-                        <div className="bg-indigo-500/5 border-indigo-500/20 border p-6 rounded-3xl flex flex-col gap-4">
-                            <div className="flex items-center gap-3 text-indigo-600 font-bold text-lg">
+                        <div className="bg-accent/5 border-accent/20 border p-6 rounded-3xl flex flex-col gap-4">
+                            <div className="flex items-center gap-3 text-accent font-bold text-lg">
                                 <Users className="w-5 h-5" />
                                 Avatar Generator
                             </div>
@@ -265,7 +295,7 @@ export default function OptionsPage() {
                                 disabled={isResetting}
                                 className={cn(
                                     "w-full py-3 font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm",
-                                    "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-900/10"
+                                    "bg-accent hover:bg-accent/85 text-accent-foreground shadow-sm"
                                 )}
                             >
                                 <Users className="w-4 h-4" />

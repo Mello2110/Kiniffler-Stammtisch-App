@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { SetEvent, Member } from "@/types";
 import { EventForm } from "./EventForm";
 import { TokenService } from "@/lib/TokenService";
@@ -15,29 +16,33 @@ interface EditEventModalProps {
 }
 
 export function EditEventModal({ event, onClose, members = [] }: EditEventModalProps) {
+    const { clubId, clubDoc } = useClub();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (data: any) => {
         setIsSubmitting(true);
         try {
-            const ref = doc(db, "set_events", event.id);
-            await updateDoc(ref, {
+            const payload = {
                 title: data.title,
                 description: data.description,
                 time: data.time,
                 location: data.location,
                 hostId: data.hostId
-            });
+            };
+            await updateDoc(clubDoc("set_events", event.id), payload);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "set_events", event.id), payload).catch(() => {});
+            }
 
             // Sync tokens if host changed
             const oldHostId = event.hostId;
             const newHostId = data.hostId;
             if (oldHostId !== newHostId) {
                 if (oldHostId && oldHostId !== "neutral") {
-                    await TokenService.revokeToken(oldHostId, `Host-Wechsel: ${event.title}`, "hosting");
+                    await TokenService.revokeToken(oldHostId, `Host-Wechsel: ${event.title}`, "hosting", clubId);
                 }
                 if (newHostId && newHostId !== "neutral") {
-                    await TokenService.awardToken(newHostId, `Hosting: ${data.title}`, "hosting");
+                    await TokenService.awardToken(newHostId, `Hosting: ${data.title}`, "hosting", undefined, clubId);
                 }
             }
 

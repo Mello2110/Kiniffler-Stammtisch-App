@@ -6,6 +6,7 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { reauthenticateWithCredential, EmailAuthProvider, updatePassword } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import { useRouter } from "next/navigation";
 import type { Member } from "@/types";
 import { MemberAvatar } from "@/components/common/MemberAvatar";
@@ -18,6 +19,7 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 
 function ProfilePageContent() {
     const { user } = useAuth();
+    const { clubId, clubDoc } = useClub();
     const router = useRouter();
 
     // --- State ---
@@ -50,7 +52,7 @@ function ProfilePageContent() {
             }
 
             try {
-                const docRef = doc(db, "members", user.uid);
+                const docRef = clubDoc("members", user.uid);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -71,21 +73,21 @@ function ProfilePageContent() {
         };
 
         fetchMemberData();
-    }, [user]);
+    }, [user, clubId, clubDoc]);
 
     // --- Handlers ---
-    // Write avatar color immediately to Firestore when user picks it in the Picker.
-    // This way the change persists even if the user doesn't click the main "Save" button.
     const handleAvatarSelect = async (icon: string, bgColor: string) => {
         setAvatarIcon(icon);
         setAvatarColor(bgColor);
 
         if (!user?.uid) return;
         try {
-            const ref = doc(db, "members", user.uid);
-            await updateDoc(ref, {
+            await updateDoc(clubDoc("members", user.uid), {
                 avatar: { icon, bgColor },
             });
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "members", user.uid), { avatar: { icon, bgColor } }).catch(() => {});
+            }
         } catch (err) {
             console.error("Error saving avatar color:", err);
         }
@@ -123,15 +125,17 @@ function ProfilePageContent() {
         setPasswordError(null);
 
         try {
-            // Update Firestore document
-            const ref = doc(db, "members", user.uid);
-            await updateDoc(ref, {
+            const updatePayload = {
                 name: name.trim(),
                 avatar: {
                     icon: avatarIcon,
                     bgColor: avatarColor,
                 },
-            });
+            };
+            await updateDoc(clubDoc("members", user.uid), updatePayload);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "members", user.uid), updatePayload).catch(() => {});
+            }
 
             // Handle password change if requested
             if (showPasswordSection && currentPassword && newPassword) {

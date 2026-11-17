@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, DollarSign, Trash2 } from "lucide-react";
 import { doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { LedgerEntry } from "@/types";
 import { reconcileMemberBalance } from "@/lib/reconciliation";
 
@@ -13,6 +14,7 @@ interface EditLedgerEntryModalProps {
 }
 
 export function EditLedgerEntryModal({ entry, onClose }: EditLedgerEntryModalProps) {
+    const { clubId, clubDoc } = useClub();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -27,18 +29,21 @@ export function EditLedgerEntryModal({ entry, onClose }: EditLedgerEntryModalPro
         setIsSubmitting(true);
         try {
             const parsedAmount = parseFloat(amount);
-            // Ensure the amount maintains its original sign (negative for debts)
             const finalAmount = entry.amount < 0 ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
 
-            const ref = doc(db, "ledger_entries", entry.id);
-            await updateDoc(ref, {
+            await updateDoc(clubDoc("ledger_entries", entry.id), {
                 amount: finalAmount,
                 description
             });
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "ledger_entries", entry.id), {
+                    amount: finalAmount,
+                    description
+                }).catch(() => {});
+            }
 
-            // If it's a penalty and has a linked document, update the original penalty amount and reason as well
             if (entry.type === 'penalty' && entry.linkedDocId) {
-                const penaltyRef = doc(db, "penalties", entry.linkedDocId);
+                const penaltyRef = clubDoc("penalties", entry.linkedDocId);
                 const penaltySnap = await getDoc(penaltyRef);
                 if (penaltySnap.exists()) {
                     await updateDoc(penaltyRef, {
@@ -46,13 +51,15 @@ export function EditLedgerEntryModal({ entry, onClose }: EditLedgerEntryModalPro
                         reason: description
                     });
                 }
+                if (clubId === "club_original") {
+                    await updateDoc(doc(db, "penalties", entry.linkedDocId), {
+                        amount: Math.abs(parsedAmount),
+                        reason: description
+                    }).catch(() => {});
+                }
             }
 
-            // For contributions or donations, we just leave the base document alone 
-            // since the ledger is the source of truth for the balance.
-
-            // Reconcile after update
-            reconcileMemberBalance(entry.userId).catch(console.error);
+            reconcileMemberBalance(entry.userId, clubId).catch(console.error);
             onClose();
         } catch (error) {
             console.error("Error updating ledger entry:", error);
@@ -69,24 +76,25 @@ export function EditLedgerEntryModal({ entry, onClose }: EditLedgerEntryModalPro
 
         setIsDeleting(true);
         try {
-            // Delete the ledger entry
-            const ref = doc(db, "ledger_entries", entry.id);
-            await deleteDoc(ref);
+            await deleteDoc(clubDoc("ledger_entries", entry.id));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "ledger_entries", entry.id)).catch(() => {});
+            }
 
-            // Also delete linked documents if they exist
             if (entry.linkedDocId) {
                 if (entry.type === 'penalty') {
-                    await deleteDoc(doc(db, "penalties", entry.linkedDocId));
+                    await deleteDoc(clubDoc("penalties", entry.linkedDocId));
+                    if (clubId === "club_original") await deleteDoc(doc(db, "penalties", entry.linkedDocId)).catch(() => {});
                 } else if (entry.type === 'contribution') {
-                    // It's a composite ID like userId_year_month
-                    await deleteDoc(doc(db, "contributions", entry.linkedDocId));
+                    await deleteDoc(clubDoc("contributions", entry.linkedDocId));
+                    if (clubId === "club_original") await deleteDoc(doc(db, "contributions", entry.linkedDocId)).catch(() => {});
                 } else if (entry.type === 'donation') {
-                    await deleteDoc(doc(db, "donations", entry.linkedDocId));
+                    await deleteDoc(clubDoc("donations", entry.linkedDocId));
+                    if (clubId === "club_original") await deleteDoc(doc(db, "donations", entry.linkedDocId)).catch(() => {});
                 }
             }
 
-            // Reconcile after deletion
-            reconcileMemberBalance(entry.userId).catch(console.error);
+            reconcileMemberBalance(entry.userId, clubId).catch(console.error);
             onClose();
         } catch (error) {
             console.error("Error deleting ledger entry:", error);

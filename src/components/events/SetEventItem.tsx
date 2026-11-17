@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { Pencil, Trash2, Check, X, Users } from "lucide-react";
-import { collection, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { SetEvent, Member } from "@/types";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/common/MemberAvatar";
@@ -18,7 +19,8 @@ interface SetEventItemProps {
 }
 
 export function SetEventItem({ event, currentUserId, totalMembers, members, onEdit, onDelete }: SetEventItemProps) {
-    const q = useMemo(() => collection(db, "set_events", event.id, "rsvps"), [event.id]);
+    const { clubId, clubCollection, clubDoc } = useClub();
+    const q = useMemo(() => clubCollection("set_events", event.id, "rsvps"), [clubId, clubCollection, event.id]);
     const { data: rsvps } = useFirestoreQuery<{ userId: string; attending: boolean }>(q, { idField: "userId" });
 
     const attendingCount = rsvps.filter(r => r.attending).length;
@@ -34,14 +36,19 @@ export function SetEventItem({ event, currentUserId, totalMembers, members, onEd
         const newStatus = status === 'yes';
 
         if (myStatus === status) {
-            // Remove RSVP
-            await deleteDoc(doc(db, "set_events", event.id, "rsvps", currentUserId));
+            await deleteDoc(clubDoc("set_events", event.id, "rsvps", currentUserId));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "set_events", event.id, "rsvps", currentUserId)).catch(() => {});
+            }
         } else {
-            // Set RSVP
-            await setDoc(doc(db, "set_events", event.id, "rsvps", currentUserId), {
+            const payload = {
                 attending: newStatus,
                 updatedAt: new Date()
-            });
+            };
+            await setDoc(clubDoc("set_events", event.id, "rsvps", currentUserId), payload);
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "set_events", event.id, "rsvps", currentUserId), payload).catch(() => {});
+            }
         }
     };
 

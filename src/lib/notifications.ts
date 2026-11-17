@@ -2,6 +2,7 @@ import { db } from "./firebase";
 import { getMessaging, getToken, deleteToken } from "firebase/messaging";
 import { getApp } from "firebase/app";
 import { doc, updateDoc } from "firebase/firestore";
+import { DEFAULT_CLUB_ID, getClubDoc } from "@/lib/clubPaths";
 
 // Check if notifications are supported
 export function isNotificationSupported(): boolean {
@@ -65,13 +66,16 @@ export async function requestNotificationPermission(): Promise<string | null> {
 
 
 // Subscribe to push notifications (save token to Firestore)
-export async function subscribeToPush(userId: string, token: string): Promise<boolean> {
+export async function subscribeToPush(userId: string, token: string, clubId: string = DEFAULT_CLUB_ID): Promise<boolean> {
     try {
-        const userRef = doc(db, "members", userId);
-        await updateDoc(userRef, {
+        const payload = {
             "notificationPreferences.fcmToken": token,
             "notificationPreferences.pushEnabled": true
-        });
+        };
+        await updateDoc(getClubDoc(clubId, "members", userId), payload);
+        if (clubId === "club_original") {
+            await updateDoc(doc(db, "members", userId), payload).catch(() => {});
+        }
         return true;
     } catch (error) {
         console.error("Error updating user push preferences:", error);
@@ -80,14 +84,16 @@ export async function subscribeToPush(userId: string, token: string): Promise<bo
 }
 
 // Unsubscribe from push notifications
-export async function unsubscribeFromPush(userId: string): Promise<void> {
+export async function unsubscribeFromPush(userId: string, clubId: string = DEFAULT_CLUB_ID): Promise<void> {
     try {
-        // Remove token from Firestore
-        const userRef = doc(db, "members", userId);
-        await updateDoc(userRef, {
+        const payload = {
             "notificationPreferences.pushEnabled": false,
             "notificationPreferences.fcmToken": null
-        });
+        };
+        await updateDoc(getClubDoc(clubId, "members", userId), payload);
+        if (clubId === "club_original") {
+            await updateDoc(doc(db, "members", userId), payload).catch(() => {});
+        }
 
         // Delete token from Messaging if valid
         const app = getApp();

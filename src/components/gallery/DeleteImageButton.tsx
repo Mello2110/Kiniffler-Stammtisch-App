@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Trash2, Loader2, AlertTriangle, Cloud, CheckCircle } from "lucide-react";
 import { doc, deleteDoc, getDoc } from "firebase/firestore";
 import { db, deleteCloudinaryImage } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { GalleryImage } from "@/types";
 
 interface DeleteImageButtonProps {
@@ -15,6 +16,7 @@ interface DeleteImageButtonProps {
 }
 
 export function DeleteImageButton({ imageId, publicId, onDelete, variant = "icon", className = "" }: DeleteImageButtonProps) {
+    const { clubId, clubDoc } = useClub();
     const [isDeleting, setIsDeleting] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export function DeleteImageButton({ imageId, publicId, onDelete, variant = "icon
             console.log("[Delete] Starting deletion for image:", imageId);
 
             // First, verify the document exists
-            const docRef = doc(db, "gallery", imageId);
+            const docRef = clubDoc("gallery", imageId);
             const docSnap = await getDoc(docRef);
 
             if (!docSnap.exists()) {
@@ -46,6 +48,9 @@ export function DeleteImageButton({ imageId, publicId, onDelete, variant = "icon
 
             // Delete from Firestore first
             await deleteDoc(docRef);
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "gallery", imageId)).catch(() => {});
+            }
 
             // Verify Firestore deletion was successful
             const verifySnap = await getDoc(docRef);

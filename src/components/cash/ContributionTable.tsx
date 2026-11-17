@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Check, X, Loader2 } from "lucide-react";
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import { cn } from "@/lib/utils";
 import type { Member, Contribution } from "@/types";
 
@@ -17,22 +18,21 @@ interface ContributionTableProps {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function ContributionTable({ members, currentYear, currentUserId, canManage }: ContributionTableProps) {
+    const { clubId, clubCollection, clubDoc } = useClub();
     const [contributions, setContributions] = useState<Contribution[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [togglingId, setTogglingId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchContributions = async () => {
-            // In a real app we might query by year, but for now grab all or implement compound queries
-            // Simplified: fetch all and filter client side or basic query
-            const q = query(collection(db, "contributions"), where("year", "==", currentYear));
+            const q = query(clubCollection("contributions"), where("year", "==", currentYear));
             const snapshot = await getDocs(q);
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contribution));
             setContributions(data);
             setIsLoading(false);
         };
         fetchContributions();
-    }, [currentYear]);
+    }, [clubId, clubCollection, currentYear]);
 
     const toggleContribution = async (memberId: string, monthIndex: number) => {
         const existing = contributions.find(c => c.userId === memberId && c.month === monthIndex && c.year === currentYear);
@@ -41,22 +41,12 @@ export function ContributionTable({ members, currentYear, currentUserId, canMana
         setTogglingId(compositeId);
         try {
             if (existing && existing.isPaid) {
-                // Determine logic: Do we delete or set to false? Let's delete for cleanliness or set false.
-                // Requirement said "mark paid/unpaid".
-                // Let's toggle isPaid. If document doesn't exist, create it as paid.
-                const ref = doc(db, "contributions", existing.id);
-                // Actually, simply deleting means unpaid in this sparse model, but explicit boolean is safer.
-                // Let's use strict delete = unpaid, create = paid pattern for simplicity? 
-                // Or better: update isPaid toggle.
-
-                // Let's stick to: Entry exists means "Paid". No entry means "Unpaid". 
-                // Wait, requirements say "mark paid/unpaid".
-                // Actually easier: If it exists, delete it (toggle off). If not, create it (toggle on).
-
-                await deleteDoc(ref);
+                await deleteDoc(clubDoc("contributions", existing.id));
+                if (clubId === "club_original") {
+                    await deleteDoc(doc(db, "contributions", existing.id)).catch(() => {});
+                }
                 setContributions(prev => prev.filter(c => c.id !== existing.id));
             } else {
-                const ref = doc(db, "contributions", compositeId);
                 const newContrib: Contribution = {
                     id: compositeId,
                     userId: memberId,
@@ -64,7 +54,10 @@ export function ContributionTable({ members, currentYear, currentUserId, canMana
                     year: currentYear,
                     isPaid: true
                 };
-                await setDoc(ref, newContrib);
+                await setDoc(clubDoc("contributions", compositeId), newContrib);
+                if (clubId === "club_original") {
+                    await setDoc(doc(db, "contributions", compositeId), newContrib).catch(() => {});
+                }
                 setContributions(prev => [...prev, newContrib]);
             }
         } catch (error) {

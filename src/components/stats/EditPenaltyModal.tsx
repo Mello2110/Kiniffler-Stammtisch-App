@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Loader2, DollarSign } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { Member, Penalty } from "@/types";
 import { reconcileMemberBalance } from "@/lib/reconciliation";
 
@@ -14,6 +15,7 @@ interface EditPenaltyModalProps {
 }
 
 export function EditPenaltyModal({ penalty, members, onClose }: EditPenaltyModalProps) {
+    const { clubId, clubDoc } = useClub();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form State
@@ -29,7 +31,7 @@ export function EditPenaltyModal({ penalty, members, onClose }: EditPenaltyModal
         setIsSubmitting(true);
         try {
             const oldMemberId = penalty.userId;
-            const ref = doc(db, "penalties", penalty.id);
+            const ref = clubDoc("penalties", penalty.id);
 
             // If manually changing paid status, reset reconciliation flag
             const updateData: Record<string, unknown> = {
@@ -50,12 +52,15 @@ export function EditPenaltyModal({ penalty, members, onClose }: EditPenaltyModal
             }
 
             await updateDoc(ref, updateData);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "penalties", penalty.id), updateData).catch(() => {});
+            }
 
             // Reconcile in background (non-blocking)
             if (oldMemberId !== selectedMember) {
-                reconcileMemberBalance(oldMemberId).catch(console.error);
+                reconcileMemberBalance(oldMemberId, clubId).catch(console.error);
             }
-            reconcileMemberBalance(selectedMember).catch(console.error);
+            reconcileMemberBalance(selectedMember, clubId).catch(console.error);
 
             onClose();
         } catch (error) {

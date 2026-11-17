@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { collection, query, orderBy, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { query, orderBy } from "firebase/firestore";
+import { triggerPayPalSync } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import { useClub } from "@/contexts/ClubContext";
 import {
     ArrowUpRight,
     ArrowDownLeft,
     Search,
-    Wallet
+    RefreshCw
 } from "lucide-react";
 import type { LedgerEntry, Member } from "@/types";
 import { format } from "date-fns";
@@ -19,12 +20,28 @@ interface LedgerProps {
 }
 
 export function PayPalLedger({ members }: LedgerProps) {
+    const { clubId, clubCollection } = useClub();
     const [searchTerm, setSearchTerm] = useState("");
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+    const handleManualSync = async () => {
+        setIsSyncing(true);
+        setSyncMessage(null);
+        try {
+            const res: any = await triggerPayPalSync();
+            setSyncMessage(res?.data?.message || "PayPal-Sync erfolgreich abgeschlossen.");
+        } catch (err: any) {
+            setSyncMessage(`Sync-Fehler: ${err.message || "Unbekannter Fehler"}`);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const qTx = useMemo(() => query(
-        collection(db, "ledger_entries"),
+        clubCollection("ledger_entries"),
         orderBy("date", "desc")
-    ), []);
+    ), [clubId, clubCollection]);
     const { data: transactions, loading } = useFirestoreQuery<LedgerEntry>(qTx);
 
     const filteredTransactions = useMemo(() => {
@@ -55,6 +72,19 @@ export function PayPalLedger({ members }: LedgerProps) {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-9 pr-4 py-2 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none"
                     />
+                </div>
+                <div className="flex items-center gap-3">
+                    {syncMessage && (
+                        <span className="text-xs font-medium text-muted-foreground">{syncMessage}</span>
+                    )}
+                    <button
+                        onClick={handleManualSync}
+                        disabled={isSyncing}
+                        className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+                        {isSyncing ? "Synchronisiere..." : "Jetzt synchronisieren"}
+                    </button>
                 </div>
             </div>
 

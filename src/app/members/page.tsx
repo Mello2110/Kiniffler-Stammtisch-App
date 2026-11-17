@@ -7,11 +7,13 @@ import { collection, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useClub } from "@/contexts/ClubContext";
 import type { Member } from "@/types";
 
 export default function MembersPage() {
     const { dict } = useLanguage();
-    const qMembers = useMemo(() => query(collection(db, "members")), []);
+    const { clubId, clubCollection } = useClub();
+    const qMembers = useMemo(() => query(clubCollection("members")), [clubId, clubCollection]);
     const { data: members } = useFirestoreQuery<Member>(qMembers);
 
     return (

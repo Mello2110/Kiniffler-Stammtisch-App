@@ -1,40 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  /* HSL Color Palette - Dark Mode First */
-  --background: 224 71% 4%;
-  /* #020617 (Slate 950) */
+  /* HSL Color Palette - Dark Mode First (Default: #854d59 Rosewood Berry & #578d8e Sage Teal) */
+  --background: 347 26% 5%;
   --foreground: 210 40% 98%;
-  /* User requested minimal dark theme */
 
-  --primary: 262 83% 58%;
-  /* A vibrant purple/violet for primary actions */
+  --primary: 347 38% 54%;
   --primary-foreground: 210 40% 98%;
 
-  --secondary: 217 33% 17%;
-  /* Slate 900 for cards/sections */
+  --secondary: 347 20% 12%;
   --secondary-foreground: 210 40% 98%;
 
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 347 18% 14%;
+  --muted-foreground: 215 20% 68%;
 
-  --accent: 262 83% 58%;
+  --accent: 181 36% 54%;
   --accent-foreground: 210 40% 98%;
 
-  --border: 217 33% 17%;
-  --input: 217 33% 17%;
-  --ring: 262 83% 58%;
+  --border: 347 20% 18%;
+  --input: 347 20% 15%;
+  --ring: 347 38% 54%;
 
-  --card: 217 33% 17%;
+  --card: 347 22% 10%;
   --card-foreground: 210 40% 98%;
 
-  --popover: 217 33% 17%;
+  --popover: 347 22% 10%;
   --popover-foreground: 210 40% 98%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
 
-  --radius: 0.75rem;
+  --radius: 0.875rem;
 }
 
 @theme inline {
@@ -60,6 +56,31 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
+  /* OKLCH Dynamic 2-Color Tonal Scales (50 - 950) */
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+  --color-primary-950: var(--primary-950);
+
+  --color-accent-50: var(--accent-50);
+  --color-accent-100: var(--accent-100);
+  --color-accent-200: var(--accent-200);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
+  --color-accent-950: var(--accent-950);
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -71,7 +92,9 @@
 @layer base {
   html, body {
     max-width: 100vw;
+    width: 100%;
     overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
 
   body {
@@ -124,6 +147,25 @@
   .card,
   .glass-panel {
     @apply bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl ring-1 ring-white/5;
+  }
+
+  /* Duotone Hero Banner that makes Primary + Accent colors pop */
+  .kanpai-hero-banner {
+    background:
+      radial-gradient(circle at 12% 20%, color-mix(in oklab, hsl(var(--primary)) 34%, transparent) 0%, transparent 58%),
+      radial-gradient(circle at 88% 80%, rgba(245, 240, 235, 0.06) 0%, transparent 56%),
+      linear-gradient(135deg, color-mix(in oklab, hsl(var(--card)) 92%, hsl(var(--primary)) 8%) 0%, hsl(var(--background)) 100%);
+    border: 1px solid color-mix(in oklab, hsl(var(--primary)) 32%, rgba(255, 255, 255, 0.08));
+    box-shadow:
+      0 20px 50px -15px color-mix(in oklab, hsl(var(--primary)) 22%, rgba(0, 0, 0, 0.6)),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+  }
+
+  .kanpai-glow-card {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, hsl(var(--card)) 88%, hsl(var(--primary)) 12%) 0%, color-mix(in oklab, hsl(var(--card)) 96%, hsl(var(--primary)) 4%) 100%);
+    border: 1px solid color-mix(in oklab, hsl(var(--primary)) 24%, rgba(255, 255, 255, 0.08));
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
   }
 }
 

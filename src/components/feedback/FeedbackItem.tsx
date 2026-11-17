@@ -46,13 +46,13 @@ export function FeedbackItem({
     const userVote = data.votes?.[currentUserId];
 
     const categoryColors: Record<string, string> = {
-        design: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+        design: "bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20",
         function: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
         other: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20",
         "Plattform/App": "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
         "Veranstaltungen": "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
         "Termine": "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
-        "Ausflüge": "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+        "Ausflüge": "bg-accent-500/10 text-accent-600 dark:text-accent-400 border-accent-500/20",
         "Sonstiges": "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20"
     };
 

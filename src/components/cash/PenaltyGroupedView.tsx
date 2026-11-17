@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { Penalty, Member } from "@/types";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { reconcileMemberBalance } from "@/lib/reconciliation";
 
@@ -31,6 +32,7 @@ interface MemberPenaltyGroup {
 // COMPONENT
 // ============================================
 export function PenaltyGroupedView({ penalties, members, onEdit, canManage }: PenaltyGroupedViewProps) {
+    const { clubId, clubDoc } = useClub();
     // ============================================
     // STATE
     // ============================================
@@ -102,23 +104,15 @@ export function PenaltyGroupedView({ penalties, members, onEdit, canManage }: Pe
     const togglePaidStatus = async (penalty: Penalty) => {
         if (!canManage) return;
         try {
-            const ref = doc(db, "penalties", penalty.id);
-            if (penalty.isPaid) {
-                // Unpaying: reset both manual and reconciliation flags
-                await updateDoc(ref, {
-                    isPaid: false,
-                    paidViaReconciliation: false,
-                    reconciledAt: null,
-                });
-            } else {
-                // Manually marking as paid
-                await updateDoc(ref, {
-                    isPaid: true,
-                    paidViaReconciliation: false, // manually paid
-                });
+            const ref = clubDoc("penalties", penalty.id);
+            const payload = penalty.isPaid
+                ? { isPaid: false, paidViaReconciliation: false, reconciledAt: null }
+                : { isPaid: true, paidViaReconciliation: false };
+            await updateDoc(ref, payload);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "penalties", penalty.id), payload).catch(() => {});
             }
-            // Trigger reconciliation in background (non-blocking)
-            reconcileMemberBalance(penalty.userId).catch(console.error);
+            reconcileMemberBalance(penalty.userId, clubId).catch(console.error);
         } catch (error) {
             console.error("Error updating penalty:", error);
         }
@@ -127,11 +121,13 @@ export function PenaltyGroupedView({ penalties, members, onEdit, canManage }: Pe
     const handleDelete = async () => {
         if (!deletingId) return;
         try {
-            await deleteDoc(doc(db, "penalties", deletingId));
+            await deleteDoc(clubDoc("penalties", deletingId));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "penalties", deletingId)).catch(() => {});
+            }
 
-            // Trigger reconciliation in background (non-blocking)
             if (deletingMemberId) {
-                reconcileMemberBalance(deletingMemberId).catch(console.error);
+                reconcileMemberBalance(deletingMemberId, clubId).catch(console.error);
             }
 
             setDeletingId(null);

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import { cn } from "@/lib/utils";
 import type { Member, Donation } from "@/types";
 
@@ -17,6 +18,7 @@ interface DonationTableProps {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function DonationTable({ members, currentYear, currentUserId, canManage }: DonationTableProps) {
+    const { clubId, clubCollection, clubDoc } = useClub();
     const [donations, setDonations] = useState<Donation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -25,14 +27,14 @@ export function DonationTable({ members, currentYear, currentUserId, canManage }
 
     useEffect(() => {
         const fetchDonations = async () => {
-            const q = query(collection(db, "donations"), where("year", "==", currentYear));
+            const q = query(clubCollection("donations"), where("year", "==", currentYear));
             const snapshot = await getDocs(q);
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Donation));
             setDonations(data);
             setIsLoading(false);
         };
         fetchDonations();
-    }, [currentYear]);
+    }, [clubId, clubCollection, currentYear]);
 
     const handleCellClick = (memberId: string, monthIndex: number, currentValue: number) => {
         if (!canManage) return;
@@ -49,14 +51,13 @@ export function DonationTable({ members, currentYear, currentUserId, canManage }
         setUpdatingId(compositeId);
 
         try {
-            const ref = doc(db, "donations", compositeId);
-
             if (isNaN(amount) || amount <= 0) {
-                // If empty or 0, delete the record
-                await deleteDoc(ref);
+                await deleteDoc(clubDoc("donations", compositeId));
+                if (clubId === "club_original") {
+                    await deleteDoc(doc(db, "donations", compositeId)).catch(() => {});
+                }
                 setDonations(prev => prev.filter(d => d.id !== compositeId));
             } else {
-                // Update/Create
                 const newDonation: Donation = {
                     id: compositeId,
                     userId: memberId,
@@ -64,8 +65,10 @@ export function DonationTable({ members, currentYear, currentUserId, canManage }
                     year: currentYear,
                     amount: amount
                 };
-                await setDoc(ref, newDonation);
-                // Update local state
+                await setDoc(clubDoc("donations", compositeId), newDonation);
+                if (clubId === "club_original") {
+                    await setDoc(doc(db, "donations", compositeId), newDonation).catch(() => {});
+                }
                 setDonations(prev => {
                     const others = prev.filter(d => d.id !== compositeId);
                     return [...others, newDonation];

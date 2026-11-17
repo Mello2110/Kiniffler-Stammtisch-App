@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Loader2, Mail, Lock, AlertCircle, ArrowLeft, ShieldAlert } from "lucide-react";
@@ -16,7 +16,21 @@ export default function LoginPage() {
     const router = useRouter();
 
     const [showEmailForm, setShowEmailForm] = useState(false);
+    const [isRegisterMode, setIsRegisterMode] = useState(false);
+    const [redirectUrl, setRedirectUrl] = useState<string>("/dashboard");
+    const [isInviteFlow, setIsInviteFlow] = useState(false);
     const [email, setEmail] = useState("");
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const r = params.get("redirect");
+            if (r && r.startsWith("/join")) {
+                setRedirectUrl(r);
+                setIsInviteFlow(true);
+            }
+        }
+    }, []);
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -44,13 +58,24 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            const cred = await signInWithEmailAndPassword(auth, email, password);
-            const userRef = doc(db, "members", cred.user.uid);
-            const userSnap = await getDoc(userRef);
+            if (isRegisterMode && isInviteFlow) {
+                await createUserWithEmailAndPassword(auth, email, password);
+                router.push(redirectUrl);
+                return;
+            }
 
-            if (!userSnap.exists()) {
+            const cred = await signInWithEmailAndPassword(auth, email, password);
+            if (isInviteFlow) {
+                router.push(redirectUrl);
+                return;
+            }
+
+            const globalUserSnap = await getDoc(doc(db, "users", cred.user.uid));
+            const legacySnap = await getDoc(doc(db, "members", cred.user.uid));
+
+            if (!globalUserSnap.exists() && !legacySnap.exists()) {
                 await signOut(auth);
-                setError("Registrierungen sind derzeit geschlossen. Dieser Account ist nicht als Mitglied freigeschaltet.");
+                setError("Registrierungen sind derzeit geschlossen. Bitte nutze einen Vereins-Einladungslink.");
                 return;
             }
 
@@ -76,7 +101,7 @@ export default function LoginPage() {
 
                 {/* Icon */}
                 <div className="relative mb-8 group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                    <div className="absolute -inset-1 bg-primary/40 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
                     <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-secondary/50 shadow-2xl">
                         <Image
                             src="/landing-icon.jpg"
@@ -98,10 +123,14 @@ export default function LoginPage() {
                     {showEmailForm ? "Willkommen zurück" : "Anmelden um fortzufahren"}
                 </p>
 
-                {/* Notice banner: Registration closed */}
+                {/* Notice banner */}
                 <div className="mb-6 flex items-center justify-center gap-2 text-xs text-muted-foreground bg-secondary/30 py-2 px-3.5 rounded-full border border-secondary/50">
-                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>Neue Registrierungen vorübergehend pausiert</span>
+                    <ShieldAlert className={`w-4 h-4 shrink-0 ${isInviteFlow ? "text-emerald-400" : "text-amber-500"}`} />
+                    <span>
+                        {isInviteFlow
+                            ? "Vereins-Einladung erkannt – anmelden oder Konto erstellen"
+                            : "Registrierung nur per Vereins-Einladungslink"}
+                    </span>
                 </div>
 
                 {/* Error Message */}
@@ -155,6 +184,24 @@ export default function LoginPage() {
                 ) : (
                     /* EXPANDED EMAIL FORM */
                     <form onSubmit={handleSubmit} className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {isInviteFlow && (
+                            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-secondary/40 border border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRegisterMode(false)}
+                                    className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${!isRegisterMode ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                                >
+                                    Anmelden
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRegisterMode(true)}
+                                    className={`py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${isRegisterMode ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                                >
+                                    Konto erstellen
+                                </button>
+                            </div>
+                        )}
                         {/* Email Input */}
                         <div className="relative">
                             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDocs, orderBy, query } from "firebase/firestore";
+import { useClub } from "@/contexts/ClubContext";
 import type { Member, KniffelSheet, TokenTransaction } from "@/types";
 import {
     BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -105,7 +105,7 @@ const calcMatrixBonusPoints = (
 
 // ─── Chart Color Palette ─────────────────────────────────────────────────────
 
-const COLORS = ["#7C3AED", "#00BCD4", "#FF9800", "#C62828", "#1A5C2E", "#D4A017", "#EC4899", "#6B7280"];
+const COLORS = ["#c0707f", "#00BCD4", "#FF9800", "#C62828", "#1A5C2E", "#D4A017", "#EC4899", "#6B7280"];
 
 // ─── Sheet year helper ───────────────────────────────────────────────────────
 
@@ -124,6 +124,7 @@ const getSheetYear = (sheet: KniffelSheet): number => {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function StatistikenPage() {
+    const { clubId, clubCollection } = useClub();
     const [members, setMembers] = useState<Member[]>([]);
     const [sheets, setSheets] = useState<KniffelSheet[]>([]);
     const [submittedIds, setSubmittedIds] = useState<Set<string>>(new Set());
@@ -142,9 +143,9 @@ export default function StatistikenPage() {
         (async () => {
             try {
                 const [memSnap, sheetSnap, pointSnap] = await Promise.all([
-                    getDocs(collection(db, "members")),
-                    getDocs(collection(db, "kniffelSheets")),
-                    getDocs(collection(db, "points")),
+                    getDocs(clubCollection("members")),
+                    getDocs(clubCollection("kniffelSheets")),
+                    getDocs(clubCollection("points")),
                 ]);
 
                 const fetchedMembers = memSnap.docs.map(d => ({ id: d.id, ...d.data() } as Member));
@@ -162,7 +163,7 @@ export default function StatistikenPage() {
                 setSelectedPlayers(new Set(fetchedMembers.map(m => m.id)));
 
                 // Fetch Token Transactions
-                const transSnap = await getDocs(query(collection(db, "tokenTransactions"), orderBy("timestamp", "desc")));
+                const transSnap = await getDocs(query(clubCollection("tokenTransactions"), orderBy("timestamp", "desc")));
                 setTokenTransactions(transSnap.docs.map(d => {
                     const data = d.data();
                     return {
@@ -176,7 +177,7 @@ export default function StatistikenPage() {
                 setIsLoading(false);
             }
         })();
-    }, []);
+    }, [clubId, clubCollection]);
 
     // Available years from sheet data
     const availableYears = useMemo(() => {
@@ -341,7 +342,7 @@ export default function StatistikenPage() {
         { label: "Highscore", key: "highscore", color: "text-orange-400" },
         { label: "Bonuspunkte", key: "bonusPoints", color: "text-yellow-400" },
         { label: "Striche", key: "strokes", color: "text-red-400" },
-        { label: "Kniffel", key: "kniffels", color: "text-purple-400" },
+        { label: "Kniffel", key: "kniffels", color: "text-primary" },
     ];
 
     const TD_COLORS: Record<string, string> = {
@@ -349,7 +350,7 @@ export default function StatistikenPage() {
         highscore: "text-orange-400 font-semibold",
         bonusPoints: "text-yellow-400",
         strokes: "text-red-400",
-        kniffels: "text-purple-400",
+        kniffels: "text-primary",
     };
 
     const CHART_METRICS: { label: string; value: ChartMetric }[] = [
@@ -366,10 +367,10 @@ export default function StatistikenPage() {
     const memberColorMap = new Map(members.map((m, i) => [m.id, COLORS[i % COLORS.length]]));
 
     return (
-        <div className="space-y-8 pb-10">
+        <div className="space-y-8 pb-10 max-w-full overflow-x-hidden">
 
             {/* ── Hero Header ──────────────────────────────────────────── */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-6 md:p-12">
+            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner border border-white/10 p-6 md:p-12">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] md:text-xs font-bold tracking-wider uppercase">

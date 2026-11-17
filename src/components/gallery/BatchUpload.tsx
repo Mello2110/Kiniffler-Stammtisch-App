@@ -2,11 +2,12 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, X, Loader2, Camera, Check, AlertCircle, Trash2, RefreshCw, Ban } from "lucide-react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import EXIF from "exif-js";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 
 interface BatchUploadProps {
     year?: number; // Optional - only used for default year in edge cases
@@ -42,6 +43,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
     // If no year provided, use current year as fallback (only for display/logging)
     const displayYear = year || new Date().getFullYear();
     const { user } = useAuth();
+    const { clubId, clubCollection } = useClub();
     const [queue, setQueue] = useState<UploadQueueItem[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [description, setDescription] = useState("");
@@ -311,7 +313,7 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
             // Save metadata to Firestore - use DETECTED YEAR
             const timestamp = new Date().toISOString();
             console.log("[StartUpload] Saving to Firestore with publicId:", cloudinaryResult.public_id);
-            await addDoc(collection(db, "gallery"), {
+            const galleryPayload = {
                 year: detectedYear,
                 url: cloudinaryResult.secure_url,
                 publicId: cloudinaryResult.public_id,
@@ -321,7 +323,11 @@ export function BatchUpload({ year, onUploadComplete }: BatchUploadProps) {
                 createdAt: serverTimestamp(),
                 captureDate: exifDate || timestamp, // Use EXIF if available, else current time
                 uploadDate: timestamp,
-            });
+            };
+            const newDocRef = await addDoc(clubCollection("gallery"), galleryPayload);
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "gallery", newDocRef.id), galleryPayload).catch(() => {});
+            }
             console.log("[StartUpload] Firestore save complete");
 
             // Store the year stats

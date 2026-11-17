@@ -287,7 +287,6 @@ export const earlyVoterTokenBonus = onSchedule({
 
     for (const memberDoc of membersSnap.docs) {
         const memberId = memberDoc.id;
-        const memberData = memberDoc.data();
 
         // Check if member already received the early voter bonus for this month
         const existingTxSnap = await db.collection('tokenTransactions')
@@ -417,14 +416,15 @@ export const migrateLegacyBalances = onCall(async (request) => {
 
 export const backfillMonthlyContributions = onCall({ timeoutSeconds: 300 }, async (request) => {
 
-    const { fromMonth, fromYear, toMonth, toYear } = request.data as {
-        fromMonth: number; fromYear: number; toMonth: number; toYear: number;
+    const { fromMonth, fromYear, toMonth, toYear, clubId = 'club_original' } = request.data as {
+        fromMonth: number; fromYear: number; toMonth: number; toYear: number; clubId?: string;
     };
 
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
         'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
-    const membersSnap = await db.collection('members').get();
+    const clubRef = db.collection('clubs').doc(clubId);
+    const membersSnap = await clubRef.collection('members').get();
     const results: string[] = [];
     const batch = db.batch();
 
@@ -433,11 +433,16 @@ export const backfillMonthlyContributions = onCall({ timeoutSeconds: 300 }, asyn
     let month = fromMonth;
 
     while (year < toYear || (year === toYear && month <= toMonth)) {
+        // Exakter 1. des Monats um 12:00:00 UTC -> fällt in jeder Zeitzone (UTC & Europe/Berlin) garantiert auf den 01.MM.YYYY!
+        const firstOfMonthDate = new Date(Date.UTC(year, month, 1, 12, 0, 0));
+        const firstOfMonthIso = firstOfMonthDate.toISOString();
+        const firstOfMonthTs = admin.firestore.Timestamp.fromDate(firstOfMonthDate);
+
         for (const memberDoc of membersSnap.docs) {
             const memberId = memberDoc.id;
 
             // Check if contribution already exists
-            const existingContrib = await db.collection('contributions')
+            const existingContrib = await clubRef.collection('contributions')
                 .where('userId', '==', memberId)
                 .where('month', '==', month)
                 .where('year', '==', year)
@@ -449,32 +454,39 @@ export const backfillMonthlyContributions = onCall({ timeoutSeconds: 300 }, asyn
                 continue;
             }
 
-            // Create contribution document (unpaid)
-            const contribRef = db.collection('contributions').doc();
-            batch.set(contribRef, {
-                id: contribRef.id,
+            const compositeId = `${memberId}_${year}_${month}`;
+            const contribRef = clubRef.collection('contributions').doc(compositeId);
+            const contribPayload = {
+                id: compositeId,
                 userId: memberId,
                 month,
                 year,
                 isPaid: true,
                 paidViaReconciliation: true,
-                reconciledAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
+                reconciledAt: firstOfMonthTs,
+            };
+            batch.set(contribRef, contribPayload);
 
-            // Immediately deduct from ledger
-            const entryRef = db.collection('ledger_entries').doc();
-            batch.set(entryRef, {
+            // Immediately deduct from ledger dated on the 1st of the target month
+            const entryRef = clubRef.collection('ledger_entries').doc();
+            const ledgerPayload = {
                 id: entryRef.id,
                 userId: memberId,
-                amount: -15, // Fixed 15 EUR contribution
+                amount: -15,
                 type: 'contribution',
                 description: `Monatsbeitrag ${monthNames[month]} ${year}`,
-                date: new Date().toISOString(),
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                linkedDocId: contribRef.id,
-            });
+                date: firstOfMonthIso,
+                createdAt: firstOfMonthTs,
+                linkedDocId: compositeId,
+            };
+            batch.set(entryRef, ledgerPayload);
 
-            results.push(`Created: ${memberId} ${monthNames[month]}/${year}`);
+            if (clubId === 'club_original') {
+                batch.set(db.collection('contributions').doc(compositeId), contribPayload);
+                batch.set(db.collection('ledger_entries').doc(entryRef.id), ledgerPayload);
+            }
+
+            results.push(`Created: ${memberId} ${monthNames[month]}/${year} (${firstOfMonthIso})`);
         }
 
         // Next month
@@ -487,69 +499,106 @@ export const backfillMonthlyContributions = onCall({ timeoutSeconds: 300 }, asyn
     return { results, count: results.length };
 });
 
-// --- Monthly Contribution Deduction (1st of each month at 00:05) ---
+// --- Monthly Contribution Deduction (Daily at 00:05 Europe/Berlin, per-club schedule & amount) ---
 
 export const monthlyContributionDeduction = onSchedule({
-    schedule: "5 0 1 * *",
+    schedule: "5 0 * * *",
     timeZone: "Europe/Berlin"
-}, async (event) => {
-    const now = new Date();
-    const month = now.getMonth(); // 0-11
-    const year = now.getFullYear();
+}, async () => {
+    const berlinParts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Berlin',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(new Date());
+
+    const year = Number(berlinParts.find(p => p.type === 'year')?.value || new Date().getFullYear());
+    const month1Based = Number(berlinParts.find(p => p.type === 'month')?.value || (new Date().getMonth() + 1));
+    const dayOfMonth = Number(berlinParts.find(p => p.type === 'day')?.value || new Date().getDate());
+    const month = month1Based - 1; // 0-11
+    const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
         'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
-    console.log(`Running monthly contribution deduction for ${monthNames[month]} ${year}`);
+    const bookingDate = new Date(Date.UTC(year, month, dayOfMonth, 12, 0, 0));
+    const bookingIso = bookingDate.toISOString();
+    const bookingTs = admin.firestore.Timestamp.fromDate(bookingDate);
 
-    // Get all members
-    const membersSnap = await db.collection('members').get();
-    const batch = db.batch();
+    const clubsSnap = await db.collection('clubs').get();
+    for (const clubDoc of clubsSnap.docs) {
+        const clubData = clubDoc.data();
+        const paymentConfig = clubData.paymentConfig || {};
+        if (paymentConfig.autoBookContributions === false) continue;
 
-    for (const memberDoc of membersSnap.docs) {
-        const memberId = memberDoc.id;
+        const configuredDay: number = typeof paymentConfig.monthlyContributionDay === 'number'
+            ? paymentConfig.monthlyContributionDay
+            : 1;
+        const shouldRunToday = configuredDay === 0
+            ? dayOfMonth === lastDayOfMonth
+            : dayOfMonth === configuredDay;
+        if (!shouldRunToday) continue;
 
-        // Check if contribution already exists for this month/year
-        const existingContrib = await db.collection('contributions')
-            .where('userId', '==', memberId)
-            .where('month', '==', month)
-            .where('year', '==', year)
-            .limit(1)
-            .get();
+        const amountEur: number = typeof paymentConfig.monthlyContributionEur === 'number'
+            ? paymentConfig.monthlyContributionEur
+            : 15;
+        if (amountEur <= 0) continue;
 
-        if (!existingContrib.empty) {
-            console.log(`Contribution for ${memberId} already exists for ${month}/${year}, skipping.`);
-            continue;
+        const clubRef = clubDoc.ref;
+        const membersSnap = await clubRef.collection('members').get();
+        const batch = db.batch();
+        let writes = 0;
+
+        for (const memberDoc of membersSnap.docs) {
+            const memberId = memberDoc.id;
+            const existingContrib = await clubRef.collection('contributions')
+                .where('userId', '==', memberId)
+                .where('month', '==', month)
+                .where('year', '==', year)
+                .limit(1)
+                .get();
+
+            if (!existingContrib.empty) continue;
+
+            const compositeId = `${memberId}_${year}_${month}`;
+            const contribRef = clubRef.collection('contributions').doc(compositeId);
+            const contribPayload = {
+                id: compositeId,
+                userId: memberId,
+                month,
+                year,
+                isPaid: true,
+                paidViaReconciliation: true,
+                reconciledAt: bookingTs,
+            };
+            batch.set(contribRef, contribPayload);
+
+            const entryRef = clubRef.collection('ledger_entries').doc();
+            const ledgerPayload = {
+                id: entryRef.id,
+                userId: memberId,
+                amount: -amountEur,
+                type: 'contribution',
+                description: `Monatsbeitrag ${monthNames[month]} ${year}`,
+                date: bookingIso,
+                createdAt: bookingTs,
+                linkedDocId: compositeId,
+            };
+            batch.set(entryRef, ledgerPayload);
+            writes += 2;
+
+            if (clubDoc.id === 'club_original') {
+                batch.set(db.collection('contributions').doc(compositeId), contribPayload);
+                batch.set(db.collection('ledger_entries').doc(entryRef.id), ledgerPayload);
+                writes += 2;
+            }
         }
 
-        // Create contribution document (marked as paid instantly)
-        const contribRef = db.collection('contributions').doc();
-        batch.set(contribRef, {
-            id: contribRef.id,
-            userId: memberId,
-            month,
-            year,
-            isPaid: true,
-            paidViaReconciliation: true,
-            reconciledAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        // Immediately deduct from ledger
-        const entryRef = db.collection('ledger_entries').doc();
-        batch.set(entryRef, {
-            id: entryRef.id,
-            userId: memberId,
-            amount: -15, // Fixed 15 EUR contribution
-            type: 'contribution',
-            description: `Monatsbeitrag ${monthNames[month]} ${year}`,
-            date: new Date().toISOString(),
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            linkedDocId: contribRef.id,
-        });
-
-        console.log(`Created contribution + ledger deduction for member ${memberId}`);
+        if (writes > 0) {
+            await batch.commit();
+            console.log(`[${clubDoc.id}] Booked monthly contribution (${amountEur}€) for ${monthNames[month]} ${year}`);
+        }
     }
-
-    await batch.commit();
 });
 
 export const revertPre2026Contributions = onCall({ timeoutSeconds: 300 }, async (request) => {
@@ -795,3 +844,279 @@ export const cleanDuplicates = onRequest({ cors: true, timeoutSeconds: 120 }, as
     }
 });
 
+// =========================================================================
+// PHASE 5: FAIL-SAFE SELF-SERVICE PAYMENT WEBHOOK / INBOUND MAIL ENDPOINT
+// =========================================================================
+import { createLedgerEntry } from './ledgerService';
+
+export const inboundPaymentWebhook = onRequest({ cors: true, timeoutSeconds: 60 }, async (req, res) => {
+    if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method Not Allowed' });
+        return;
+    }
+
+    try {
+        const body = req.body || {};
+        // Unterstützt sowohl JSON-Payloads (Webhook/IPN) als auch weitergeleitete E-Mail-Payloads (Cloudflare/SendGrid/Mailgun)
+        const rawNote = String(
+            body.note ||
+            body.custom ||
+            body.memo ||
+            body.subject ||
+            body.text ||
+            body.html ||
+            JSON.stringify(body)
+        );
+
+        const txId = String(body.txn_id || body.transactionId || body.id || `webhook_${Date.now()}`);
+        let rawAmount = parseFloat(String(body.mc_gross || body.amount?.value || body.amount || 0));
+        if (!rawAmount || isNaN(rawAmount) || rawAmount <= 0) {
+            // Fallback: Deutscher PayPal-Mail-Text ("15,00 €" oder "15.00 EUR")
+            const amtMatch = rawNote.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR)/i);
+            if (amtMatch) {
+                rawAmount = parseFloat(amtMatch[1].replace(',', '.'));
+            }
+        }
+        const txDateIso = body.payment_date
+            ? new Date(body.payment_date).toISOString()
+            : (body.dateIso || new Date().toISOString());
+
+        const tokenMatch = rawNote.match(/\bKP-([A-Z0-9]{2,12})-([A-Z0-9]{4,8})-([A-F0-9]{4})\b/i);
+        const queryClubId = typeof req.query.clubId === 'string' ? req.query.clubId.trim() : '';
+
+        // 1. Resolve Club (entweder explizit über ?clubId= oder über das KP-Token)
+        let targetClubId = queryClubId || 'club_original';
+        if (!queryClubId && tokenMatch) {
+            const clubPrefix = tokenMatch[1].toUpperCase();
+            const clubsSnap = await db.collection('clubs').get();
+            for (const cDoc of clubsSnap.docs) {
+                const slugClean = String(cDoc.data().slug || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+                if (slugClean === clubPrefix || cDoc.id.toUpperCase().includes(clubPrefix)) {
+                    targetClubId = cDoc.id;
+                    break;
+                }
+            }
+        }
+
+        // 2. Verify Webhook Secret if configured on Club
+        const targetClubSnap = await db.collection('clubs').doc(targetClubId).get();
+        if (!targetClubSnap.exists) {
+            res.status(404).json({ error: 'Target club not found.' });
+            return;
+        }
+        const expectedSecret = targetClubSnap.data()?.paymentConfig?.webhookSecret;
+        const providedSecret = String(req.query.secret || req.headers['x-kanpai-secret'] || body.secret || '');
+        if (expectedSecret && providedSecret !== expectedSecret) {
+            res.status(401).json({ error: 'Unauthorized: Invalid webhook secret.' });
+            return;
+        }
+
+        // 3. Resolve Member inside Club (per KP-Token oder Absendername-Fallback)
+        let matchedMemberId = 'system';
+        let matchedMemberName = 'System / Kasse';
+        const membersSnap = await db.collection('clubs').doc(targetClubId).collection('members').get();
+        if (tokenMatch) {
+            const userShort = tokenMatch[2].toUpperCase();
+            for (const mDoc of membersSnap.docs) {
+                const uidClean = mDoc.id.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+                if (uidClean === userShort) {
+                    matchedMemberId = mDoc.id;
+                    matchedMemberName = mDoc.data().name || mDoc.id;
+                    break;
+                }
+            }
+        }
+        if (matchedMemberId === 'system') {
+            const noteLower = rawNote.toLowerCase();
+            for (const mDoc of membersSnap.docs) {
+                const mName = String(mDoc.data().name || '').trim();
+                const pName = String(mDoc.data().paypalName || '').trim();
+                if ((pName && noteLower.includes(pName.toLowerCase())) || (mName.length >= 3 && noteLower.includes(mName.toLowerCase()))) {
+                    matchedMemberId = mDoc.id;
+                    matchedMemberName = mName || mDoc.id;
+                    break;
+                }
+            }
+        }
+
+        if (matchedMemberId === 'system' && !tokenMatch) {
+            res.status(202).json({
+                received: true,
+                matched: false,
+                message: 'No KP-[CLUB]-[USER]-[HASH] token or matching member name found in payload.'
+            });
+            return;
+        }
+
+        if (!rawAmount || isNaN(rawAmount) || rawAmount <= 0) {
+            res.status(400).json({ error: 'Invalid positive payment amount required.' });
+            return;
+        }
+
+        const description = tokenMatch
+            ? `Smart-Pay Einzahlung von ${matchedMemberName} (${tokenMatch[0]})`
+            : `Webhook-Einzahlung von ${matchedMemberName}`;
+        const created = await createLedgerEntry(
+            db,
+            matchedMemberId,
+            rawAmount,
+            'paypal_deposit',
+            description,
+            txId,
+            undefined,
+            txDateIso,
+            targetClubId
+        );
+
+        res.status(200).json({
+            success: true,
+            created,
+            clubId: targetClubId,
+            memberId: matchedMemberId,
+            amount: rawAmount,
+            txId,
+            token: tokenMatch ? tokenMatch[0] : null
+        });
+    } catch (err: any) {
+        console.error('Error in inboundPaymentWebhook:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+
+
+// =========================================================================
+// MULTI-TENANT INVITE & MEMBERSHIP LIFECYCLE (JOIN / LEAVE WITH LAST-ADMIN GUARD)
+// =========================================================================
+
+export const joinClubByInvite = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Bitte zuerst anmelden, um einem Verein beizutreten.');
+    }
+
+    const uid = request.auth.uid;
+    const rawCode = typeof request.data?.code === 'string' ? request.data.code.trim().toUpperCase() : '';
+    const displayName = typeof request.data?.displayName === 'string' ? request.data.displayName.trim() : '';
+
+    if (!rawCode) {
+        throw new HttpsError('invalid-argument', 'Ungültiger Einladungscode.');
+    }
+
+    const inviteRef = db.collection('club_invites').doc(rawCode);
+    const inviteSnap = await inviteRef.get();
+    if (!inviteSnap.exists) {
+        throw new HttpsError('not-found', 'Dieser Einladungslink existiert nicht oder wurde widerrufen.');
+    }
+
+    const invite = inviteSnap.data()!;
+    if (invite.active === false) {
+        throw new HttpsError('failed-precondition', 'Dieser Einladungslink wurde deaktiviert.');
+    }
+    if (invite.expiresAt && typeof invite.expiresAt.toDate === 'function' && invite.expiresAt.toDate() < new Date()) {
+        throw new HttpsError('failed-precondition', 'Dieser Einladungslink ist abgelaufen.');
+    }
+    if (typeof invite.maxUses === 'number' && invite.maxUses > 0 && (invite.usedCount || 0) >= invite.maxUses) {
+        throw new HttpsError('resource-exhausted', 'Das maximale Nutzungslimit dieses Einladungslinks wurde erreicht.');
+    }
+
+    const clubId = invite.clubId as string;
+    const clubRef = db.collection('clubs').doc(clubId);
+    const clubSnap = await clubRef.get();
+    if (!clubSnap.exists) {
+        throw new HttpsError('not-found', 'Der zugehörige Verein wurde nicht gefunden.');
+    }
+    const clubName = (clubSnap.data()?.name as string) || invite.clubName || clubId;
+
+    const memberRef = clubRef.collection('members').doc(uid);
+    const userRef = db.collection('users').doc(uid);
+
+    await db.runTransaction(async (tx) => {
+        const [memberSnap, userSnap] = await Promise.all([tx.get(memberRef), tx.get(userRef)]);
+
+        const resolvedName =
+            displayName ||
+            (request.auth!.token?.name as string) ||
+            (request.auth!.token?.email ? String(request.auth!.token.email).split('@')[0] : '') ||
+            'Neues Mitglied';
+
+        if (!memberSnap.exists) {
+            const memberPayload = {
+                name: resolvedName,
+                email: request.auth!.token?.email || '',
+                role: 'Mitglied',
+                roles: ['Mitglied'],
+                isAdmin: false,
+                points: 0,
+                joinYear: new Date().getFullYear(),
+                joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+            tx.set(memberRef, memberPayload);
+            tx.update(inviteRef, { usedCount: admin.firestore.FieldValue.increment(1) });
+        }
+
+        if (userSnap.exists) {
+            tx.update(userRef, {
+                clubIds: admin.firestore.FieldValue.arrayUnion(clubId),
+                defaultClubId: userSnap.data()?.defaultClubId || clubId,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        } else {
+            tx.set(userRef, {
+                uid,
+                name: resolvedName,
+                email: request.auth!.token?.email || '',
+                defaultClubId: clubId,
+                clubIds: [clubId],
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+    });
+
+    return { success: true, clubId, clubName };
+});
+
+export const leaveClub = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Anmeldung erforderlich.');
+    }
+
+    const uid = request.auth.uid;
+    const clubId = typeof request.data?.clubId === 'string' ? request.data.clubId.trim() : '';
+    if (!clubId) {
+        throw new HttpsError('invalid-argument', 'clubId erforderlich.');
+    }
+
+    const clubRef = db.collection('clubs').doc(clubId);
+    const membersSnap = await clubRef.collection('members').get();
+    const myDoc = membersSnap.docs.find((d) => d.id === uid);
+    if (!myDoc) {
+        throw new HttpsError('not-found', 'Du bist kein Mitglied dieses Vereins.');
+    }
+
+    const amIAdmin = myDoc.data()?.isAdmin === true || myDoc.data()?.role === 'Admin';
+    const otherAdmins = membersSnap.docs.filter(
+        (d) => d.id !== uid && (d.data()?.isAdmin === true || d.data()?.role === 'Admin')
+    );
+
+    if (amIAdmin && otherAdmins.length === 0 && membersSnap.size > 1) {
+        throw new HttpsError(
+            'failed-precondition',
+            'Du bist der einzige Admin dieses Vereins. Bitte übertrage die Admin-Rechte zuerst an ein anderes Mitglied.'
+        );
+    }
+
+    const userRef = db.collection('users').doc(uid);
+    const batch = db.batch();
+    batch.delete(myDoc.ref);
+    batch.set(
+        userRef,
+        {
+            clubIds: admin.firestore.FieldValue.arrayRemove(clubId),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+    );
+    await batch.commit();
+
+    return { success: true };
+});

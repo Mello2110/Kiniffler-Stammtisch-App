@@ -1,8 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { onSnapshot, setDoc, updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 
 type TitleContextType = {
     title: string;
@@ -12,35 +13,39 @@ type TitleContextType = {
 const TitleContext = createContext<TitleContextType | undefined>(undefined);
 
 export function TitleProvider({ children }: { children: React.ReactNode }) {
-    const [title, setTitleState] = useState("Stammtisch");
-    const [loading, setLoading] = useState(true);
+    const { clubId, club, clubDoc } = useClub();
+    const [title, setTitleState] = useState(club?.name || "Stammtisch");
 
     useEffect(() => {
-        // Subscribe to global settings
-        const ref = doc(db, "settings", "general");
+        if (club?.name) {
+            setTitleState(club.name);
+        }
+    }, [club?.name]);
+
+    useEffect(() => {
+        // Subscribe to club-specific settings/general
+        const ref = clubDoc("settings", "general");
         const unsubscribe = onSnapshot(ref, (snap) => {
             if (snap.exists()) {
                 const data = snap.data();
-                if (data.title) {
+                if (data?.title) {
                     setTitleState(data.title);
                 }
-            } else {
-                // If doc doesn't exist, create default
-                setDoc(ref, { title: "Stammtisch" }, { merge: true });
             }
-            setLoading(false);
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [clubId, clubDoc]);
 
     const setTitle = async (newTitle: string) => {
-        // Optimistic update
         setTitleState(newTitle);
-        // Write to firestore
         try {
-            const ref = doc(db, "settings", "general");
+            const ref = clubDoc("settings", "general");
             await setDoc(ref, { title: newTitle }, { merge: true });
+            await updateDoc(doc(db, "clubs", clubId), { name: newTitle });
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "settings", "general"), { title: newTitle }, { merge: true });
+            }
         } catch (error) {
             console.error("Error setting title:", error);
         }

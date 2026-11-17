@@ -30,7 +30,7 @@ export const LandingPage = () => {
 
                     {/* Icon */}
                     <div className="relative mb-8 group">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                        <div className="absolute -inset-1 bg-primary/40 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
                         <div className="relative w-40 h-40 md:w-56 md:h-56 rounded-full overflow-hidden border-4 border-secondary/50 shadow-2xl">
                             <Image
                                 src="/landing-icon.jpg"

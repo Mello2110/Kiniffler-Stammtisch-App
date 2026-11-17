@@ -15,6 +15,8 @@ import type { Member, Penalty, SetEvent, StammtischVote, PointEntry } from "@/ty
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTitle } from "@/contexts/TitleContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
+import { matchesDiscipline } from "@/lib/seasonPoints";
 import { EditableHeader } from "@/components/common/EditableHeader";
 import { TokenService } from "@/lib/TokenService";
 import { initializeMemberTokens } from "@/lib/initializeTokens";
@@ -23,6 +25,7 @@ import { ShinyEncounterModal } from "@/components/dashboard/ShinyEncounterModal"
 
 export function DashboardView() {
     const { user } = useAuth();
+    const { clubId, club, clubCollection, clubDoc } = useClub();
 
     // ============================================
     // STATE
@@ -50,60 +53,59 @@ export function DashboardView() {
     const [isInitialized, setIsInitialized] = useState(false);
 
     // ============================================
-    // QUERIES
+    // QUERIES (MULTI-TENANT CLUB SCOPED)
     // ============================================
-    const qMembers = useMemo(() => query(collection(db, "members")), []);
+    const qMembers = useMemo(() => query(clubCollection("members")), [clubId, clubCollection]);
     const { data: members } = useFirestoreQuery<Member>(qMembers);
 
     // 1.5 Fetch Points for Season Leader (Single Source of Truth)
     const currentYear = new Date().getFullYear();
-    const qPoints = useMemo(() => query(collection(db, "points"), where("year", "==", currentYear)), [currentYear]);
+    const qPoints = useMemo(() => query(clubCollection("points"), where("year", "==", currentYear)), [clubId, clubCollection, currentYear]);
     const { data: pointsData } = useFirestoreQuery<PointEntry>(qPoints);
 
     // 2. Fetch Events (Current Year Only)
     const startOfYear = `${currentYear}-01-01`;
     const endOfYear = `${currentYear}-12-31`;
     const qEvents = useMemo(() => query(
-        collection(db, "set_events"),
+        clubCollection("set_events"),
         where("date", ">=", startOfYear),
         where("date", "<=", endOfYear),
         orderBy("date", "asc")
-    ), [startOfYear, endOfYear]);
+    ), [clubId, clubCollection, startOfYear, endOfYear]);
     const { data: events } = useFirestoreQuery<SetEvent>(qEvents);
 
     // 3. Fetch Penalties (Unpaid only for pot)
-    const qPenalties = useMemo(() => query(collection(db, "penalties"), where("isPaid", "==", false)), []);
+    const qPenalties = useMemo(() => query(clubCollection("penalties"), where("isPaid", "==", false)), [clubId, clubCollection]);
     const { data: penalties } = useFirestoreQuery<Penalty>(qPenalties);
 
     // 5. Fetch Expenses
-    const qExpenses = useMemo(() => query(collection(db, "expenses")), []);
+    const qExpenses = useMemo(() => query(clubCollection("expenses")), [clubId, clubCollection]);
     const { data: expensesData } = useFirestoreQuery<{ amount: number }>(qExpenses);
 
     // 5.1 Fetch Contributions
-    const qContributions = useMemo(() => query(collection(db, "contributions")), []);
+    const qContributions = useMemo(() => query(clubCollection("contributions")), [clubId, clubCollection]);
     const { data: contributionsData } = useFirestoreQuery(qContributions);
 
     // 5.2 Fetch Donations
-    const qDonations = useMemo(() => query(collection(db, "donations")), []);
+    const qDonations = useMemo(() => query(clubCollection("donations")), [clubId, clubCollection]);
     const { data: donationsData } = useFirestoreQuery<{ amount: number }>(qDonations);
 
     // 6. Fetch Config
     useEffect(() => {
-        // Keep manual for single doc for now...
-        const unsubConfig = onSnapshot(doc(db, "config", "cash"), (docSnap) => {
+        const unsubConfig = onSnapshot(clubDoc("config", "cash"), (docSnap) => {
             if (docSnap.exists()) {
                 setStartingBalance(docSnap.data().startingBalance || 0);
             }
         });
         return () => unsubConfig();
-    }, []);
+    }, [clubId, clubDoc]);
 
     // 7. Fetch Votes (Optimized: Future only)
     const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
     const qVotes = useMemo(() => query(
-        collection(db, "stammtisch_votes"),
+        clubCollection("stammtisch_votes"),
         where("date", ">=", todayStr)
-    ), [todayStr]);
+    ), [clubId, clubCollection, todayStr]);
     const { data: votes } = useFirestoreQuery<StammtischVote>(qVotes);
 
     // 10. Automated Token Tasks (Initialization & Early Voter Bonus)
@@ -113,10 +115,10 @@ export function DashboardView() {
 
             try {
                 // Initialize tokens for all members if needed
-                await initializeMemberTokens();
+                await initializeMemberTokens(clubId);
                 
                 // Process automated bonus for early voting
-                await TokenService.processMonthlyEarlyVoterBonus();
+                await TokenService.processMonthlyEarlyVoterBonus(clubId);
                 
                 setIsInitialized(true);
             } catch (err) {
@@ -214,7 +216,8 @@ export function DashboardView() {
     useEffect(() => {
         // Logic same as Stats Page: Group by userId
         const totals: { [key: string]: number } = {};
-        pointsData.forEach(p => {
+        const activeDiscipline = club?.defaultGame || "kniffel";
+        pointsData.filter(p => matchesDiscipline(p, activeDiscipline)).forEach(p => {
             totals[p.userId] = (totals[p.userId] || 0) + p.points;
         });
 
@@ -233,7 +236,7 @@ export function DashboardView() {
         } else {
             setSeasonLeader(null);
         }
-    }, [pointsData]);
+    }, [pointsData, club?.defaultGame]);
 
 
     // Determine Next Event
@@ -310,46 +313,47 @@ export function DashboardView() {
     const currentMember = members.find(m => m.id === user?.uid);
 
     return (
-        <div className="flex flex-col gap-6">
-            {/* Header Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
-                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="space-y-4 max-w-2xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
+        <div className="flex flex-col gap-5 w-full max-w-full overflow-x-hidden">
+            {/* Header Section — Duotone Hero Banner */}
+            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner p-5 sm:p-8 lg:p-10">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div className="space-y-2.5 max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-bold tracking-wider uppercase">
                             <LayoutDashboard className="h-3 w-3" />
                             {dict.headers.dashboard.badge}
                         </div>
-                        <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
-                            {sidebarTitle} <span className="text-primary italic">{dict.headers.dashboard.highlight}</span>
+                        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight outfit leading-tight">
+                            {sidebarTitle}{" "}
+                            <span className="text-primary italic">
+                                {dict.headers.dashboard.highlight}
+                            </span>
                         </h1>
-                        <p className="text-muted-foreground text-lg leading-relaxed">
+                        <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                             {dict.headers.dashboard.subtext}
                         </p>
                     </div>
 
-                    <div className="flex items-end gap-5 text-muted-foreground pb-0.5">
-                        {/* Kanpai Branding (Text Only) */}
-                        <div className="hidden sm:flex flex-col items-end leading-none opacity-90 hover:opacity-100 transition-opacity">
-                            <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground/60 mb-0.5">powered by</span>
-                            <span className="text-xl font-black tracking-tighter text-[#8B5CF6] leading-none">KANPAI</span>
+                    <div className="flex items-end gap-4 text-muted-foreground pb-0.5">
+                        {/* Kanpai Branding (Dynamic Duotone) */}
+                        <div className="hidden sm:flex flex-col items-end leading-none opacity-95 hover:opacity-100 transition-opacity">
+                            <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground/70 mb-0.5">powered by</span>
+                            <span className="text-xl font-black tracking-tighter text-[#F5F0EB] leading-none">
+                                KANPAI
+                            </span>
                         </div>
 
-                        <div className="h-12 w-px bg-border hidden sm:block mx-2" />
+                        <div className="h-10 w-px bg-border hidden sm:block mx-1" />
 
                         {/* Season Info */}
                         <div className="flex flex-col items-end leading-none">
-                            <span className="text-3xl font-black text-foreground outfit leading-none">{new Date().getFullYear()}</span>
-                            <span className="text-[10px] uppercase font-bold tracking-widest mt-1">{dict.dashboard.season}</span>
+                            <span className="text-2xl sm:text-3xl font-black text-foreground outfit leading-none">{new Date().getFullYear()}</span>
+                            <span className="text-[10px] uppercase font-bold tracking-widest mt-1 text-accent">{dict.dashboard.season}</span>
                         </div>
 
-                        <div className="h-12 w-px bg-border mx-2" />
-                        <Activity className="h-8 w-8 opacity-20 mb-1" />
+                        <div className="h-10 w-px bg-border mx-1" />
+                        <Activity className="h-7 w-7 text-accent/50 mb-1" />
                     </div>
                 </div>
-
-                {/* Decorative background elements */}
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             </div>
 
             {/* Top Section: Next Event & Quick Stats */}
@@ -439,13 +443,13 @@ export function DashboardView() {
                         />
                     </div>
 
-                    <Link href="/hall-of-fame">
+                    <Link href="/stats">
                         <StatCard
                             title={dict.dashboard.widgets.hof.title}
                             value={dict.dashboard.widgets.hof.value}
                             icon={Crown}
                             description={dict.dashboard.widgets.hof.desc}
-                            className="border-purple-500/20 hover:border-purple-500/50 transition-colors h-full cursor-pointer"
+                            className="border-accent/25 hover:border-accent/60 transition-colors h-full cursor-pointer"
                         />
                     </Link>
                 </div>

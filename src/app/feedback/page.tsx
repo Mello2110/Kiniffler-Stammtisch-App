@@ -4,10 +4,11 @@ import { useState, useMemo } from "react";
 import { MessageSquarePlus, AlertTriangle, Lightbulb, MessageCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import { FeedbackForm, FeedbackType, FeedbackData } from "@/components/feedback/FeedbackForm";
 import { FeedbackList } from "@/components/feedback/FeedbackList";
 import { EditFeedbackModal } from "@/components/feedback/EditFeedbackModal";
-import { addDoc, collection, serverTimestamp, doc, updateDoc, deleteDoc, query, orderBy, getDoc } from "firebase/firestore";
+import { addDoc, serverTimestamp, doc, setDoc, updateDoc, deleteDoc, query, orderBy, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
@@ -17,15 +18,14 @@ import { EditableHeader } from "@/components/common/EditableHeader";
 export default function FeedbackPage() {
     const { dict } = useLanguage();
     const { user } = useAuth();
+    const { clubId, clubCollection, clubDoc } = useClub();
     const [activeTab, setActiveTab] = useState<FeedbackType>("problem");
 
     // Modal State
     const [editingItem, setEditingItem] = useState<{ id: string, data: FeedbackData } | null>(null);
 
-    // Queries
-    // Fetch all feedback (client-side filtering for simplicity as volume is low, 
-    // or use compound queries if indexes allow. For now, separate collections were avoided, so we filter by 'type')
-    const feedbackQuery = useMemo(() => query(collection(db, "feedback"), orderBy("createdAt", "desc")), []);
+    // Queries (club-scoped)
+    const feedbackQuery = useMemo(() => query(clubCollection("feedback"), orderBy("createdAt", "desc")), [clubId, clubCollection]);
     const { data: allFeedback } = useFirestoreQuery<FeedbackData & { id: string, completed: boolean, userId: string, type: string }>(feedbackQuery, { idField: "id" });
 
     // Filter by active tab
@@ -34,13 +34,13 @@ export default function FeedbackPage() {
     }, [allFeedback, activeTab]);
 
     // Fetch members for avatars
-    const membersQuery = useMemo(() => collection(db, "members"), []);
+    const membersQuery = useMemo(() => clubCollection("members"), [clubId, clubCollection]);
     const { data: members } = useFirestoreQuery<Member>(membersQuery, { idField: "id" });
 
 
     const handleFeedbackSubmit = async (type: FeedbackType, data: FeedbackData) => {
         try {
-            await addDoc(collection(db, "feedback"), {
+            const payload = {
                 ...data,
                 type,
                 userId: user?.uid || "anonymous",
@@ -51,7 +51,11 @@ export default function FeedbackPage() {
                 likes: 0,
                 dislikes: 0,
                 votes: {}
-            });
+            };
+            const newDoc = await addDoc(clubCollection("feedback"), payload);
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "feedback", newDoc.id), payload).catch(() => {});
+            }
         } catch (error) {
             console.error("Error submitting feedback:", error);
             throw error;
@@ -60,9 +64,12 @@ export default function FeedbackPage() {
 
     const handleToggleComplete = async (id: string, currentStatus: boolean) => {
         try {
-            await updateDoc(doc(db, "feedback", id), {
+            await updateDoc(clubDoc("feedback", id), {
                 completed: !currentStatus
             });
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "feedback", id), { completed: !currentStatus }).catch(() => {});
+            }
         } catch (error) {
             console.error("Error toggling complete:", error);
         }
@@ -72,7 +79,7 @@ export default function FeedbackPage() {
         if (!user) return; // Only logged in users can vote
 
         try {
-            const docRef = doc(db, "feedback", id);
+            const docRef = clubDoc("feedback", id);
             const docSnap = await getDoc(docRef);
 
             if (!docSnap.exists()) return;
@@ -85,38 +92,33 @@ export default function FeedbackPage() {
             let dislikes = data.dislikes || 0;
             const newVotes = { ...currentVotes };
 
-            // Logic:
-            // If clicking same vote type -> remove vote (toggle off)
-            // If clicking different vote type -> switch vote
-            // If no previous vote -> add vote
-
             if (previousVote === type) {
-                // Remove vote
                 delete newVotes[user.uid];
                 if (type === "like") likes--;
                 else dislikes--;
             } else {
-                // Add new vote
                 newVotes[user.uid] = type;
                 if (type === "like") likes++;
                 else dislikes++;
 
-                // If switching, remove old vote effect (neutralize previous)
                 if (previousVote) {
                     if (previousVote === "like") likes--;
                     else dislikes--;
                 }
             }
 
-            // Safety check for negative counts
             if (likes < 0) likes = 0;
             if (dislikes < 0) dislikes = 0;
 
-            await updateDoc(docRef, {
+            const voteUpdate = {
                 votes: newVotes,
                 likes,
                 dislikes
-            });
+            };
+            await updateDoc(docRef, voteUpdate);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "feedback", id), voteUpdate).catch(() => {});
+            }
 
         } catch (error) {
             console.error("Error voting:", error);
@@ -126,7 +128,10 @@ export default function FeedbackPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("Wirklich löschen?")) return;
         try {
-            await deleteDoc(doc(db, "feedback", id));
+            await deleteDoc(clubDoc("feedback", id));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "feedback", id)).catch(() => {});
+            }
         } catch (error) {
             console.error("Error deleting feedback:", error);
         }
@@ -135,9 +140,12 @@ export default function FeedbackPage() {
     const handleUpdate = async (data: FeedbackData) => {
         if (!editingItem) return;
         try {
-            await updateDoc(doc(db, "feedback", editingItem.id), {
+            await updateDoc(clubDoc("feedback", editingItem.id), {
                 ...data
             });
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "feedback", editingItem.id), { ...data }).catch(() => {});
+            }
             setEditingItem(null);
         } catch (error) {
             console.error("Error updating feedback:", error);

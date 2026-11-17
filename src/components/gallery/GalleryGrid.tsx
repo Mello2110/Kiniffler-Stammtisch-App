@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { collection, query, orderBy, where, limit, startAfter, getDocs, QueryDocumentSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { query, where, getDocs, QueryDocumentSnapshot } from "firebase/firestore";
+import { useClub } from "@/contexts/ClubContext";
 import { Lightbox } from "./Lightbox";
 import { Loader2, Maximize2, Camera, Check, CheckSquare, Square, Undo } from "lucide-react";
 import type { GalleryImage } from "@/types";
@@ -16,6 +16,7 @@ interface GalleryGridProps {
 }
 
 export function GalleryGrid({ year, pageSize = 20, refreshKey = 0 }: GalleryGridProps) {
+    const { clubId, clubCollection } = useClub();
     const [images, setImages] = useState<GalleryImage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -87,8 +88,8 @@ export function GalleryGrid({ year, pageSize = 20, refreshKey = 0 }: GalleryGrid
         const fetchImages = async () => {
             try {
                 // Fetch ALL images for the selected year (no limit)
-                let q = query(
-                    collection(db, "gallery"),
+                const q = query(
+                    clubCollection("gallery"),
                     where("year", "==", year)
                 );
 

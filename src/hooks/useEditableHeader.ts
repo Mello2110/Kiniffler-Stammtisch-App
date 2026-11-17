@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 
 interface UseEditableHeaderResult {
     text: string;
@@ -21,13 +21,14 @@ export function useEditableHeader(
     defaultText: string
 ): UseEditableHeaderResult {
     const { user } = useAuth();
+    const { clubId, clubDoc } = useClub();
     const [text, setText] = useState(defaultText);
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(defaultText);
 
-    // Subscribe to Firestore for real-time updates
+    // Subscribe to club-scoped Firestore customization for real-time updates
     useEffect(() => {
-        const docRef = doc(db, "customizations", pageId, "headers", headerId);
+        const docRef = clubDoc("customizations", pageId, "headers", headerId);
 
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -49,7 +50,7 @@ export function useEditableHeader(
         });
 
         return () => unsubscribe();
-    }, [pageId, headerId, defaultText, isEditing]);
+    }, [clubId, clubDoc, pageId, headerId, defaultText, isEditing]);
 
     const handleSave = useCallback(async () => {
         const trimmedValue = editValue.trim();
@@ -60,7 +61,7 @@ export function useEditableHeader(
         }
 
         try {
-            const docRef = doc(db, "customizations", pageId, "headers", headerId);
+            const docRef = clubDoc("customizations", pageId, "headers", headerId);
             await setDoc(docRef, {
                 text: trimmedValue,
                 updatedBy: user?.uid || "anonymous",
@@ -72,7 +73,7 @@ export function useEditableHeader(
             setEditValue(text);
             setIsEditing(false);
         }
-    }, [editValue, pageId, headerId, user?.uid, text]);
+    }, [editValue, clubDoc, pageId, headerId, user?.uid, text]);
 
     const handleCancel = useCallback(() => {
         setEditValue(text);

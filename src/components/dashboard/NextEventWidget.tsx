@@ -8,6 +8,7 @@ import { Member } from "@/types";
 import { collection, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
+import { useClub } from "@/contexts/ClubContext";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/common/MemberAvatar";
 
@@ -25,18 +26,14 @@ interface NextEventWidgetProps {
 }
 
 export function NextEventWidget({ event, members = [], currentUserId }: NextEventWidgetProps) {
+    const { clubId, clubCollection } = useClub();
     // Only fetch rsvps if it is a 'set' event and has an ID
     const shouldFetch = event?.type === 'set' && !!event?.id;
 
-    // Hooks cannot be conditional, so we pass a dummy path or skip depending on hook implementation.
-    // Our hook handles null query gracefully? Let's check. 
-    // Usually hooks need consistent calls. 
-    // We can use a stable query key that returns empty if disabled.
-
     const rsvpQuery = useMemo(() => {
         if (!shouldFetch || !event?.id) return null;
-        return collection(db, "set_events", event.id, "rsvps");
-    }, [shouldFetch, event?.id]);
+        return clubCollection("set_events", event.id, "rsvps");
+    }, [clubId, clubCollection, shouldFetch, event?.id]);
 
     // We must pass a valid query or null. 
     // If useFirestoreQuery doesn't handle null, we might need to handle it.
@@ -48,7 +45,7 @@ export function NextEventWidget({ event, members = [], currentUserId }: NextEven
     // ISOLATION STRATEGY: Create `EventVoterList` component and render it conditionally.
 
     return (
-        <div className="rounded-xl border border-border bg-gradient-to-br from-primary/10 to-purple-500/10 p-6 shadow-sm h-full flex flex-col">
+        <div className="kanpai-glow-card rounded-2xl p-5 sm:p-6 shadow-lg h-full flex flex-col justify-between">
             {!event ? (
                 <>
                     <div className="flex items-center justify-between mb-4">
@@ -130,7 +127,8 @@ function EventDetails({ event }: { event: any }) {
 }
 
 function EventVoterList({ eventId, members, currentUserId }: { eventId: string, members: Member[], currentUserId?: string }) {
-    const q = useMemo(() => collection(db, "set_events", eventId, "rsvps"), [eventId]);
+    const { clubId, clubCollection, clubDoc } = useClub();
+    const q = useMemo(() => clubCollection("set_events", eventId, "rsvps"), [clubId, clubCollection, eventId]);
     const { data: rsvps } = useFirestoreQuery<{ userId: string; attending: boolean }>(q, { idField: "userId" });
 
     // Derive data
@@ -146,14 +144,19 @@ function EventVoterList({ eventId, members, currentUserId }: { eventId: string, 
         const newStatus = status === 'yes';
 
         if (myStatus === status) {
-            // Remove RSVP
-            await deleteDoc(doc(db, "set_events", eventId, "rsvps", currentUserId));
+            await deleteDoc(clubDoc("set_events", eventId, "rsvps", currentUserId));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "set_events", eventId, "rsvps", currentUserId)).catch(() => {});
+            }
         } else {
-            // Set RSVP
-            await setDoc(doc(db, "set_events", eventId, "rsvps", currentUserId), {
+            const payload = {
                 attending: newStatus,
                 updatedAt: new Date()
-            });
+            };
+            await setDoc(clubDoc("set_events", eventId, "rsvps", currentUserId), payload);
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "set_events", eventId, "rsvps", currentUserId), payload).catch(() => {});
+            }
         }
     };
 

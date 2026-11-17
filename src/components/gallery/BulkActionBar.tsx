@@ -5,6 +5,7 @@ import { Download, Trash2, X, Loader2, CheckSquare, Cloud } from "lucide-react";
 import JSZip from "jszip";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db, bulkDeleteCloudinaryImages } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { GalleryImage } from "@/types";
 
 interface BulkActionBarProps {
@@ -14,6 +15,7 @@ interface BulkActionBarProps {
 }
 
 export function BulkActionBar({ selectedImages, onClearSelection, onDeleteComplete }: BulkActionBarProps) {
+    const { clubId, clubDoc } = useClub();
     const [isDownloading, setIsDownloading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -79,7 +81,10 @@ export function BulkActionBar({ selectedImages, onClearSelection, onDeleteComple
                 setProgress({ current: i + 1, total: selectedImages.length, phase: "firestore" });
 
                 try {
-                    await deleteDoc(doc(db, "gallery", img.id));
+                    await deleteDoc(clubDoc("gallery", img.id));
+                    if (clubId === "club_original") {
+                        await deleteDoc(doc(db, "gallery", img.id)).catch(() => {});
+                    }
                     console.log(`[BulkDelete] Firestore deleted: ${img.id}`);
                 } catch (err) {
                     console.error(`[BulkDelete] Failed to delete from Firestore: ${img.id}`, err);

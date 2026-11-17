@@ -1,0 +1,114 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // HELPER FUNCTIONS FOR MULTI-TENANT SECURITY & ISOLATION
+    // =========================================================================
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Strikte Mandantentrennung: Prüft, ob der eingeloggte User Mitglied in genau diesem Club ist
+    function isClubMember(clubId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid));
+    }
+
+    // Prüft, ob der eingeloggte User Administrator in genau diesem Club ist
+    function isClubAdmin(clubId) {
+      return isClubMember(clubId) &&
+        get(/databases/$(database)/documents/clubs/$(clubId)/members/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Rückwärtskompatible Prüfung für den Original-Stammtisch (Root-Collections)
+    function isLegacyStammtischMember() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/members/$(request.auth.uid)) ||
+        exists(/databases/$(database)/documents/clubs/club_original/members/$(request.auth.uid))
+      );
+    }
+
+    // =========================================================================
+    // 1. GLOBAL USER PROFILES (/users/{uid})
+    // =========================================================================
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 1b. CLUB INVITE LINKS (/club_invites/{code})
+    // =========================================================================
+    match /club_invites/{code} {
+      allow read: if true; // Zeigt Club-Namen auf der /join/[code] Einladungsseite an
+      allow create: if isClubAdmin(request.resource.data.clubId);
+      allow update: if isClubAdmin(resource.data.clubId);
+      allow delete: if isClubAdmin(resource.data.clubId);
+    }
+
+    // =========================================================================
+    // 2. MULTI-TENANT CLUB HIERARCHY (/clubs/{clubId}/...)
+    //    Strikte Isolation: Club A hat 0% Lese- oder Schreibzugriff auf Club B!
+    // =========================================================================
+    match /clubs/{clubId} {
+      // Club-Metadaten dürfen nur von Club-Mitgliedern gelesen werden.
+      // (Beim Erstellen eines neuen Clubs darf ein eingeloggter User das Club-Doc anlegen, wenn er creatorUid == request.auth.uid setzt)
+      allow read: if isClubMember(clubId);
+      allow create: if isSignedIn() && request.resource.data.creatorUid == request.auth.uid;
+      allow update: if isClubAdmin(clubId);
+      allow delete: if false; // Schutz vor versehentlichem Löschen ganzer Vereine
+
+      // Mitglieder-Verzeichnis des Clubs
+      match /members/{memberId} {
+        allow read: if isClubMember(clubId);
+        // Beim Initial-Setup eines neuen Clubs darf der Gründer sich selbst als Admin eintragen;
+        // danach dürfen Mitglieder ihr eigenes Profil bearbeiten oder Club-Admins Mitglieder verwalten.
+        allow create: if isClubAdmin(clubId) || (
+          isSignedIn() &&
+          request.auth.uid == memberId &&
+          get(/databases/$(database)/documents/clubs/$(clubId)).data.creatorUid == request.auth.uid
+        );
+        allow update: if isClubAdmin(clubId) || (isClubMember(clubId) && request.auth.uid == memberId);
+        // Schutz vor versehentlichem Löschen des Admins: Admin-Rolle muss zuerst übertragen/entzogen werden
+        allow delete: if (isClubAdmin(clubId) || (isClubMember(clubId) && request.auth.uid == memberId)) && resource.data.isAdmin != true;
+      }
+
+      // Alle fachlichen Subcollections des Clubs (kniffelSheets, gameSessions, penalties, ledger_entries, etc.)
+      match /{subcollection}/{docId} {
+        allow read, write: if isClubMember(clubId);
+      }
+
+      // Tiefere Subcollections innerhalb eines Clubs (z.B. set_events/{id}/rsvps, customizations/{page}/headers)
+      match /{subcollection}/{docId}/{nestedCollection}/{nestedDocId} {
+        allow read, write: if isClubMember(clubId);
+      }
+    }
+
+    // =========================================================================
+    // 3. LEGACY ROOT COLLECTIONS (NON-DESTRUCTIVE BACKWARD COMPATIBILITY)
+    //    Geschützt auf Mitglieder des ursprünglichen Stammtischs (`club_original`)
+    // =========================================================================
+    match /members/{memberId} {
+      allow read: if isLegacyStammtischMember();
+      allow write: if isLegacyStammtischMember();
+    }
+
+    match /{legacyCollection}/{docId} {
+      allow read, write: if legacyCollection != 'clubs' &&
+                            legacyCollection != 'users' &&
+                            isLegacyStammtischMember();
+    }
+
+    match /set_events/{eventId}/rsvps/{rsvpId} {
+      allow read, write: if isLegacyStammtischMember();
+    }
+
+    match /customizations/{pageId}/headers/{headerId} {
+      allow read, write: if isLegacyStammtischMember();
+    }
+  }
+}

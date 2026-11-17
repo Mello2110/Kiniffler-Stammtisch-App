@@ -4,6 +4,7 @@ import { useState } from "react";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useClub } from "@/contexts/ClubContext";
 import { ChevronDown, ChevronRight, Trash2, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KniffelScorecard } from "./KniffelScorecard";
@@ -25,6 +26,7 @@ export function KniffelSheetList({
     selectedMonth
 }: KniffelSheetListProps) {
     const { dict } = useLanguage();
+    const { clubId, clubDoc } = useClub();
     const [expandedSheet, setExpandedSheet] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -33,7 +35,10 @@ export function KniffelSheetList({
 
         setDeletingId(sheetId);
         try {
-            await deleteDoc(doc(db, "kniffelSheets", sheetId));
+            await deleteDoc(clubDoc("kniffelSheets", sheetId));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "kniffelSheets", sheetId)).catch(() => {});
+            }
             if (expandedSheet === sheetId) {
                 setExpandedSheet(null);
             }

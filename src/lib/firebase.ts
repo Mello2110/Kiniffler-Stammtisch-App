@@ -52,7 +52,8 @@ export const functions = getFunctions(app);
 export const deleteCloudinaryImage = httpsCallable(functions, 'deleteCloudinaryImage');
 export const bulkDeleteCloudinaryImages = httpsCallable(functions, 'bulkDeleteCloudinaryImages');
 export const getPayPalBalance = httpsCallable(functions, 'getPayPalBalance');
-export const syncPayPalTransactions = httpsCallable(functions, 'syncPayPalTransactions');
+export const syncPayPalTransactions = httpsCallable(functions, 'triggerPayPalSync');
+export const triggerPayPalSync = httpsCallable(functions, 'triggerPayPalSync');
 
 
 let analytics;

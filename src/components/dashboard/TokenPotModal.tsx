@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Coins, Plus, Send, AlertCircle, Group } from "lucide-react";
 import { Member, TokenType } from "@/types";
 import { TokenService } from "@/lib/TokenService";
+import { useClub } from "@/contexts/ClubContext";
 import { cn } from "@/lib/utils";
 
 interface TokenPotModalProps {
@@ -14,6 +15,7 @@ interface TokenPotModalProps {
 }
 
 export function TokenPotModal({ isOpen, onClose, members, currentUserId }: TokenPotModalProps) {
+    const { clubId } = useClub();
     const [mode, setMode] = useState<'send' | 'pot'>('send');
     const [targetMemberId, setTargetMemberId] = useState("");
     const [amount, setAmount] = useState(1);
@@ -38,7 +40,7 @@ export function TokenPotModal({ isOpen, onClose, members, currentUserId }: Token
         setIsSubmitting(true);
         setError("");
         try {
-            await TokenService.transferTokens(currentUserId, targetMemberId, amount, reason);
+            await TokenService.transferTokens(currentUserId, targetMemberId, amount, reason, clubId);
             onClose();
         } catch (err: any) {
             setError(err.message || "Fehler beim Senden.");

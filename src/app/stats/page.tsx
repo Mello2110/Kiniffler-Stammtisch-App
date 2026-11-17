@@ -1,92 +1,186 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { collection, query, onSnapshot, where, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { query, where } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
-import type { Member, PointEntry } from "@/types";
+import { useClub } from "@/contexts/ClubContext";
 import { PointsLeaderboard } from "@/components/stats/PointsLeaderboard";
 import { PointsMatrix } from "@/components/stats/PointsMatrix";
-import { Trophy, BarChart3 } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { matchesDiscipline } from "@/lib/seasonPoints";
+import { Loader2, Trophy, BarChart3, Award, Dices, Flame, CircleDot, Layers } from "lucide-react";
+import type { GameDisciplineId, Member, PointEntry } from "@/types";
 import { EditableHeader } from "@/components/common/EditableHeader";
+import { cn } from "@/lib/utils";
+import StatistikenPage from "@/app/statistiken/page";
+import HallOfFamePage from "@/app/hall-of-fame/page";
+
+type StatsHubTab = "season" | "analytics" | "hall-of-fame";
+type DisciplineFilter = GameDisciplineId | "all";
+
+const DISCIPLINE_META: Record<DisciplineFilter, { label: string; icon: React.ReactNode }> = {
+    kniffel: { label: "Kniffeln", icon: <Dices className="h-3.5 w-3.5" /> },
+    schocken: { label: "Schocken", icon: <Flame className="h-3.5 w-3.5" /> },
+    kegeln: { label: "Kegeln", icon: <CircleDot className="h-3.5 w-3.5" /> },
+    all: { label: "Gesamt", icon: <Layers className="h-3.5 w-3.5" /> },
+};
 
 export default function StatsPage() {
-    const { dict } = useLanguage();
-    const [isLoadingMembers, setIsLoadingMembers] = useState(true);
+    const { clubId, club, clubCollection } = useClub();
     const currentYear = new Date().getFullYear();
 
-    // Fetch members
-    const qMembers = useMemo(() => query(collection(db, "members"), orderBy("name", "asc")), []);
-    const { data: members, loading: membersLoading } = useFirestoreQuery<Member>(qMembers);
-
-    // Fetch points
-    const qPoints = useMemo(() => query(collection(db, "points"), where("year", "==", currentYear)), [currentYear]);
-    const { data: points } = useFirestoreQuery<PointEntry>(qPoints);
+    const [activeTab, setActiveTab] = useState<StatsHubTab>("season");
+    const [selectedDiscipline, setSelectedDiscipline] = useState<DisciplineFilter>(
+        club?.defaultGame || "kniffel"
+    );
 
     useEffect(() => {
-        if (!membersLoading) {
-            setIsLoadingMembers(false);
+        if (club?.defaultGame) {
+            setSelectedDiscipline(club.defaultGame);
         }
-    }, [membersLoading]);
+    }, [club?.defaultGame]);
+
+    const qMembers = useMemo(
+        () => (clubId ? query(clubCollection("members")) : null),
+        [clubId, clubCollection]
+    );
+    const { data: members, loading: membersLoading } = useFirestoreQuery<Member>(qMembers);
+
+    const qPoints = useMemo(
+        () => (clubId ? query(clubCollection("points"), where("year", "==", currentYear)) : null),
+        [clubId, clubCollection, currentYear]
+    );
+    const { data: points, loading: pointsLoading } = useFirestoreQuery<PointEntry>(qPoints);
+
+    const enabledDisciplines: DisciplineFilter[] = useMemo(() => {
+        const enabled = club?.enabledGames && club.enabledGames.length > 0
+            ? club.enabledGames
+            : (["kniffel", "schocken", "kegeln"] as GameDisciplineId[]);
+        return [...enabled, "all"];
+    }, [club?.enabledGames]);
+
+    const filteredPoints = useMemo(() => {
+        if (selectedDiscipline === "all") return points;
+        return points.filter((p) => matchesDiscipline(p, selectedDiscipline));
+    }, [points, selectedDiscipline]);
+
+    const isLoading = membersLoading || pointsLoading;
+
+    const hubTabs: { id: StatsHubTab; label: string; icon: React.ReactNode }[] = [
+        { id: "season", label: "Saison-Wertung", icon: <Trophy className="h-4 w-4" /> },
+        { id: "analytics", label: "Detail-Analyse", icon: <BarChart3 className="h-4 w-4" /> },
+        { id: "hall-of-fame", label: "Hall of Fame", icon: <Award className="h-4 w-4" /> },
+    ];
 
     return (
-        <div className="space-y-8 pb-10">
-            {/* Header */}
-            {/* Header Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
-                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="space-y-4 max-w-2xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
-                            <Trophy className="h-3 w-3" />
-                            {dict.headers.stats.badge}
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
-                            {dict.headers.stats.title} <span className="text-primary italic">{dict.headers.stats.highlight}</span>
-                        </h1>
-                        <p className="text-muted-foreground text-lg leading-relaxed">
-                            {dict.headers.stats.subtext}
+        <div className="space-y-6 max-w-full overflow-x-hidden">
+            {/* Top Hub Header + Segmented Control */}
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div>
+                        <EditableHeader
+                            pageId="stats"
+                            headerId="stats-title"
+                            defaultText={`Saison & Statistik ${currentYear}`}
+                            as="h1"
+                            className="text-3xl font-bold tracking-tight"
+                        />
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Rangliste, Detail-Analysen und Hall of Fame
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-4 text-muted-foreground">
-                        <div className="flex flex-col items-end">
-                            <span className="text-2xl font-black text-foreground outfit">{currentYear}</span>
-                            <span className="text-xs uppercase font-bold tracking-widest">{dict.stats.season}</span>
-                        </div>
-                        <div className="h-10 w-px bg-border" />
-                        <BarChart3 className="h-8 w-8 opacity-20" />
+                    <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-card/70 border border-white/10 backdrop-blur-md w-full sm:w-auto">
+                        {hubTabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setActiveTab(tab.id)}
+                                className={cn(
+                                    "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+                                    activeTab === tab.id
+                                        ? "bg-primary text-primary-foreground shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                )}
+                            >
+                                {tab.icon}
+                                <span className="truncate">{tab.label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
-
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             </div>
 
-            {/* Leaderboard */}
-            {isLoadingMembers ? (
-                <div className="p-8 text-center text-muted-foreground">{dict.stats.loading}</div>
-            ) : (
-                <PointsLeaderboard points={points} members={members} />
+            {activeTab === "season" && (
+                <div className="space-y-6">
+                    {/* Discipline Switcher */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-card/50 border border-white/10">
+                        <div className="text-xs font-semibold text-muted-foreground">
+                            Disziplin-Filter (getrennte Saison-Wertungen):
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {enabledDisciplines.map((disc) => (
+                                <button
+                                    key={disc}
+                                    type="button"
+                                    onClick={() => setSelectedDiscipline(disc)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+                                        selectedDiscipline === disc
+                                            ? "bg-primary/20 text-primary border-primary/40"
+                                            : "bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10"
+                                    )}
+                                >
+                                    {DISCIPLINE_META[disc].icon}
+                                    <span>{DISCIPLINE_META[disc].label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="flex h-[40vh] items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <>
+                            <section>
+                                <PointsLeaderboard members={members} points={filteredPoints} />
+                            </section>
+
+                            <section className="space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                    <h2 className="text-xl font-semibold">
+                                        Monats-Matrix ({DISCIPLINE_META[selectedDiscipline].label})
+                                    </h2>
+                                    <span className="text-xs text-muted-foreground">
+                                        {selectedDiscipline === "all"
+                                            ? "Summierte Ansicht über alle Disziplinen"
+                                            : "Tippe auf eine Zelle zum manuellen Bearbeiten"}
+                                    </span>
+                                </div>
+                                <PointsMatrix
+                                    members={members}
+                                    points={filteredPoints}
+                                    currentYear={currentYear}
+                                    gameType={selectedDiscipline}
+                                />
+                            </section>
+                        </>
+                    )}
+                </div>
             )}
 
-            {/* Matrix Table */}
-            <section>
-                <div className="mb-4">
-                    <EditableHeader
-                        pageId="stats"
-                        headerId="points-matrix-title"
-                        defaultText={`${dict.stats.matrixTitle} (${currentYear})`}
-                        as="h2"
-                        className="text-xl font-semibold"
-                    />
+            {activeTab === "analytics" && (
+                <div className="max-w-full overflow-x-hidden">
+                    <StatistikenPage />
                 </div>
-                {isLoadingMembers ? (
-                    <div className="p-8 text-center text-muted-foreground">{dict.stats.matrixLoading}</div>
-                ) : (
-                    <PointsMatrix members={members} points={points} currentYear={currentYear} />
-                )}
-            </section>
+            )}
+
+            {activeTab === "hall-of-fame" && (
+                <div className="max-w-full overflow-x-hidden">
+                    <HallOfFamePage />
+                </div>
+            )}
         </div>
     );
 }

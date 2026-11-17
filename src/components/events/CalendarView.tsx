@@ -119,7 +119,7 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                                 {/* Event Indicators */}
                                 <div className="mt-auto flex flex-col gap-1">
                                     {dayEvents.map(event => (
-                                        <div key={event.id} className="rounded-sm bg-purple-500/10 px-1.5 py-0.5 text-[10px] text-purple-600 dark:text-purple-300 font-medium truncate border border-purple-500/20">
+                                        <div key={event.id} className="rounded-sm bg-accent/15 px-1.5 py-0.5 text-[10px] text-accent font-medium truncate border border-accent/30">
                                             {event.title}
                                         </div>
                                     ))}

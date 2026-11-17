@@ -114,7 +114,8 @@ export interface PointEntry {
     month: number; // 0-11
     year: number;
     points: number;
-    sheetContributions?: Record<string, number>; // Maps sheet ID to the points it contributed
+    gameType?: GameDisciplineId; // undefined or 'kniffel' for legacy Kniffel points; 'schocken' | 'kegeln' for other disciplines
+    sheetContributions?: Record<string, number>; // Maps sheet/session ID to the points it contributed
 }
 
 export interface CashConfig {
@@ -263,4 +264,124 @@ export interface TokenPot {
         share: number; // Percentage or exact amount? Let's use exact amount.
     }[];
     createdAt: any;
+}
+
+// =========================================================================
+// MULTI-TENANT SAAS & MODULAR GAME ENGINE TYPES (PHASES 2 - 6)
+// =========================================================================
+
+export type GameDisciplineId = 'kniffel' | 'schocken' | 'kegeln';
+
+export interface ClubThemeConfig {
+    primaryColor: string; // Hex or OKLCH base color (e.g. "#8B5CF6")
+    accentColor: string;  // Hex or OKLCH accent color (e.g. "#F59E0B")
+    mode?: 'dark' | 'light';
+}
+
+export interface ClubPaymentConfig {
+    paypalMeHandle: string;          // e.g. "marcelmueller" or "paypal.me/stammtisch"
+    treasuryEmail: string;           // e.g. "kasse@verein.de"
+    monthlyContributionEur: number;  // e.g. 15
+    monthlyContributionDay?: number; // 1 = 1. des Monats, 15 = 15., 0 = Monatsletzter
+    autoBookContributions?: boolean; // Default: true
+    defaultPenaltyEur: number;       // e.g. 1
+    currency: string;                // "EUR"
+    paymentSyncMode?: 'manual_confirm' | 'auto_webhook' | 'imap_legacy';
+    webhookSecret?: string;          // Optional token for inbound email / webhook verification
+}
+
+export interface CustomPenaltyCatalogItem {
+    id: string;
+    label: string;
+    amountEur: number;
+    gameType: GameDisciplineId | 'general';
+}
+
+export interface KniffelHouseRules {
+    placementMode: 'dynamic_participants' | 'fixed_top3'; // dynamic = N..1 points (Stammtisch Original)
+    kniffelBonusPoints: number;          // Default: +1 point in matrix if Kniffel > 0
+    highestChanceBonusPoints: number;    // Default: +1 point in matrix (first-come-first-served)
+    lowestChanceBonusPoints: number;     // Default: +1 point in matrix (first-come-first-served)
+    upperBonusThreshold: number;         // Default: 63
+    upperBonusScore: number;             // Default: 35
+    strokePenaltyEur: number;            // Default: 1.00 €
+}
+
+export interface SchockenHouseRules {
+    stockCoasters: number;               // Default: 13 Deckel
+    juleEnabled: boolean;                // Default: true (4-2-1 = 7 Deckel)
+    placementMode: 'dynamic_participants' | 'fixed_top3';
+    schockOutMatrixBonusPoints: number;  // Default: +1 matrix point per Schock-Out thrown
+    cleanSheetMatrixBonusPoints: number; // Default: +1 matrix point for 0 lost halves
+    halfLossPenaltyEur: number;          // Default: 1.00 €
+    finalLossPenaltyEur: number;         // Default: 2.00 €
+    doubleHalfLossPenaltyEur: number;    // Default: 2.00 €
+}
+
+export interface KegelnHouseRules {
+    placementMode: 'dynamic_participants' | 'fixed_top3';
+    alleNeuneMatrixBonusPoints: number;  // Default: +1 matrix point per Alle Neune
+    kranzMatrixBonusPoints: number;      // Default: +1 matrix point per Kranz
+    pudelPenaltyEur: number;             // Default: 0.50 €
+    autoBookPudelPenalty: boolean;       // Default: true
+    pudelKingPenaltyEur: number;         // Default: 2.00 €
+}
+
+export interface ClubRulesetConfig {
+    kniffel: KniffelHouseRules;
+    schocken: SchockenHouseRules;
+    kegeln: KegelnHouseRules;
+    customPenaltyCatalog: CustomPenaltyCatalogItem[];
+}
+
+export interface ClubTenant {
+    id: string;                      // e.g. "club_original"
+    slug: string;                    // URL-friendly slug, e.g. "stammtisch"
+    name: string;                    // Display title
+    subtitle?: string;
+    creatorUid: string;
+    enabledGames: GameDisciplineId[];
+    defaultGame: GameDisciplineId;
+    theme: ClubThemeConfig;
+    paymentConfig: ClubPaymentConfig;
+    cashConfig: CashConfig;
+    ruleset?: ClubRulesetConfig;
+    createdAt?: any;
+    migratedAt?: any;
+}
+
+export interface GlobalUserProfile {
+    uid: string;
+    name: string;
+    email: string;
+    defaultClubId: string;
+    clubIds: string[];
+    isSuperAdmin?: boolean;
+    updatedAt?: any;
+}
+
+
+export interface ClubInvite {
+    code: string;
+    clubId: string;
+    clubName: string;
+    createdBy: string;
+    createdAt?: any;
+    expiresAt?: any | null;
+    maxUses?: number | null;
+    usedCount: number;
+    active: boolean;
+}
+
+export interface PendingDeposit {
+    id: string;
+    userId: string;
+    memberName: string;
+    amount: number;
+    referenceToken: string;
+    note?: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt?: any;
+    resolvedAt?: any;
+    resolvedBy?: string;
 }

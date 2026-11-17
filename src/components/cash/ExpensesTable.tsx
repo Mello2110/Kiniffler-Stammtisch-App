@@ -3,9 +3,10 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { Trash2, Plus, Search, Pencil } from "lucide-react";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, getDocs, where } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, setDoc, serverTimestamp, getDocs, where } from "firebase/firestore";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { Expense, Member } from "@/types";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 
@@ -19,6 +20,7 @@ interface ExpensesTableProps {
 }
 
 export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps) {
+    const { clubId, clubCollection, clubDoc } = useClub();
     // ============================================
     // STATE
     // ============================================
@@ -37,10 +39,10 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
     const handleCleanDatabase = async () => {
         setIsCleaning(true);
         try {
-            const expensesSnap = await getDocs(collection(db, "expenses"));
+            const expensesSnap = await getDocs(clubCollection("expenses"));
             const validExpenseIds = new Set(expensesSnap.docs.map(doc => doc.id));
 
-            const ledgerSnap = await getDocs(collection(db, "ledger_entries"));
+            const ledgerSnap = await getDocs(clubCollection("ledger_entries"));
 
             let deletedCount = 0;
             for (const docSnap of ledgerSnap.docs) {
@@ -66,7 +68,7 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
     // ============================================
     // HOOKS
     // ============================================
-    const q = useMemo(() => query(collection(db, "expenses"), orderBy("date", "desc")), []);
+    const q = useMemo(() => query(clubCollection("expenses"), orderBy("date", "desc")), [clubId, clubCollection]);
     const { data: expenses } = useFirestoreQuery<Expense>(q);
 
     // ============================================
@@ -82,19 +84,18 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
         const parsedAmount = parseFloat(amount);
 
         try {
-            // 1. Create expense record (for ExpensesTable display & TransactionHistory)
-            const expenseRef = await addDoc(collection(db, "expenses"), {
+            const expensePayload = {
                 description: desc,
                 amount: parsedAmount,
                 date,
                 memberId: selectedMemberId,
                 memberName: member.name,
                 createdAt: serverTimestamp()
-            });
+            };
+            // 1. Create expense record in club-scoped collection
+            const expenseRef = await addDoc(clubCollection("expenses"), expensePayload);
 
-            // 2. Positive ledger entry for the member — they advanced this money.
-            //    Increases their Guthaben (or offsets their debt).
-            await addDoc(collection(db, "ledger_entries"), {
+            const memberLedgerPayload = {
                 userId: selectedMemberId,
                 amount: parsedAmount,
                 type: "expense",
@@ -102,11 +103,11 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
                 date,
                 createdAt: serverTimestamp(),
                 linkedDocId: expenseRef.id,
-            });
+            };
+            // 2. Positive ledger entry for the member
+            await addDoc(clubCollection("ledger_entries"), memberLedgerPayload);
 
-            // 3. Negative ledger entry for system — this money left the Kasse.
-            //    Reduces the overall Kassenstand via totalNegativeBalance.
-            await addDoc(collection(db, "ledger_entries"), {
+            const sysLedgerPayload = {
                 userId: "system",
                 amount: -parsedAmount,
                 type: "expense",
@@ -114,7 +115,15 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
                 date,
                 createdAt: serverTimestamp(),
                 linkedDocId: expenseRef.id,
-            });
+            };
+            // 3. Negative ledger entry for system
+            await addDoc(clubCollection("ledger_entries"), sysLedgerPayload);
+
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "expenses", expenseRef.id), expensePayload).catch(() => {});
+                await addDoc(collection(db, "ledger_entries"), memberLedgerPayload).catch(() => {});
+                await addDoc(collection(db, "ledger_entries"), sysLedgerPayload).catch(() => {});
+            }
 
             setDesc("");
             setAmount("");
@@ -128,14 +137,17 @@ export function ExpensesTable({ onEdit, canManage, members }: ExpensesTableProps
     const handleDelete = async () => {
         if (!deletingExpense) return;
         try {
-            // First, delete any attached ledger entries
-            const q = query(collection(db, "ledger_entries"), where("linkedDocId", "==", deletingExpense.id));
+            // First, delete any attached ledger entries in club
+            const q = query(clubCollection("ledger_entries"), where("linkedDocId", "==", deletingExpense.id));
             const snapshot = await getDocs(q);
             const deletePromises = snapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
             await Promise.all(deletePromises);
 
             // Then delete the expense itself
-            await deleteDoc(doc(db, "expenses", deletingExpense.id));
+            await deleteDoc(clubDoc("expenses", deletingExpense.id));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "expenses", deletingExpense.id)).catch(() => {});
+            }
             setDeletingExpense(null);
         } catch (error) {
             console.error("Error deleting expense:", error);

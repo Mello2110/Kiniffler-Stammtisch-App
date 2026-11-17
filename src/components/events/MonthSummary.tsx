@@ -1,8 +1,10 @@
 import { useMemo, useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { Trophy, Calendar as CalendarIcon, MapPin, Trash2, Pencil, CalendarPlus } from "lucide-react";
-import { deleteDoc, doc, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { deleteDoc, doc, addDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { DeleteConfirmationModal } from "@/components/common/DeleteConfirmationModal";
 import { EditEventModal } from "@/components/events/EditEventModal";
 import { SetEventItem } from "@/components/events/SetEventItem";
@@ -22,6 +24,8 @@ interface MonthSummaryProps {
 }
 
 export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, totalMembers, members, dict, onCreateEvent }: MonthSummaryProps) {
+    const { clubId, clubCollection, clubDoc } = useClub();
+    const { language } = useLanguage();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [editingEvent, setEditingEvent] = useState<SetEvent | null>(null);
 
@@ -62,7 +66,7 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
             if (!hasEvent) {
                 const createAutoEvent = async () => {
                     try {
-                        await addDoc(collection(db, "set_events"), {
+                        const payload = {
                             title: `Stammtisch ${format(parseISO(winningDate), "MMMM")}`,
                             date: winningDate,
                             time: "20:00",
@@ -72,7 +76,11 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                             year: parseISO(winningDate).getFullYear(),
                             createdBy: currentUserId,
                             createdAt: serverTimestamp()
-                        });
+                        };
+                        const newEvRef = await addDoc(clubCollection("set_events"), payload);
+                        if (clubId === "club_original") {
+                            await setDoc(doc(db, "set_events", newEvRef.id), payload).catch(() => {});
+                        }
                     } catch (err) {
                         console.error("Failed to auto-create event", err);
                     }
@@ -80,12 +88,15 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                 createAutoEvent();
             }
         }
-    }, [uniqueVotersCount, totalMembers, topDates, setEvents, currentUserId]);
+    }, [uniqueVotersCount, totalMembers, topDates, setEvents, currentUserId, clubId, clubCollection]);
 
     const handleDelete = async () => {
         if (!deletingId) return;
         try {
-            await deleteDoc(doc(db, "set_events", deletingId));
+            await deleteDoc(clubDoc("set_events", deletingId));
+            if (clubId === "club_original") {
+                await deleteDoc(doc(db, "set_events", deletingId)).catch(() => {});
+            }
             setDeletingId(null);
         } catch (error) {
             console.error("Error deleting event:", error);
@@ -94,18 +105,18 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
 
     return (
         <div className="grid gap-6 md:grid-cols-2">
-            {/* Top Stammtisch Date Card */}
+            {/* Top Datum Card */}
             <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-6 shadow-sm relative overflow-hidden h-fit">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
+                <div className="pointer-events-none absolute top-0 right-0 p-4 opacity-10">
                     <Trophy className="h-24 w-24 text-yellow-500" />
                 </div>
 
-                <h3 className="text-lg font-bold flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+                <h3 className="relative z-10 text-lg font-bold flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
                     <Trophy className="h-5 w-5" />
-                    Top Stammtisch Date
+                    {language === "de" ? "Top Datum" : "Top Date"}
                 </h3>
 
-                <div className="mt-4">
+                <div className="relative z-10 mt-4">
                     {topDates.length > 0 ? (
                         <div className="space-y-4">
                             {topDates.length > 1 && (
@@ -129,11 +140,13 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                                                         </div>
                                                     )}
                                                     <button
+                                                        type="button"
                                                         onClick={() => onCreateEvent(parseISO(item.dateStr))}
-                                                        className="p-1.5 rounded-full hover:bg-muted text-muted-foreground/50 hover:text-foreground transition-colors"
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-primary/15 text-primary hover:bg-primary/25 text-xs font-bold transition-colors cursor-pointer"
                                                         title={dict.events.modal.summary.createStammtisch}
                                                     >
-                                                        <CalendarPlus className="h-4 w-4" />
+                                                        <CalendarPlus className="h-3.5 w-3.5" />
+                                                        <span className="hidden sm:inline">Fixieren</span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -194,13 +207,12 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                 </div>
             </div>
 
-            {/* Set Events List - Transparent Purple */}
+            {/* Set Events List */}
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 shadow-sm h-fit">
-                <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
-                    <CalendarIcon className="h-5 w-5 text-primary" />
-                    Set Events
-                </h3>
-
+                <div className="flex items-center justify-between gap-2 mb-4">
+                    <h3 className="text-lg font-bold flex items-center gap-2"><CalendarIcon className="h-5 w-5 text-primary" />Set Events</h3>
+                    <button type="button" onClick={() => onCreateEvent(currentMonth)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary text-xs font-bold transition-colors cursor-pointer"><CalendarPlus className="h-3.5 w-3.5" />Hinzufügen</button>
+                </div>
                 {setEvents.length > 0 ? (
                     <div className="space-y-4">
                         {setEvents.map(event => (

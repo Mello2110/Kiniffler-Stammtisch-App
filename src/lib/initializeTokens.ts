@@ -1,9 +1,10 @@
 import { db } from './firebase';
-import { collection, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { DEFAULT_CLUB_ID, getClubCollection, getClubDoc } from '@/lib/clubPaths';
 
-export async function initializeMemberTokens() {
+export async function initializeMemberTokens(clubId: string = DEFAULT_CLUB_ID) {
     console.log('Starting token initialization...');
-    const membersSnap = await getDocs(collection(db, 'members'));
+    const membersSnap = await getDocs(getClubCollection(clubId, 'members'));
     const batch = writeBatch(db);
     const currentYear = new Date().getFullYear();
 
@@ -13,15 +14,13 @@ export async function initializeMemberTokens() {
 
         // Only initialize if not already done
         if (memberData.tokenBalance === undefined) {
-            // Update member denormalized balance
-            batch.update(doc(db, 'members', memberId), {
+            batch.update(getClubDoc(clubId, 'members', memberId), {
                 tokenBalance: 2,
                 tokenShinyBalance: 0
             });
 
-            // Create initial transaction record
-            const transRef = doc(collection(db, 'tokenTransactions'));
-            batch.set(transRef, {
+            const transRef = doc(getClubCollection(clubId, 'tokenTransactions'));
+            const txPayload = {
                 id: transRef.id,
                 memberId,
                 amount: 2,
@@ -30,7 +29,8 @@ export async function initializeMemberTokens() {
                 reason: 'Startguthaben',
                 timestamp: serverTimestamp(),
                 year: currentYear
-            });
+            };
+            batch.set(transRef, txPayload);
         }
     });
 

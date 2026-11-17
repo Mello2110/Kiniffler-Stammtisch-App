@@ -21,40 +21,59 @@ export async function createLedgerEntry(
     type: LedgerTransactionCategory,
     description: string,
     paypalTxId?: string,
-    linkedDocId?: string
+    linkedDocId?: string,
+    transactionDateIso?: string,
+    clubId: string = 'club_original'
 ): Promise<boolean> {
     try {
-        await db.runTransaction(async (transaction) => {
+        const created = await db.runTransaction(async (transaction) => {
+            const clubLedgersCol = db.collection('clubs').doc(clubId).collection('ledger_entries');
+            const rootLedgersCol = db.collection('ledger_entries');
+
             // Idempotency check if paypalTxId is provided
             if (paypalTxId) {
-                const existingSnap = await transaction.get(
-                    db.collection('ledger_entries').where('paypalTxId', '==', paypalTxId).limit(1)
+                const existingClubSnap = await transaction.get(
+                    clubLedgersCol.where('paypalTxId', '==', paypalTxId).limit(1)
                 );
-                if (!existingSnap.empty) {
-                    console.log(`Ledger entry for PayPal Tx ${paypalTxId} already exists. Skipping.`);
-                    return false; // Skip
+                if (!existingClubSnap.empty) {
+                    console.log(`Ledger entry for PayPal Tx ${paypalTxId} already exists in club ${clubId}. Skipping.`);
+                    return false;
+                }
+                if (clubId === 'club_original') {
+                    const existingRootSnap = await transaction.get(
+                        rootLedgersCol.where('paypalTxId', '==', paypalTxId).limit(1)
+                    );
+                    if (!existingRootSnap.empty) {
+                        console.log(`Ledger entry for PayPal Tx ${paypalTxId} already exists in root. Skipping.`);
+                        return false;
+                    }
                 }
             }
 
-            const docRef = db.collection('ledger_entries').doc();
+            const docRef = clubLedgersCol.doc();
+            const effectiveDateIso = transactionDateIso || new Date().toISOString();
             const newEntry: Partial<LedgerEntry> = {
                 id: docRef.id,
                 userId,
                 amount,
                 type,
                 description,
-                date: new Date().toISOString(),
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                date: effectiveDateIso,
+                createdAt: admin.firestore.Timestamp.fromDate(new Date(effectiveDateIso)),
             };
 
             if (paypalTxId) newEntry.paypalTxId = paypalTxId;
             if (linkedDocId) newEntry.linkedDocId = linkedDocId;
 
             transaction.set(docRef, newEntry);
+            // Non-destructive dual write to root ledger_entries for club_original
+            if (clubId === 'club_original') {
+                transaction.set(rootLedgersCol.doc(docRef.id), newEntry);
+            }
             return true;
         });
 
-        return true;
+        return created;
     } catch (error) {
         console.error('Error creating ledger entry:', error);
         return false;

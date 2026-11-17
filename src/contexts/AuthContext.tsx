@@ -36,13 +36,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             try {
-                // Verify user is an authorized member
-                const userRef = doc(db, "members", currentUser.uid);
-                const userSnap = await getDoc(userRef);
+                // 1. Check global multi-tenant user directory (/users/{uid}) or primary club (/clubs/club_original/members/{uid})
+                const globalUserRef = doc(db, "users", currentUser.uid);
+                const globalUserSnap = await getDoc(globalUserRef);
 
-                if (!userSnap.exists()) {
-                    // Registration paused: Unauthorized users are immediately signed out
-                    console.warn("Unauthorized login rejected - user not in members:", currentUser.uid);
+                let targetClubId = "club_original";
+                if (globalUserSnap.exists() && globalUserSnap.data().defaultClubId) {
+                    targetClubId = globalUserSnap.data().defaultClubId;
+                }
+
+                const clubMemberRef = doc(db, "clubs", targetClubId, "members", currentUser.uid);
+                const clubMemberSnap = await getDoc(clubMemberRef);
+
+                // Fallback check on legacy root collection
+                const legacyUserRef = doc(db, "members", currentUser.uid);
+                const legacyUserSnap = await getDoc(legacyUserRef);
+
+                const isInviteFlow =
+                    typeof window !== "undefined" &&
+                    (window.location.pathname.startsWith("/join") ||
+                        (window.location.pathname === "/login" && window.location.search.includes("join")));
+
+                if (!clubMemberSnap.exists() && !legacyUserSnap.exists() && !isInviteFlow) {
+                    // Registration paused: Unauthorized users are immediately signed out unless joining via invite link
+                    console.warn("Unauthorized login rejected - user not in club members:", currentUser.uid);
                     await signOut(auth);
                     setUser(null);
                     setLoading(false);
@@ -50,9 +67,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
 
                 // Update existing profile with latest auth info if needed
-                await setDoc(userRef, {
-                    email: currentUser.email,
-                }, { merge: true });
+                if (clubMemberSnap.exists()) {
+                    await setDoc(clubMemberRef, {
+                        email: currentUser.email,
+                    }, { merge: true });
+                }
+                if (legacyUserSnap.exists()) {
+                    await setDoc(legacyUserRef, {
+                        email: currentUser.email,
+                    }, { merge: true });
+                }
 
                 setUser(currentUser);
             } catch (error) {
@@ -79,13 +103,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const provider = new GoogleAuthProvider();
             const res = await signInWithPopup(auth, provider);
 
-            // Double check member document
-            const userRef = doc(db, "members", res.user.uid);
-            const userSnap = await getDoc(userRef);
+            // Double check member document (multi-tenant or legacy)
+            const globalUserSnap = await getDoc(doc(db, "users", res.user.uid));
+            const targetClubId = globalUserSnap.exists() ? (globalUserSnap.data().defaultClubId || "club_original") : "club_original";
+            const clubMemberSnap = await getDoc(doc(db, "clubs", targetClubId, "members", res.user.uid));
+            const userSnap = await getDoc(doc(db, "members", res.user.uid));
 
-            if (!userSnap.exists()) {
+            const isInviteFlow =
+                typeof window !== "undefined" &&
+                (window.location.pathname.startsWith("/join") ||
+                    window.location.search.includes("join"));
+
+            if (!clubMemberSnap.exists() && !userSnap.exists() && !isInviteFlow) {
                 await signOut(auth);
                 throw new Error("NOT_REGISTERED");
+            }
+
+            if (isInviteFlow && typeof window !== "undefined") {
+                const params = new URLSearchParams(window.location.search);
+                const redirectTarget = params.get("redirect");
+                if (redirectTarget && redirectTarget.startsWith("/join")) {
+                    router.push(redirectTarget);
+                    return;
+                }
             }
 
             router.push("/dashboard");

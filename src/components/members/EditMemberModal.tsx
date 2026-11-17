@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Loader2, Award, Calendar, Cake, Mail } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useClub } from "@/contexts/ClubContext";
 import type { Member } from "@/types";
 import { manageBirthdayEvents } from "@/lib/eventUtils";
 
@@ -27,6 +28,7 @@ const ROLES = [
 ] as const;
 
 export function EditMemberModal({ member, members = [], onClose }: EditMemberModalProps) {
+    const { clubId, clubDoc } = useClub();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form State
@@ -44,11 +46,12 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
 
     // Toggle Role
     const toggleRole = (roleToCheck: string) => {
-        if (roleToCheck === "Admin") {
-            // Admin check: Only check if TAKEN by OTHERS.
-            const isAdminTaken = members.some(m => m.id !== member.id && (m.roles?.includes("Admin") || m.role === "Admin"));
-            if (isAdminTaken && !selectedRoles.includes("Admin")) {
-                alert("Es gibt bereits einen Admin. Die Rolle kann nur einmal vergeben werden.");
+        if (roleToCheck === "Admin" && selectedRoles.includes("Admin")) {
+            const otherAdmins = members.filter(
+                (m) => m.id !== member.id && (m.isAdmin === true || m.roles?.includes("Admin") || m.role === "Admin")
+            );
+            if (otherAdmins.length === 0) {
+                alert("Mindestens ein Admin ist erforderlich. Ernenne zuerst ein anderes Mitglied zum Co-Admin, bevor du diese Admin-Rolle entfernst.");
                 return;
             }
         }
@@ -65,22 +68,21 @@ export function EditMemberModal({ member, members = [], onClose }: EditMemberMod
 
         setIsSubmitting(true);
         try {
-            const ref = doc(db, "members", member.id);
-            await updateDoc(ref, {
-                // Name is read-only in UI, so we don't update it to avoid accidents
-                role: selectedRoles[0] || "Fußvolk", // Primary role for legacy compatibility
+            const payload = {
+                role: selectedRoles[0] || "Fußvolk",
                 roles: selectedRoles,
                 joinYear: parseInt(joinYear),
                 birthday: birthday,
                 paypalName: paypalName.trim(),
                 isAdmin: selectedRoles.includes("Admin")
-            });
+            };
+            await updateDoc(clubDoc("members", member.id), payload);
+            if (clubId === "club_original") {
+                await updateDoc(doc(db, "members", member.id), payload).catch(() => {});
+            }
 
-            // Sync calendar events ONLY if birthday actually changed — and fire-and-forget
-            // (no await) so it never blocks the modal from closing, even if Firestore
-            // has a connectivity issue or a missing index.
             if (birthday !== member.birthday) {
-                manageBirthdayEvents(member.id, name.trim(), birthday).catch(err =>
+                manageBirthdayEvents(member.id, name.trim(), birthday, clubId).catch(err =>
                     console.warn("Birthday event sync failed (non-critical):", err)
                 );
             }

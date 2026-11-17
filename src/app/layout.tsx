@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ClubProvider } from "@/contexts/ClubContext";
 import { ClientLayout } from "@/components/layout/ClientLayout";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { LedgerProvider } from "@/contexts/LedgerContext";
@@ -17,10 +18,11 @@ const outfit = Outfit({
 });
 
 export const viewport: Viewport = {
-  width: 768,
-  initialScale: 0.5, // Optional hint, but width usually overrides
+  width: "device-width",
+  initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -41,11 +43,13 @@ export default function RootLayout({
       >
         <LanguageProvider>
           <AuthProvider>
-            <LedgerProvider>
-              <ClientLayout>
-                {children}
-              </ClientLayout>
-            </LedgerProvider>
+            <ClubProvider>
+              <LedgerProvider>
+                <ClientLayout>
+                  {children}
+                </ClientLayout>
+              </LedgerProvider>
+            </ClubProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>

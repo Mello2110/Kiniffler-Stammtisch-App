@@ -7,24 +7,26 @@ import { useFirestoreDocument } from "@/hooks/useFirestoreDocument";
 import { useFirestoreQuery } from "@/hooks/useFirestoreQuery";
 import { Wallet, TrendingDown, Users, CreditCard, Receipt, PiggyBank, Scale } from "lucide-react";
 import { useAllLedgers } from "@/hooks/useLedger";
+import { useClub } from "@/contexts/ClubContext";
 import type { Member, Penalty, Donation, Expense } from "@/types";
 
 export function CashBalance({ members = [], totalOutstanding = 0 }: { members?: Member[]; totalOutstanding?: number }) {
+    const { clubId, clubCollection, clubDoc } = useClub();
     // 1. Fetch All Ledgers
     const { entries: allLedgers } = useAllLedgers();
 
     // 2. Fetch Additional Stats (Penalties, Donations, Expenses)
-    const qPenalties = useMemo(() => query(collection(db, "penalties")), []);
+    const qPenalties = useMemo(() => query(clubCollection("penalties")), [clubId, clubCollection]);
     const { data: penalties } = useFirestoreQuery<Penalty>(qPenalties);
 
-    const qDonations = useMemo(() => query(collection(db, "donations")), []);
+    const qDonations = useMemo(() => query(clubCollection("donations")), [clubId, clubCollection]);
     const { data: donations } = useFirestoreQuery<Donation>(qDonations);
 
-    const qExpenses = useMemo(() => query(collection(db, "expenses")), []);
+    const qExpenses = useMemo(() => query(clubCollection("expenses")), [clubId, clubCollection]);
     const { data: expenses } = useFirestoreQuery<Expense>(qExpenses);
 
     // 3. Fetch Start Balance Config
-    const configRef = useMemo(() => doc(db, "config", "cash"), []);
+    const configRef = useMemo(() => clubDoc("config", "cash"), [clubId, clubDoc]);
     const { data: configData } = useFirestoreDocument<{ startingBalance: number }>(configRef);
 
     // Calculations
@@ -116,7 +118,7 @@ export function CashBalance({ members = [], totalOutstanding = 0 }: { members?: 
                 </div>
                 <div>
                     <div className="text-xs text-muted-foreground mb-1">Spenden gesamt</div>
-                    <div className="font-semibold text-purple-500 flex items-center gap-1">
+                    <div className="font-semibold text-accent flex items-center gap-1">
                         <PiggyBank className="h-3 w-3" />
                         €{donationsTotal.toFixed(2)}
                     </div>
