@@ -265,6 +265,8 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
 
         const directSnap = await getDoc(doc(db, "clubs", targetClubIdOrSlug));
         if (directSnap.exists()) {
+            const loaded = { id: directSnap.id, ...directSnap.data() } as ClubTenant;
+            setAvailableClubs((prev) => [...prev.filter((c) => c.id !== loaded.id), loaded]);
             setClubId(directSnap.id);
             if (typeof window !== "undefined") {
                 localStorage.setItem("kanpai_active_club_id", directSnap.id);
@@ -276,6 +278,8 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         const slugSnap = await getDocs(slugQ);
         if (!slugSnap.empty) {
             const foundDoc = slugSnap.docs[0];
+            const loaded = { id: foundDoc.id, ...foundDoc.data() } as ClubTenant;
+            setAvailableClubs((prev) => [...prev.filter((c) => c.id !== loaded.id), loaded]);
             setClubId(foundDoc.id);
             if (typeof window !== "undefined") {
                 localStorage.setItem("kanpai_active_club_id", foundDoc.id);

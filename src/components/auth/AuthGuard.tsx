@@ -11,27 +11,43 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     useEffect(() => {
-        if (!loading) {
-            const isPublicPath = pathname === "/login" || pathname === "/" || pathname.startsWith("/join");
+        if (loading) return;
 
-            if (!user) {
-                if (pathname.startsWith("/onboarding")) {
-                    router.push("/login?mode=register&redirect=/onboarding");
-                } else if (!isPublicPath) {
-                    router.push("/login");
-                }
-            } else {
-                const isAllowedWithoutClub =
-                    pathname === "/" ||
-                    pathname.startsWith("/join") ||
-                    pathname.startsWith("/onboarding");
+        const isPublicPath = pathname === "/login" || pathname === "/" || pathname.startsWith("/join");
 
-                if (!hasClubMembership && !isAllowedWithoutClub) {
-                    router.push("/onboarding");
-                } else if (hasClubMembership && pathname === "/login") {
-                    router.push("/dashboard");
-                }
+        if (!user) {
+            if (pathname.startsWith("/onboarding")) {
+                router.push("/login?mode=register&redirect=/onboarding");
+            } else if (!isPublicPath) {
+                router.push("/login");
             }
+            return;
+        }
+
+        const redirectTarget =
+            typeof window !== "undefined"
+                ? new URLSearchParams(window.location.search).get("redirect")
+                : null;
+        const hasValidLoginRedirect =
+            pathname === "/login" &&
+            !!redirectTarget &&
+            (redirectTarget.startsWith("/join") || redirectTarget.startsWith("/onboarding"));
+
+        if (hasValidLoginRedirect && redirectTarget) {
+            router.push(redirectTarget);
+            return;
+        }
+
+        const isAllowedWithoutClub =
+            pathname === "/" ||
+            pathname === "/login" ||
+            pathname.startsWith("/join") ||
+            pathname.startsWith("/onboarding");
+
+        if (!hasClubMembership && !isAllowedWithoutClub) {
+            router.push("/onboarding");
+        } else if (hasClubMembership && pathname === "/login") {
+            router.push("/dashboard");
         }
     }, [user, hasClubMembership, loading, pathname, router]);
 
@@ -53,6 +69,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     const isAllowedWithoutClub =
         pathname === "/" ||
+        pathname === "/login" ||
         pathname.startsWith("/join") ||
         pathname.startsWith("/onboarding");
     if (user && !hasClubMembership && !isAllowedWithoutClub) {
