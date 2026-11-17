@@ -394,7 +394,7 @@ export default function StatistikenPage() {
                             <span className="text-[10px] uppercase font-bold tracking-widest">Spieler</span>
                         </div>
                         <div className="h-8 w-px bg-border" />
-                        <BarChart3 className="h-6 w-6 md:h-8 md:w-8 opacity-20" />
+                        <BarChart3 className="h-6 w-6 md:h-8 md:w-8 text-accent/50" />
                     </div>
                 </div>
                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />

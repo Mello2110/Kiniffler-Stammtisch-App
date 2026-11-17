@@ -177,20 +177,25 @@ export default function FeedbackPage() {
     return (
         <div className="space-y-6 w-full max-w-full overflow-x-hidden pb-16">
             {/* Header */}
-            <div className="kanpai-hero-banner rounded-3xl border border-white/10 p-6 sm:p-8 md:p-10 flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                    <MessageSquarePlus className="h-8 w-8 text-primary" />
-                    <EditableHeader
-                        pageId="feedback"
-                        headerId="page-title"
-                        defaultText={dict.headers.feedback.title}
-                        as="h2"
-                        className="text-3xl font-bold font-heading"
-                    />
+            <div className="kanpai-hero-banner rounded-3xl border border-white/10 p-6 sm:p-8 md:p-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                        <MessageSquarePlus className="h-8 w-8 text-primary" />
+                        <EditableHeader
+                            pageId="feedback"
+                            headerId="page-title"
+                            defaultText={dict.headers.feedback.title}
+                            as="h2"
+                            className="text-3xl font-bold font-heading"
+                        />
+                    </div>
+                    <p className="text-muted-foreground">
+                        {dict.headers.feedback.subtext}
+                    </p>
                 </div>
-                <p className="text-muted-foreground">
-                    {dict.headers.feedback.subtext}
-                </p>
+                <div className="hidden sm:flex items-center gap-4 text-muted-foreground shrink-0">
+                    <MessageSquarePlus className="h-8 w-8 text-accent/50" />
+                </div>
             </div>
 
             {/* Tabs Navigation */}

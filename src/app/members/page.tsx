@@ -40,7 +40,7 @@ export default function MembersPage() {
                             <span className="text-xs uppercase font-bold tracking-widest">{dict.members.countLabel}</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
-                        <Users className="h-8 w-8 opacity-20" />
+                        <Users className="h-8 w-8 text-accent/50" />
                     </div>
                 </div>
 

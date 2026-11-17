@@ -211,7 +211,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                             <span className="text-xs uppercase font-bold tracking-widest">Sessions {selectedYear}</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
-                        {React.createElement(getDisciplineIcon(activeDiscipline), { className: "h-8 w-8 opacity-20" })}
+                        {React.createElement(getDisciplineIcon(activeDiscipline), { className: "h-8 w-8 text-accent/50" })}
                     </div>
                 </div>
 

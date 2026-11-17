@@ -34,8 +34,23 @@ export function Footer() {
     return (
         <footer className="w-full border-t border-border py-4 text-xs text-muted-foreground bg-background/50 backdrop-blur-sm">
             <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2 opacity-70">
-                    <span className="font-bold tracking-widest text-primary/70">KANPAI</span>
+                <div className="flex items-center gap-2.5">
+                    <span className="font-bold tracking-widest text-primary/75">KANPAI</span>
+                    <span className="text-[11px] text-muted-foreground/60 font-medium lowercase">by</span>
+                    <a
+                        href="https://mellow-solutions-hub.vercel.app"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center opacity-75 hover:opacity-100 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm"
+                        title="Mellow Solutions — Developer Hub & Portfolio"
+                        aria-label="Mellow Solutions Developer Hub & Portfolio"
+                    >
+                        <img
+                            src="/mellow-solutions-logo.png"
+                            alt="Mellow Solutions"
+                            className="h-3.5 sm:h-4 w-auto object-contain select-none"
+                        />
+                    </a>
                 </div>
                 <div className="flex items-center gap-4">
                     <p className="text-center whitespace-nowrap opacity-70">

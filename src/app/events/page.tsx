@@ -83,7 +83,7 @@ export default function EventsPage() {
                             <span className="text-xs uppercase font-bold tracking-widest">{dict.sidebar.events}</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
-                        <PartyPopper className="h-8 w-8 opacity-20" />
+                        <PartyPopper className="h-8 w-8 text-accent/50" />
                     </div>
                 </div>
 

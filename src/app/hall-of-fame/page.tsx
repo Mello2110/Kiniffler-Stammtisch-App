@@ -355,7 +355,7 @@ export default function HallOfFamePage() {
                             <span className="text-xs uppercase font-bold tracking-widest">Kategorien</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
-                        <Crown className="h-8 w-8 opacity-20" />
+                        <Crown className="h-8 w-8 text-accent/50" />
                     </div>
                 </div>
 

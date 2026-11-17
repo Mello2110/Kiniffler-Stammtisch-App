@@ -172,6 +172,9 @@ export default function OptionsPage() {
                             {dict.headers.options.subtext}
                         </p>
                     </div>
+                    <div className="hidden sm:flex items-center gap-4 text-muted-foreground">
+                        <Settings className="h-8 w-8 text-accent/50" />
+                    </div>
                 </div>
                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
             </div>

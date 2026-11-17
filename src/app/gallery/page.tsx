@@ -43,7 +43,7 @@ export default function GalleryPage() {
                             <span className="text-xs uppercase font-bold tracking-widest">Jahre Fokus</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
-                        <Camera className="h-8 w-8 opacity-20" />
+                        <Camera className="h-8 w-8 text-accent/50" />
                     </div>
                 </div>
 

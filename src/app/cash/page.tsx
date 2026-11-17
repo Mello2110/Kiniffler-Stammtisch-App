@@ -112,7 +112,7 @@ export default function CashPage() {
                             <span className="text-2xl font-black text-foreground outfit">€</span>
                             <span className="text-xs uppercase font-bold tracking-widest">Euro</span>
                         </div>
-                        <PiggyBank className="hidden sm:block h-8 w-8 opacity-20" />
+                        <PiggyBank className="hidden sm:block h-8 w-8 text-accent/50" />
                     </div>
                 </div>
             </div>
