@@ -366,13 +366,13 @@ export function DashboardView() {
 
                 {/* Stats Grid */}
                 <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Link href="/members">
+                    <Link href="/cash">
                         <StatCard
-                            title={dict.dashboard.widgets.members.title}
-                            value={members.length}
-                            icon={Users}
-                            description={dict.dashboard.widgets.members.desc}
-                            className="hover:border-primary/50 transition-colors h-full cursor-pointer"
+                            title={dict.dashboard.widgets.cash.title}
+                            value={`€${currentCashBalance.toFixed(2)}`}
+                            icon={Beer}
+                            description={dict.dashboard.widgets.cash.desc}
+                            className="border-red-500/20 hover:border-red-500/50 transition-colors h-full cursor-pointer"
                         />
                     </Link>
 
@@ -402,13 +402,13 @@ export function DashboardView() {
                         />
                     </Link>
 
-                    <Link href="/cash">
+                    <Link href="/members">
                         <StatCard
-                            title={dict.dashboard.widgets.cash.title}
-                            value={`€${currentCashBalance.toFixed(2)}`}
-                            icon={Beer}
-                            description={dict.dashboard.widgets.cash.desc}
-                            className="border-red-500/20 hover:border-red-500/50 transition-colors h-full cursor-pointer"
+                            title={dict.dashboard.widgets.members.title}
+                            value={members.length}
+                            icon={Users}
+                            description={dict.dashboard.widgets.members.desc}
+                            className="hover:border-primary/50 transition-colors h-full cursor-pointer"
                         />
                     </Link>
 
