@@ -20,10 +20,12 @@ const messaging = firebase.messaging();
 // ============================================
 // v10: Force clear all old caches to flush stale avatar JS bundles.
 // NEVER cache page HTML (navigation requests).
-const CACHE_NAME = 'kp-v10';
+const CACHE_NAME = 'kp-v11';
 const STATIC_ASSETS = [
     '/manifest.json',
-    '/kanpai-icon.jpg',
+    '/icon-192.png',
+    '/icon-512.png',
+    '/apple-touch-icon.png',
     '/landing-icon.jpg',
     '/kanpai-logo.png',
 ];
