@@ -12,9 +12,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { triggerHaptic } from "@/lib/haptics";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function MobileBottomNav() {
     const pathname = usePathname();
+    const { language } = useLanguage();
 
     const tabs = [
         {
@@ -24,25 +26,25 @@ export function MobileBottomNav() {
             match: (p: string) => p === "/dashboard" || p.startsWith("/club/"),
         },
         {
-            label: "Spiele",
+            label: language === "de" ? "Spiele" : language === "pl" ? "Gry" : "Games",
             href: "/kniffel",
             icon: Dice5,
             match: (p: string) => p.startsWith("/kniffel") || p.includes("/game/"),
         },
         {
-            label: "Saison",
+            label: language === "de" ? "Saison" : language === "pl" ? "Sezon" : "Season",
             href: "/stats",
             icon: Trophy,
             match: (p: string) => p.startsWith("/stats") || p.startsWith("/statistiken") || p.startsWith("/hall-of-fame"),
         },
         {
-            label: "Kasse",
+            label: language === "de" ? "Kasse" : language === "pl" ? "Kasa" : "Cash",
             href: "/cash",
             icon: Wallet,
             match: (p: string) => p.startsWith("/cash"),
         },
         {
-            label: "Termine",
+            label: language === "de" ? "Termine" : language === "pl" ? "Terminy" : "Events",
             href: "/events",
             icon: Calendar,
             match: (p: string) => p.startsWith("/events"),

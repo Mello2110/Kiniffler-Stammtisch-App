@@ -158,14 +158,14 @@ export default function OptionsPage() {
     return (
         <div className="space-y-8 pb-10 max-w-7xl mx-auto w-full overflow-x-hidden">
             {/* Header */}
-            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner border border-white/10 p-6 sm:p-8 md:p-10 shadow-sm">
+            <div className="relative overflow-hidden rounded-2xl kanpai-hero-banner border border-white/10 p-5 sm:p-7 shadow-sm">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
                             <Settings className="h-3 w-3" />
                             {dict.headers.options.badge}
                         </div>
-                        <h1 className="text-4xl md:text-5xl font-black tracking-tight outfit">
+                        <h1 className="text-2xl sm:text-4xl font-black tracking-tight outfit">
                             {dict.headers.options.title} <span className="text-primary italic">{dict.headers.options.highlight}</span>
                         </h1>
                         <p className="text-muted-foreground text-lg leading-relaxed">
@@ -179,10 +179,10 @@ export default function OptionsPage() {
             {/* Vereins-Schnellzugriff (besonders praktisch am Smartphone über Tab 'Club') */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                    { href: "/members", label: "Mitglieder", desc: "Kader & Rollen", icon: Users },
-                    { href: "/gallery", label: "Galerie", desc: "Fotos & Abende", icon: ImageIcon },
-                    { href: "/feedback", label: "Feedback", desc: "Ideen & Bugs", icon: MessageSquarePlus },
-                    { href: "/profile", label: "Mein Profil", desc: "Avatar & Konto", icon: User },
+                    { href: "/members", label: dict.sidebar.members, desc: language === "en" ? "Roster & roles" : language === "pl" ? "Skład i role" : "Kader & Rollen", icon: Users },
+                    { href: "/gallery", label: dict.sidebar.gallery, desc: language === "en" ? "Photos & nights" : language === "pl" ? "Zdjęcia" : "Fotos & Abende", icon: ImageIcon },
+                    { href: "/feedback", label: dict.sidebar.feedback, desc: language === "en" ? "Ideas & bugs" : language === "pl" ? "Pomysły i błędy" : "Ideen & Bugs", icon: MessageSquarePlus },
+                    { href: "/profile", label: language === "en" ? "Profile" : language === "pl" ? "Profil" : "Mein Profil", desc: language === "en" ? "Avatar & account" : language === "pl" ? "Awatar i konto" : "Avatar & Konto", icon: User },
                 ].map((item) => {
                     const Icon = item.icon;
                     return (

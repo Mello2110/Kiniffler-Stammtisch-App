@@ -59,7 +59,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {showSimpleLayout ? (
-                    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-transparent animate-in fade-in duration-500">
+                    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-transparent">
                         {children}
                     </main>
                 ) : (
@@ -67,7 +67,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                         <Sidebar className="hidden lg:flex fixed inset-y-0 z-50 w-64" />
                         <div className="flex flex-1 flex-col min-w-0 max-w-full lg:pl-64 transition-all duration-300">
                             <Navbar />
-                            <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 pb-24 lg:pb-10 min-w-0 overflow-x-hidden animate-in fade-in duration-500">
+                            <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 pb-24 lg:pb-10 min-w-0 overflow-x-hidden">
                                 {children}
                             </main>
                             <div className="hidden lg:block">

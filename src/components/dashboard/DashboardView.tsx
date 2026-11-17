@@ -23,6 +23,8 @@ import { initializeMemberTokens } from "@/lib/initializeTokens";
 import { TokenPotModal } from "@/components/dashboard/TokenPotModal";
 import { ShinyEncounterModal } from "@/components/dashboard/ShinyEncounterModal";
 
+const completedTokenMaintenanceClubs = new Set<string>();
+
 export function DashboardView() {
     const { user } = useAuth();
     const { clubId, club, clubCollection, clubDoc } = useClub();
@@ -108,28 +110,25 @@ export function DashboardView() {
     ), [clubId, clubCollection, todayStr]);
     const { data: votes } = useFirestoreQuery<StammtischVote>(qVotes);
 
-    // 10. Automated Token Tasks (Initialization & Early Voter Bonus)
+    // 10. Automated Token Tasks (once per club/session, deferred so navigation stays instant)
     useEffect(() => {
-        const runTokenTasks = async () => {
-            if (!user || isInitialized) return;
+        if (!user || !clubId || completedTokenMaintenanceClubs.has(clubId)) return;
 
+        const timer = setTimeout(async () => {
+            completedTokenMaintenanceClubs.add(clubId);
             try {
-                // Initialize tokens for all members if needed
                 await initializeMemberTokens(clubId);
-                
-                // Process automated bonus for early voting
                 await TokenService.processMonthlyEarlyVoterBonus(clubId);
-                
                 setIsInitialized(true);
             } catch (err) {
                 console.error("Token task error:", err);
             }
-        };
+        }, 1200);
 
-        runTokenTasks();
-    }, [user, isInitialized]);
+        return () => clearTimeout(timer);
+    }, [user, clubId]);
 
-    // Update Member Balance via Wallet/Ledger
+        // Update Member Balance via Wallet/Ledger
     const { balance: memberBalance } = useLedger(user?.uid);
 
     // Fetch ALL ledgers

@@ -29,7 +29,7 @@ import { useTitle } from "@/contexts/TitleContext";
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const { logout, user } = useAuth();
-    const { dict } = useLanguage();
+    const { dict, language } = useLanguage();
     const { title, setTitle } = useTitle();
     const { clubId, availableClubs, switchClub, clubDoc } = useClub();
 
@@ -76,22 +76,22 @@ export function Sidebar({ className }: { className?: string }) {
 
     const primaryGroups = [
         {
-            title: "Hauptbereich",
+            title: language === "de" ? "Hauptbereich" : language === "pl" ? "Główne" : "Main",
             items: [
                 { icon: LayoutDashboard, label: dict.sidebar.dashboard, href: "/dashboard", match: (p: string) => p === "/dashboard" },
-                { icon: Dice5, label: "Spiele-Arena", href: "/kniffel", match: (p: string) => p.startsWith("/kniffel") || p.includes("/game/") },
-                { icon: Trophy, label: "Saison, Analyse & Ruhm", href: "/stats", match: (p: string) => p.startsWith("/stats") || p.startsWith("/statistiken") || p.startsWith("/hall-of-fame") },
+                { icon: Dice5, label: language === "de" ? "Spiele-Arena" : language === "pl" ? "Arena gier" : "Game Arena", href: "/kniffel", match: (p: string) => p.startsWith("/kniffel") || p.includes("/game/") },
+                { icon: Trophy, label: dict.sidebar.stats, href: "/stats", match: (p: string) => p.startsWith("/stats") || p.startsWith("/statistiken") || p.startsWith("/hall-of-fame") },
                 { icon: DollarSign, label: dict.sidebar.finances, href: "/cash", match: (p: string) => p.startsWith("/cash") },
             ],
         },
         {
-            title: "Vereinsleben",
+            title: language === "de" ? "Vereinsleben" : language === "pl" ? "Klub" : "Club Life",
             items: [
                 { icon: Calendar, label: dict.sidebar.events, href: "/events", match: (p: string) => p.startsWith("/events") },
                 { icon: ImageIcon, label: dict.sidebar.gallery, href: "/gallery", match: (p: string) => p.startsWith("/gallery") },
                 { icon: Users, label: dict.sidebar.members, href: "/members", match: (p: string) => p.startsWith("/members") },
                 { icon: MessageSquarePlus, label: dict.sidebar.feedback, href: "/feedback", match: (p: string) => p.startsWith("/feedback") },
-                { icon: Settings, label: "Club-Studio & Regeln", href: "/options", match: (p: string) => p.startsWith("/options") },
+                { icon: Settings, label: dict.sidebar.options, href: "/options", match: (p: string) => p.startsWith("/options") },
             ],
         },
     ];
@@ -172,18 +172,6 @@ export function Sidebar({ className }: { className?: string }) {
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </select>
-                    </div>
-                )}
-
-                {user && (
-                    <div
-                        onClick={() => setShowEmail(!showEmail)}
-                        className="flex items-center gap-3 px-3 py-2 text-xs text-muted-foreground bg-muted/40 rounded-xl overflow-hidden cursor-pointer hover:bg-muted/70 transition-colors select-none"
-                    >
-                        <UserCircle className="h-4 w-4 shrink-0 text-accent" />
-                        <span className="truncate font-medium">
-                            {showEmail ? (user.email || "") : (memberName || "Member")}
-                        </span>
                     </div>
                 )}
 
