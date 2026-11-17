@@ -20,7 +20,7 @@ const messaging = firebase.messaging();
 // ============================================
 // v10: Force clear all old caches to flush stale avatar JS bundles.
 // NEVER cache page HTML (navigation requests).
-const CACHE_NAME = 'kp-v11';
+const CACHE_NAME = 'kp-v12';
 const STATIC_ASSETS = [
     '/manifest.json',
     '/icon-192.png',
@@ -60,6 +60,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     if (!event.request.url.startsWith(self.location.origin)) return;
+
+    // Never intercept manifest or app icons so iOS/Android Share-Sheet always fetches fresh icons
+    if (event.request.url.includes('manifest.json') || event.request.url.includes('icon')) return;
 
     // HTML page navigations: ALWAYS network, NEVER cache
     if (event.request.mode === 'navigate') {
