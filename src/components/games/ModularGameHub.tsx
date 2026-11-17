@@ -77,39 +77,47 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
     );
     const { data: members } = useFirestoreQuery<Member>(qMembers);
 
-    // 2. Lade Kniffel-Bögen (für Rückwärtskompatibilität + KniffelYearNav)
+    // 2. Lade Kniffel-Bögen für das gewählte Jahr (für Jahres-Counter & Monats-Badges)
     const qKniffelSheets = useMemo(
         () =>
             query(
                 clubCollection("kniffelSheets"),
-                where("year", "==", selectedYear),
-                where("month", "==", selectedMonth)
+                where("year", "==", selectedYear)
             ),
-        [clubId, clubCollection, selectedYear, selectedMonth]
+        [clubId, clubCollection, selectedYear]
     );
-    const { data: kniffelSheets, loading: kniffelLoading } = useFirestoreQuery<KniffelSheet>(qKniffelSheets);
+    const { data: allYearKniffelSheets, loading: kniffelLoading } = useFirestoreQuery<KniffelSheet>(qKniffelSheets);
 
-    // 3. Lade universelle GameSessions für Schocken & Kegeln (gefiltert nach Jahr & Monat)
+    const kniffelSheets = useMemo(
+        () => allYearKniffelSheets.filter(s => s.month === selectedMonth),
+        [allYearKniffelSheets, selectedMonth]
+    );
+
+    // 3. Lade universelle GameSessions für Schocken & Kegeln (gesamtes Jahr)
     const qGameSessions = useMemo(
         () =>
             query(
                 clubCollection("gameSessions"),
-                where("year", "==", selectedYear),
-                where("month", "==", selectedMonth)
+                where("year", "==", selectedYear)
             ),
-        [clubId, clubCollection, selectedYear, selectedMonth]
+        [clubId, clubCollection, selectedYear]
     );
-    const { data: allMonthSessions, loading: sessionsLoading } = useFirestoreQuery<UniversalGameSession>(qGameSessions);
+    const { data: allYearSessions, loading: sessionsLoading } = useFirestoreQuery<UniversalGameSession>(qGameSessions);
+
+    const allYearDisciplineSessions = useMemo(
+        () => allYearSessions.filter(s => s.gameType === activeDiscipline),
+        [allYearSessions, activeDiscipline]
+    );
 
     const disciplineSessions = useMemo(() => {
-        return allMonthSessions
-            .filter(s => s.gameType === activeDiscipline)
+        return allYearDisciplineSessions
+            .filter(s => s.month === selectedMonth)
             .sort((a, b) => {
                 const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
                 const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
                 return tB - tA;
             });
-    }, [allMonthSessions, activeDiscipline]);
+    }, [allYearDisciplineSessions, selectedMonth]);
 
     const activePlugin = getGamePlugin(activeDiscipline);
 
@@ -152,12 +160,14 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
         }
     };
 
-    const activeSessionCount = activeDiscipline === "kniffel" ? kniffelSheets.length : disciplineSessions.length;
+    const yearlySessionCount = activeDiscipline === "kniffel"
+        ? allYearKniffelSheets.length
+        : allYearDisciplineSessions.length;
 
     return (
-        <div className="space-y-8 pb-10">
+        <div className="space-y-8 pb-10 max-w-full overflow-x-hidden">
             {/* Hero Header */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-background to-background border p-8 md:p-12">
+            <div className="relative overflow-hidden rounded-3xl kanpai-hero-banner border border-white/10 p-6 sm:p-8 md:p-10">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-4 max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase">
@@ -174,8 +184,8 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
 
                     <div className="flex items-center gap-4 text-muted-foreground">
                         <div className="flex flex-col items-end">
-                            <span className="text-2xl font-black text-foreground outfit">{activeSessionCount}</span>
-                            <span className="text-xs uppercase font-bold tracking-widest">Sessions</span>
+                            <span className="text-2xl font-black text-[#F5F0EB] outfit">{yearlySessionCount}</span>
+                            <span className="text-xs uppercase font-bold tracking-widest">Sessions {selectedYear}</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
                         {React.createElement(getDisciplineIcon(activeDiscipline), { className: "h-8 w-8 opacity-20" })}
@@ -225,7 +235,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                         selectedMonth={selectedMonth}
                         onSelectYear={setSelectedYear}
                         onSelectMonth={setSelectedMonth}
-                        sheets={activeDiscipline === "kniffel" ? kniffelSheets : (disciplineSessions as any)}
+                        sheets={activeDiscipline === "kniffel" ? allYearKniffelSheets : (allYearDisciplineSessions as any)}
                     />
                 </div>
 
