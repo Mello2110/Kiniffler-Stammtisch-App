@@ -442,7 +442,7 @@ export function DashboardView() {
                         />
                     </div>
 
-                    <Link href="/stats">
+                    <Link href="/stats?tab=hall-of-fame">
                         <StatCard
                             title={dict.dashboard.widgets.hof.title}
                             value={dict.dashboard.widgets.hof.value}

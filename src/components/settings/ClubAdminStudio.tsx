@@ -377,7 +377,7 @@ export function ClubAdminStudio() {
                                                 Standard
                                             </button>
                                         )}
-                                        <div className={cn("w-10 h-5 rounded-full p-0.5 transition-colors", active ? "bg-primary" : "bg-white/20")}>
+                                        <div className={cn("w-10 min-w-[40px] h-5 shrink-0 rounded-full p-0.5 transition-colors", active ? "bg-primary" : "bg-white/20")}>
                                             <div className={cn("w-4 h-4 rounded-full bg-white transition-transform", active ? "translate-x-5" : "translate-x-0")} />
                                         </div>
                                     </div>
@@ -437,7 +437,7 @@ export function ClubAdminStudio() {
                                             <div className="text-xs font-bold truncate">{cat.label}</div>
                                             <div className="text-[10px] text-muted-foreground truncate">{cat.desc}</div>
                                         </div>
-                                        <div className={cn("w-8 h-4 rounded-full p-0.5 shrink-0 transition-colors", enabled ? "bg-primary" : "bg-white/20")}>
+                                        <div className={cn("w-8 min-w-[32px] h-4 shrink-0 rounded-full p-0.5 shrink-0 transition-colors", enabled ? "bg-primary" : "bg-white/20")}>
                                             <div className={cn("w-3 h-3 rounded-full bg-white transition-transform", enabled ? "translate-x-4" : "translate-x-0")} />
                                         </div>
                                     </button>

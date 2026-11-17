@@ -294,7 +294,7 @@ function Switch({ checked, onChange }: { checked: boolean; onChange: (checked: b
         <button
             onClick={() => onChange(!checked)}
             className={cn(
-                "relative h-7 w-12 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary",
+                "relative h-7 w-12 min-w-[48px] shrink-0 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer",
                 checked ? "bg-primary" : "bg-muted"
             )}
         >
@@ -314,7 +314,7 @@ function Checkbox({ label, checked, onChange }: { label: string; checked: boolea
             <div
                 onClick={() => onChange(!checked)}
                 className={cn(
-                    "w-5 h-5 rounded border flex items-center justify-center transition-colors",
+                    "w-5 h-5 shrink-0 rounded border flex items-center justify-center transition-colors",
                     checked ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30 group-hover:border-primary/50"
                 )}
             >

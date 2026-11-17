@@ -29,6 +29,15 @@ export default function StatsPage() {
     const currentYear = new Date().getFullYear();
 
     const [activeTab, setActiveTab] = useState<StatsHubTab>("season");
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const tab = new URLSearchParams(window.location.search).get("tab");
+            if (tab === "hall-of-fame" || tab === "analytics" || tab === "season") {
+                setActiveTab(tab);
+            }
+        }
+    }, []);
     const [selectedDiscipline, setSelectedDiscipline] = useState<DisciplineFilter>(
         club?.defaultGame || "kniffel"
     );

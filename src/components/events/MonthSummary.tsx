@@ -28,6 +28,36 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
     const { language } = useLanguage();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [editingEvent, setEditingEvent] = useState<SetEvent | null>(null);
+    const [creatingDateStr, setCreatingDateStr] = useState<string | null>(null);
+
+    const handleQuickCreateStammtisch = async (dateStr: string) => {
+        if (creatingDateStr) return;
+        const alreadySet = setEvents.some((e) => e.date === dateStr);
+        if (alreadySet) return;
+        setCreatingDateStr(dateStr);
+        try {
+            const parsed = parseISO(dateStr);
+            const payload = {
+                title: `Stammtisch ${format(parsed, "MMMM")}`,
+                date: dateStr,
+                time: "20:00",
+                location: "Neutral",
+                description: "Manuell über Top Datum fixiert",
+                month: parsed.getMonth(),
+                year: parsed.getFullYear(),
+                createdBy: currentUserId,
+                createdAt: serverTimestamp(),
+            };
+            const newEvRef = await addDoc(clubCollection("set_events"), payload);
+            if (clubId === "club_original") {
+                await setDoc(doc(db, "set_events", newEvRef.id), payload).catch(() => {});
+            }
+        } catch (err) {
+            console.error("Failed to quick-create Stammtisch event", err);
+        } finally {
+            setCreatingDateStr(null);
+        }
+    };
 
     // Calculate Top Voted Date(s)
     const topDates = useMemo(() => {
@@ -139,15 +169,27 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                                                             {item.count} {item.count === 1 ? 'vote' : dict.events.modal.summary.votes}
                                                         </div>
                                                     )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onCreateEvent(parseISO(item.dateStr))}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-primary/15 text-primary hover:bg-primary/25 text-xs font-bold transition-colors cursor-pointer"
-                                                        title={dict.events.modal.summary.createStammtisch}
-                                                    >
-                                                        <CalendarPlus className="h-3.5 w-3.5" />
-                                                        <span className="hidden sm:inline">Fixieren</span>
-                                                    </button>
+                                                    {(() => {
+                                                        const alreadyExists = setEvents.some((e) => e.date === item.dateStr);
+                                                        const isBusy = creatingDateStr === item.dateStr;
+                                                        return (
+                                                            <button
+                                                                type="button"
+                                                                disabled={alreadyExists || isBusy}
+                                                                onClick={() => handleQuickCreateStammtisch(item.dateStr)}
+                                                                className={cn(
+                                                                    "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors",
+                                                                    alreadyExists
+                                                                        ? "bg-emerald-500/20 text-emerald-400 cursor-default"
+                                                                        : "bg-primary/15 text-primary hover:bg-primary/25 cursor-pointer"
+                                                                )}
+                                                                title={alreadyExists ? "Termin ist bereits eingetragen" : dict.events.modal.summary.createStammtisch}
+                                                            >
+                                                                <CalendarPlus className="h-3.5 w-3.5" />
+                                                                <span>{alreadyExists ? "Fixiert ✓" : isBusy ? "..." : "Fixieren"}</span>
+                                                            </button>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
 
