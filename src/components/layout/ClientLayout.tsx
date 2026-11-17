@@ -33,10 +33,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (typeof window !== "undefined" && "serviceWorker" in navigator) {
             navigator.serviceWorker
-                .register("/sw.js", { updateViaCache: "none" })
-                .then((registration) => {
-                    registration.update();
-                })
+                .register("/sw.js")
                 .catch((err) => console.log("SW registration failed: ", err));
         }
     }, []);
@@ -48,28 +45,17 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     return (
         <AuthGuard>
             <TitleProvider>
-                {/* --- GLOBAL DYNAMIC DUOTONE BACKGROUND DECOR (0% Hardcoded Purple!) --- */}
-                <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-background">
-                    {/* 1. Primary Light Source (Top Left/Center - Dynamically uses --primary) */}
-                    <div
-                        className="absolute top-[-12%] left-[15%] w-[850px] h-[550px] blur-[140px] rounded-full opacity-55 mix-blend-screen transition-colors duration-700"
-                        style={{ backgroundColor: "color-mix(in oklab, hsl(var(--primary)) 28%, transparent)" }}
-                    />
-
-                    {/* 2. Accent Light Source (Top/Middle Right - Dynamically uses --accent!) */}
-                    <div
-                        className="absolute top-[15%] right-[-10%] w-[750px] h-[550px] blur-[130px] rounded-full opacity-45 mix-blend-screen transition-colors duration-700"
-                        style={{ backgroundColor: "color-mix(in oklab, hsl(var(--accent)) 26%, transparent)" }}
-                    />
-
-                    {/* 3. Subtle Bottom Ambient Glow */}
-                    <div
-                        className="absolute bottom-[-15%] left-[35%] w-[700px] h-[450px] blur-[150px] rounded-full opacity-30 mix-blend-screen transition-colors duration-700"
-                        style={{ backgroundColor: "color-mix(in oklab, hsl(var(--primary)) 18%, hsl(var(--accent)) 18%)" }}
-                    />
-
-                    {/* 4. Subtle Architectural Grid Pattern */}
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:28px_28px] [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_70%,transparent_100%)] opacity-80" />
+                {/* --- GLOBAL DYNAMIC BACKGROUND DECOR (Zero GPU Blur Overhead) --- */}
+                <div
+                    className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-background"
+                    style={{
+                        backgroundImage: `
+                            radial-gradient(ellipse 65% 45% at 22% 0%, color-mix(in oklab, hsl(var(--primary)) 18%, transparent) 0%, transparent 70%),
+                            radial-gradient(ellipse 55% 40% at 85% 92%, color-mix(in oklab, hsl(var(--primary)) 10%, transparent) 0%, transparent 70%)
+                        `
+                    }}
+                >
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:28px_28px] [mask-image:radial-gradient(ellipse_70%_55%_at_50%_0%,#000_70%,transparent_100%)] opacity-60" />
                 </div>
 
                 {showSimpleLayout ? (

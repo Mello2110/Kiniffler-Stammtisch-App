@@ -36,9 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             try {
-                // 1. Check global multi-tenant user directory (/users/{uid}) or primary club (/clubs/club_original/members/{uid})
                 const globalUserRef = doc(db, "users", currentUser.uid);
-                const globalUserSnap = await getDoc(globalUserRef);
+                const legacyUserRef = doc(db, "members", currentUser.uid);
+
+                // Parallel fetch instead of sequential waterfall
+                const [globalUserSnap, legacyUserSnap] = await Promise.all([
+                    getDoc(globalUserRef),
+                    getDoc(legacyUserRef),
+                ]);
 
                 let targetClubId = "club_original";
                 if (globalUserSnap.exists() && globalUserSnap.data().defaultClubId) {
@@ -48,17 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const clubMemberRef = doc(db, "clubs", targetClubId, "members", currentUser.uid);
                 const clubMemberSnap = await getDoc(clubMemberRef);
 
-                // Fallback check on legacy root collection
-                const legacyUserRef = doc(db, "members", currentUser.uid);
-                const legacyUserSnap = await getDoc(legacyUserRef);
-
                 const isInviteFlow =
                     typeof window !== "undefined" &&
                     (window.location.pathname.startsWith("/join") ||
                         (window.location.pathname === "/login" && window.location.search.includes("join")));
 
                 if (!clubMemberSnap.exists() && !legacyUserSnap.exists() && !isInviteFlow) {
-                    // Registration paused: Unauthorized users are immediately signed out unless joining via invite link
                     console.warn("Unauthorized login rejected - user not in club members:", currentUser.uid);
                     await signOut(auth);
                     setUser(null);
@@ -66,16 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     return;
                 }
 
-                // Update existing profile with latest auth info if needed
-                if (clubMemberSnap.exists()) {
-                    await setDoc(clubMemberRef, {
-                        email: currentUser.email,
-                    }, { merge: true });
+                // Only sync email in background if it actually changed (no blocking writes on reload)
+                if (clubMemberSnap.exists() && clubMemberSnap.data()?.email !== currentUser.email) {
+                    setDoc(clubMemberRef, { email: currentUser.email }, { merge: true }).catch(() => {});
                 }
-                if (legacyUserSnap.exists()) {
-                    await setDoc(legacyUserRef, {
-                        email: currentUser.email,
-                    }, { merge: true });
+                if (legacyUserSnap.exists() && legacyUserSnap.data()?.email !== currentUser.email) {
+                    setDoc(legacyUserRef, { email: currentUser.email }, { merge: true }).catch(() => {});
                 }
 
                 setUser(currentUser);

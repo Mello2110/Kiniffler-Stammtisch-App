@@ -127,13 +127,12 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
 
-                const loadedClubs: ClubTenant[] = [];
-                for (const cid of clubIds) {
-                    const cSnap = await getDoc(doc(db, "clubs", cid));
-                    if (cSnap.exists()) {
-                        loadedClubs.push({ id: cSnap.id, ...cSnap.data() } as ClubTenant);
-                    }
-                }
+                const clubSnaps = await Promise.all(
+                    clubIds.map((cid) => getDoc(doc(db, "clubs", cid)))
+                );
+                const loadedClubs: ClubTenant[] = clubSnaps
+                    .filter((cSnap) => cSnap.exists())
+                    .map((cSnap) => ({ id: cSnap.id, ...cSnap.data() } as ClubTenant));
 
                 if (isMounted) {
                     if (loadedClubs.length > 0) {

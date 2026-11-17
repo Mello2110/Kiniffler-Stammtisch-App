@@ -13,7 +13,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (!loading) {
             // Allow "/" to be public (Landing Page)
-            const isPublicPath = pathname === "/login" || pathname === "/";
+            const isPublicPath = pathname === "/login" || pathname === "/" || pathname.startsWith("/join");
 
             if (!user && !isPublicPath) {
                 // If trying to access protected route (like /dashboard), go to login
@@ -38,7 +38,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // While redirecting, better to render nothing or the loader to avoid flashing content
     // But allow public paths to render immediately
-    const isPublicPath = pathname === "/login" || pathname === "/";
+    const isPublicPath = pathname === "/login" || pathname === "/" || pathname.startsWith("/join");
     if (!user && !isPublicPath) {
         return null;
     }
