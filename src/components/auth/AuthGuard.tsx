@@ -6,24 +6,34 @@ import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-    const { user, loading } = useAuth();
+    const { user, hasClubMembership, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
 
     useEffect(() => {
         if (!loading) {
-            // Allow "/" to be public (Landing Page)
             const isPublicPath = pathname === "/login" || pathname === "/" || pathname.startsWith("/join");
 
-            if (!user && !isPublicPath) {
-                // If trying to access protected route (like /dashboard), go to login
-                router.push("/login");
-            } else if (user && pathname === "/login") {
-                // If logged in and on login, go to dashboard
-                router.push("/dashboard");
+            if (!user) {
+                if (pathname.startsWith("/onboarding")) {
+                    router.push("/login?mode=register&redirect=/onboarding");
+                } else if (!isPublicPath) {
+                    router.push("/login");
+                }
+            } else {
+                const isAllowedWithoutClub =
+                    pathname === "/" ||
+                    pathname.startsWith("/join") ||
+                    pathname.startsWith("/onboarding");
+
+                if (!hasClubMembership && !isAllowedWithoutClub) {
+                    router.push("/onboarding");
+                } else if (hasClubMembership && pathname === "/login") {
+                    router.push("/dashboard");
+                }
             }
         }
-    }, [user, loading, pathname, router]);
+    }, [user, hasClubMembership, loading, pathname, router]);
 
     if (loading) {
         return (
@@ -36,10 +46,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
-    // While redirecting, better to render nothing or the loader to avoid flashing content
-    // But allow public paths to render immediately
     const isPublicPath = pathname === "/login" || pathname === "/" || pathname.startsWith("/join");
     if (!user && !isPublicPath) {
+        return null;
+    }
+
+    const isAllowedWithoutClub =
+        pathname === "/" ||
+        pathname.startsWith("/join") ||
+        pathname.startsWith("/onboarding");
+    if (user && !hasClubMembership && !isAllowedWithoutClub) {
         return null;
     }
 

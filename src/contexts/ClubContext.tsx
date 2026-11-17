@@ -4,18 +4,17 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import {
     doc,
     getDoc,
-    setDoc,
     updateDoc,
     onSnapshot,
     collection,
     query,
     where,
     getDocs,
-    serverTimestamp,
     CollectionReference,
     DocumentReference
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_CLUB_ID, getClubCollection, getClubDoc } from "@/lib/clubPaths";
 import { DEFAULT_CLUB_RULESET, DEFAULT_HALL_OF_FAME_CATEGORIES, DEFAULT_PRIMARY_HEX, DEFAULT_ACCENT_HEX } from "@/lib/defaultRuleset";
@@ -29,21 +28,25 @@ import type {
     HallOfFameCategoryId
 } from "@/types";
 
+interface CreateClubParams {
+    name: string;
+    slug?: string;
+    displayName?: string;
+    primaryColor?: string;
+    accentColor?: string;
+    enabledGames?: GameDisciplineId[];
+    paypalMeHandle?: string;
+    treasuryEmail?: string;
+    monthlyContributionEur?: number;
+}
+
 interface ClubContextType {
     clubId: string;
     club: ClubTenant | null;
     availableClubs: ClubTenant[];
     loading: boolean;
     switchClub: (targetClubIdOrSlug: string) => Promise<void>;
-    createNewClub: (params: {
-        name: string;
-        slug: string;
-        primaryColor?: string;
-        accentColor?: string;
-        enabledGames?: GameDisciplineId[];
-        paypalMeHandle?: string;
-        treasuryEmail?: string;
-    }) => Promise<string>;
+    createNewClub: (params: CreateClubParams) => Promise<{ clubId: string; inviteCode: string }>;
     updateClubTheme: (theme: ClubThemeConfig) => Promise<void>;
     updateClubGames: (enabledGames: GameDisciplineId[], defaultGame?: GameDisciplineId) => Promise<void>;
     updateClubPaymentConfig: (paymentConfig: Partial<ClubPaymentConfig>) => Promise<void>;
@@ -86,7 +89,7 @@ const ClubContext = createContext<ClubContextType>({
     availableClubs: [DEFAULT_CLUB_FALLBACK],
     loading: true,
     switchClub: async () => {},
-    createNewClub: async () => DEFAULT_CLUB_ID,
+    createNewClub: async () => ({ clubId: DEFAULT_CLUB_ID, inviteCode: "" }),
     updateClubTheme: async () => {},
     updateClubGames: async () => {},
     updateClubPaymentConfig: async () => {},
@@ -97,28 +100,33 @@ const ClubContext = createContext<ClubContextType>({
 });
 
 export function ClubProvider({ children }: { children: React.ReactNode }) {
-    const { user } = useAuth();
-    const [clubId, setClubId] = useState<string>(DEFAULT_CLUB_ID);
+    const { user, refreshMembership } = useAuth();
+    const [clubId, setClubId] = useState<string>("");
     const [club, setClub] = useState<ClubTenant | null>(DEFAULT_CLUB_FALLBACK);
-    const [availableClubs, setAvailableClubs] = useState<ClubTenant[]>([DEFAULT_CLUB_FALLBACK]);
+    const [availableClubs, setAvailableClubs] = useState<ClubTenant[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
         if (!user) {
-            setClubId(DEFAULT_CLUB_ID);
+            setClubId("");
+            setAvailableClubs([]);
+            setClub(DEFAULT_CLUB_FALLBACK);
             setLoading(false);
             return;
         }
 
         let isMounted = true;
         const loadUserClubs = async () => {
+            setLoading(true);
             try {
                 const storedClubId = typeof window !== "undefined" ? localStorage.getItem("kanpai_active_club_id") : null;
-                const userProfileRef = doc(db, "users", user.uid);
-                const userProfileSnap = await getDoc(userProfileRef);
+                const [userProfileSnap, legacyMemberSnap] = await Promise.all([
+                    getDoc(doc(db, "users", user.uid)),
+                    getDoc(doc(db, "members", user.uid)),
+                ]);
 
-                let clubIds: string[] = [DEFAULT_CLUB_ID];
-                let defaultId = DEFAULT_CLUB_ID;
+                let clubIds: string[] = [];
+                let defaultId = "";
 
                 if (userProfileSnap.exists()) {
                     const data = userProfileSnap.data() as GlobalUserProfile;
@@ -128,6 +136,24 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
                     if (data.defaultClubId) {
                         defaultId = data.defaultClubId;
                     }
+                } else if (legacyMemberSnap.exists()) {
+                    clubIds = [DEFAULT_CLUB_ID];
+                    defaultId = DEFAULT_CLUB_ID;
+                } else {
+                    const originalMemberSnap = await getDoc(doc(db, "clubs", DEFAULT_CLUB_ID, "members", user.uid));
+                    if (originalMemberSnap.exists()) {
+                        clubIds = [DEFAULT_CLUB_ID];
+                        defaultId = DEFAULT_CLUB_ID;
+                    }
+                }
+
+                if (clubIds.length === 0) {
+                    if (isMounted) {
+                        setAvailableClubs([]);
+                        setClubId("");
+                        setClub(DEFAULT_CLUB_FALLBACK);
+                    }
+                    return;
                 }
 
                 const clubSnaps = await Promise.all(
@@ -138,10 +164,11 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
                     .map((cSnap) => ({ id: cSnap.id, ...cSnap.data() } as ClubTenant));
 
                 if (isMounted) {
-                    if (loadedClubs.length > 0) {
-                        setAvailableClubs(loadedClubs);
-                    }
-                    const targetId = storedClubId && clubIds.includes(storedClubId) ? storedClubId : defaultId;
+                    setAvailableClubs(loadedClubs);
+                    const fallbackId = loadedClubs[0]?.id || clubIds[0];
+                    const targetId = storedClubId && clubIds.includes(storedClubId)
+                        ? storedClubId
+                        : (defaultId && clubIds.includes(defaultId) ? defaultId : fallbackId);
                     setClubId(targetId);
                 }
             } catch (err) {
@@ -156,7 +183,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
     }, [user]);
 
     useEffect(() => {
-        if (!clubId) return;
+        if (!user || !clubId) return;
 
         const clubRef = doc(db, "clubs", clubId);
         const unsubscribe = onSnapshot(
@@ -246,95 +273,33 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         }
     }, [availableClubs]);
 
-    const createNewClub = useCallback(async (params: {
-        name: string;
-        slug: string;
-        primaryColor?: string;
-        accentColor?: string;
-        enabledGames?: GameDisciplineId[];
-        paypalMeHandle?: string;
-        treasuryEmail?: string;
-    }): Promise<string> => {
+    const createNewClub = useCallback(async (params: CreateClubParams): Promise<{ clubId: string; inviteCode: string }> => {
         if (!user) throw new Error("Authentication required to create a club");
 
-        const cleanSlug = params.slug
-            .toLowerCase()
-            .replace(/[^a-z0-9-_]/g, "-")
-            .replace(/-+/g, "-")
-            .replace(/^-|-$/g, "") || `club-${Date.now()}`;
+        const fn = httpsCallable<CreateClubParams, { success: boolean; clubId: string; slug: string; clubName: string; inviteCode: string }>(
+            functions,
+            "createClub"
+        );
+        const res = await fn(params);
+        const { clubId: newClubId, inviteCode } = res.data;
 
-        const newClubId = `club_${cleanSlug}_${Math.random().toString(36).slice(2, 7)}`;
-        const enabledGames: GameDisciplineId[] = params.enabledGames?.length
-            ? params.enabledGames
-            : ["kniffel", "schocken", "kegeln"];
+        const clubSnap = await getDoc(doc(db, "clubs", newClubId));
+        if (clubSnap.exists()) {
+            const loadedClub = { id: clubSnap.id, ...clubSnap.data() } as ClubTenant;
+            setAvailableClubs((prev) => {
+                const withoutDup = prev.filter((c) => c.id !== newClubId);
+                return [...withoutDup, loadedClub];
+            });
+        }
 
-        const newClubData: ClubTenant = {
-            id: newClubId,
-            slug: cleanSlug,
-            name: params.name.trim() || "Neuer Verein",
-            subtitle: "KANPAI Club Workspace",
-            creatorUid: user.uid,
-            enabledGames,
-            defaultGame: enabledGames[0],
-            theme: {
-                primaryColor: params.primaryColor || DEFAULT_PRIMARY_HEX,
-                accentColor: params.accentColor || DEFAULT_ACCENT_HEX,
-                mode: "dark"
-            },
-            paymentConfig: {
-                paypalMeHandle: params.paypalMeHandle || "",
-                treasuryEmail: params.treasuryEmail || user.email || "",
-                monthlyContributionEur: 15,
-                defaultPenaltyEur: 1,
-                currency: "EUR",
-                paymentSyncMode: "manual_confirm"
-            },
-            cashConfig: {
-                startingBalance: 0
-            },
-            ruleset: DEFAULT_CLUB_RULESET,
-            createdAt: serverTimestamp()
-        };
-
-        await setDoc(doc(db, "clubs", newClubId), newClubData);
-
-        await setDoc(doc(db, "clubs", newClubId, "members", user.uid), {
-            id: user.uid,
-            name: user.displayName || user.email?.split("@")[0] || "Admin",
-            email: user.email || "",
-            role: "Admin",
-            roles: ["Admin"],
-            isAdmin: true,
-            points: 0,
-            tokenBalance: 5,
-            tokenShinyBalance: 0,
-            joinYear: new Date().getFullYear(),
-            createdAt: serverTimestamp()
-        });
-
-        await setDoc(doc(db, "clubs", newClubId, "config", "cash"), { startingBalance: 0 });
-        await setDoc(doc(db, "clubs", newClubId, "settings", "general"), { title: newClubData.name });
-
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        const existingClubs = userSnap.exists() ? (userSnap.data().clubIds || [DEFAULT_CLUB_ID]) : [DEFAULT_CLUB_ID];
-        const nextClubs = Array.from(new Set([...existingClubs, newClubId]));
-        await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email || "",
-            clubIds: nextClubs,
-            defaultClubId: newClubId,
-            updatedAt: serverTimestamp()
-        }, { merge: true });
-
-        setAvailableClubs(prev => [...prev, newClubData]);
         setClubId(newClubId);
         if (typeof window !== "undefined") {
             localStorage.setItem("kanpai_active_club_id", newClubId);
         }
+        await refreshMembership();
 
-        return newClubId;
-    }, [user]);
+        return { clubId: newClubId, inviteCode };
+    }, [user, refreshMembership]);
 
     const updateClubTheme = useCallback(async (theme: ClubThemeConfig) => {
         if (!clubId) return;
@@ -377,12 +342,12 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
     }, [clubId]);
 
     const clubCollectionHelper = useCallback(
-        <T = any>(collectionName: string, ...segments: string[]) => getClubCollection<T>(clubId, collectionName, ...segments),
+        <T = any>(collectionName: string, ...segments: string[]) => getClubCollection<T>(clubId || DEFAULT_CLUB_ID, collectionName, ...segments),
         [clubId]
     );
 
     const clubDocHelper = useCallback(
-        <T = any>(collectionName: string, docId: string, ...segments: string[]) => getClubDoc<T>(clubId, collectionName, docId, ...segments),
+        <T = any>(collectionName: string, docId: string, ...segments: string[]) => getClubDoc<T>(clubId || DEFAULT_CLUB_ID, collectionName, docId, ...segments),
         [clubId]
     );
 

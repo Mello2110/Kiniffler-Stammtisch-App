@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { Loader2, Mail, Lock, AlertCircle, ArrowLeft, ShieldAlert } from "lucide-react";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { Loader2, Mail, Lock, AlertCircle, ArrowLeft, ShieldAlert, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function LoginPage() {
-    const { loginWithGoogle } = useAuth();
+    const { loginWithGoogle, refreshMembership } = useAuth();
     const { dict } = useLanguage();
     const router = useRouter();
 
@@ -19,15 +19,23 @@ export default function LoginPage() {
     const [isRegisterMode, setIsRegisterMode] = useState(false);
     const [redirectUrl, setRedirectUrl] = useState<string>("/dashboard");
     const [isInviteFlow, setIsInviteFlow] = useState(false);
+    const [isOnboardingFlow, setIsOnboardingFlow] = useState(false);
     const [email, setEmail] = useState("");
 
     useEffect(() => {
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
             const r = params.get("redirect");
+            const mode = params.get("mode");
             if (r && r.startsWith("/join")) {
                 setRedirectUrl(r);
                 setIsInviteFlow(true);
+                setIsOnboardingFlow(false);
+            } else if ((r && r.startsWith("/onboarding")) || mode === "register") {
+                setRedirectUrl(r && r.startsWith("/onboarding") ? r : "/onboarding");
+                setIsOnboardingFlow(true);
+                setIsInviteFlow(false);
+                setIsRegisterMode(true);
             }
         }
     }, []);
@@ -35,16 +43,17 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
+    const canRegister = isInviteFlow || isOnboardingFlow;
+
     const handleGoogleLogin = async () => {
         setError("");
         setIsLoading(true);
         try {
-            await loginWithGoogle();
+            const target = canRegister ? redirectUrl : undefined;
+            await loginWithGoogle(target);
         } catch (err: any) {
             console.error("Google login failed:", err);
-            if (err.message === "NOT_REGISTERED") {
-                setError("Registrierungen sind derzeit geschlossen. Dieser Google-Account ist keinem Stammtisch zugeordnet.");
-            } else if (err.code !== "auth/popup-closed-by-user") {
+            if (err.code !== "auth/popup-closed-by-user") {
                 setError(dict?.auth?.errors?.default || "Anmeldung mit Google fehlgeschlagen.");
             }
         } finally {
@@ -58,24 +67,23 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            if (isRegisterMode && isInviteFlow) {
+            if (isRegisterMode && canRegister) {
                 await createUserWithEmailAndPassword(auth, email, password);
+                await refreshMembership();
                 router.push(redirectUrl);
                 return;
             }
 
-            const cred = await signInWithEmailAndPassword(auth, email, password);
-            if (isInviteFlow) {
+            await signInWithEmailAndPassword(auth, email, password);
+            const hasMembership = await refreshMembership();
+
+            if (canRegister) {
                 router.push(redirectUrl);
                 return;
             }
 
-            const globalUserSnap = await getDoc(doc(db, "users", cred.user.uid));
-            const legacySnap = await getDoc(doc(db, "members", cred.user.uid));
-
-            if (!globalUserSnap.exists() && !legacySnap.exists()) {
-                await signOut(auth);
-                setError("Registrierungen sind derzeit geschlossen. Bitte nutze einen Vereins-Einladungslink.");
+            if (!hasMembership) {
+                router.push("/onboarding");
                 return;
             }
 
@@ -84,6 +92,10 @@ export default function LoginPage() {
             console.error("Auth error:", err);
             if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
                 setError(dict?.auth?.errors?.invalid || "Ungültige Anmeldedaten");
+            } else if (err.code === "auth/email-already-in-use") {
+                setError("Diese E-Mail-Adresse wird bereits verwendet. Bitte melde dich stattdessen an.");
+            } else if (err.code === "auth/weak-password") {
+                setError("Das Passwort muss mindestens 6 Zeichen lang sein.");
             } else {
                 setError(dict?.auth?.errors?.default || "Ein Fehler ist aufgetreten");
             }
@@ -120,16 +132,28 @@ export default function LoginPage() {
 
                 {/* Slogan */}
                 <p className="text-lg md:text-xl font-sans text-muted-foreground mb-6">
-                    {showEmailForm ? "Willkommen zurück" : "Anmelden um fortzufahren"}
+                    {isOnboardingFlow
+                        ? "Neuen Verein gründen"
+                        : showEmailForm
+                        ? "Willkommen zurück"
+                        : "Anmelden um fortzufahren"}
                 </p>
 
                 {/* Notice banner */}
                 <div className="mb-6 flex items-center justify-center gap-2 text-xs text-muted-foreground bg-secondary/30 py-2 px-3.5 rounded-full border border-secondary/50">
-                    <ShieldAlert className={`w-4 h-4 shrink-0 ${isInviteFlow ? "text-emerald-400" : "text-amber-500"}`} />
+                    {isInviteFlow ? (
+                        <ShieldAlert className="w-4 h-4 shrink-0 text-emerald-400" />
+                    ) : isOnboardingFlow ? (
+                        <Sparkles className="w-4 h-4 shrink-0 text-primary" />
+                    ) : (
+                        <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500" />
+                    )}
                     <span>
                         {isInviteFlow
                             ? "Vereins-Einladung erkannt – anmelden oder Konto erstellen"
-                            : "Registrierung nur per Vereins-Einladungslink"}
+                            : isOnboardingFlow
+                            ? "Konto erstellen oder anmelden, um deinen Verein einzurichten"
+                            : "Beitritt zu bestehenden Vereinen nur per Einladungslink"}
                     </span>
                 </div>
 
@@ -148,17 +172,17 @@ export default function LoginPage() {
                         {/* Button 1: Email */}
                         <button
                             onClick={() => setShowEmailForm(true)}
-                            className="w-full px-8 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 flex items-center justify-center gap-2"
+                            className="w-full px-8 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                         >
                             <Mail className="w-5 h-5" />
-                            Mit E-Mail anmelden
+                            {isOnboardingFlow && isRegisterMode ? "Mit E-Mail registrieren" : "Mit E-Mail anmelden"}
                         </button>
 
                         {/* Button 2: Google */}
                         <button
                             onClick={handleGoogleLogin}
                             disabled={isLoading}
-                            className="w-full px-8 py-4 rounded-xl bg-white text-gray-800 hover:bg-gray-100 font-semibold text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="w-full px-8 py-4 rounded-xl bg-white text-gray-800 hover:bg-gray-100 font-semibold text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                         >
                             <svg className="h-5 w-5" viewBox="0 0 24 24">
                                 <path
@@ -178,13 +202,33 @@ export default function LoginPage() {
                                     fill="#EA4335"
                                 />
                             </svg>
-                            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Mit Google anmelden"}
+                            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Mit Google fortfahren"}
                         </button>
+
+                        {!canRegister && (
+                            <div className="pt-2 space-y-2 text-xs text-muted-foreground">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsOnboardingFlow(true);
+                                        setIsRegisterMode(true);
+                                        setRedirectUrl("/onboarding");
+                                        setError("");
+                                    }}
+                                    className="text-primary hover:underline font-semibold cursor-pointer"
+                                >
+                                    Noch keinen Verein? Neuen Verein gründen &rarr;
+                                </button>
+                                <p className="opacity-75">
+                                    Du wurdest eingeladen? Öffne direkt den Einladungslink deines Vereins.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     /* EXPANDED EMAIL FORM */
                     <form onSubmit={handleSubmit} className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {isInviteFlow && (
+                        {canRegister && (
                             <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-secondary/40 border border-white/10">
                                 <button
                                     type="button"
@@ -221,9 +265,10 @@ export default function LoginPage() {
                             <input
                                 type="password"
                                 required
+                                minLength={6}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Passwort"
+                                placeholder="Passwort (min. 6 Zeichen)"
                                 className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-secondary/50 bg-secondary/20 backdrop-blur-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             />
                         </div>
@@ -232,9 +277,15 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full px-8 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 flex items-center justify-center"
+                            className="w-full px-8 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 flex items-center justify-center cursor-pointer"
                         >
-                            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Anmelden"}
+                            {isLoading ? (
+                                <Loader2 className="animate-spin h-5 w-5" />
+                            ) : isRegisterMode && canRegister ? (
+                                "Konto erstellen & weiter"
+                            ) : (
+                                "Anmelden"
+                            )}
                         </button>
 
                         {/* Back Link */}
@@ -242,10 +293,24 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowEmailForm(false)}
-                                className="text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors"
+                                className="text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors cursor-pointer"
                             >
                                 <ArrowLeft className="w-3 h-3" /> Zurück
                             </button>
+                            {!canRegister && (
+                                <Link
+                                    href="/login?mode=register&redirect=/onboarding"
+                                    onClick={() => {
+                                        setIsOnboardingFlow(true);
+                                        setIsRegisterMode(true);
+                                        setRedirectUrl("/onboarding");
+                                        setError("");
+                                    }}
+                                    className="text-xs text-primary hover:underline"
+                                >
+                                    Noch keinen Verein? Neuen Verein gründen &rarr;
+                                </Link>
+                            )}
                         </div>
                     </form>
                 )}

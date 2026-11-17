@@ -40,7 +40,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
     const isLoginPage = pathname === "/login";
     const isLandingPage = pathname === "/";
-    const showSimpleLayout = isLoginPage || isLandingPage;
+    const isJoinPage = pathname.startsWith("/join");
+    const isOnboardingPage = pathname.startsWith("/onboarding");
+    const showSimpleLayout = isLoginPage || isLandingPage || isJoinPage || isOnboardingPage;
 
     return (
         <AuthGuard>

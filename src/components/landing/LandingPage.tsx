@@ -7,15 +7,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Trophy, Calendar, Users, Smartphone, Settings } from "lucide-react";
 
 export const LandingPage = () => {
-    const { user, loading } = useAuth();
+    const { user, hasClubMembership, loading } = useAuth();
     const router = useRouter();
 
     const handleLogin = () => {
         router.push("/login");
     };
 
+    const handleNewClub = () => {
+        if (user) {
+            router.push("/onboarding");
+        } else {
+            router.push("/login?mode=register&redirect=/onboarding");
+        }
+    };
+
     const handleDashboard = () => {
-        router.push("/dashboard");
+        router.push(hasClubMembership ? "/dashboard" : "/onboarding");
     };
 
     return (
@@ -53,23 +61,31 @@ export const LandingPage = () => {
                     </p>
 
                     {/* Actions */}
-                    <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm sm:max-w-md justify-center">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-sm sm:max-w-md justify-center">
                         {loading ? (
                             <div className="h-12 w-32 bg-secondary/50 rounded-lg animate-pulse mx-auto" />
                         ) : user ? (
                             <button
                                 onClick={handleDashboard}
-                                className="px-8 py-3.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95"
+                                className="px-8 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 cursor-pointer"
                             >
-                                Go to Dashboard
+                                {hasClubMembership ? "Zum Dashboard" : "Verein einrichten"}
                             </button>
                         ) : (
-                            <button
-                                onClick={handleLogin}
-                                className="px-8 py-3.5 rounded-lg bg-white text-black hover:bg-gray-100 font-semibold text-lg transition-all shadow-lg active:scale-95"
-                            >
-                                Login
-                            </button>
+                            <>
+                                <button
+                                    onClick={handleNewClub}
+                                    className="px-8 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all shadow-lg hover:shadow-primary/25 active:scale-95 cursor-pointer"
+                                >
+                                    Neuer Verein
+                                </button>
+                                <button
+                                    onClick={handleLogin}
+                                    className="px-8 py-3.5 rounded-xl bg-white text-black hover:bg-gray-100 font-semibold text-lg transition-all shadow-lg active:scale-95 cursor-pointer"
+                                >
+                                    Anmelden
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>

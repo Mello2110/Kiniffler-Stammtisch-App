@@ -1120,3 +1120,153 @@ export const leaveClub = onCall(async (request) => {
 
     return { success: true };
 });
+
+export const createClub = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Bitte zuerst anmelden, um einen Verein zu gründen.');
+    }
+
+    const uid = request.auth.uid;
+    const rawName = typeof request.data?.name === 'string' ? request.data.name.trim() : '';
+    if (!rawName || rawName.length < 2) {
+        throw new HttpsError('invalid-argument', 'Bitte gib einen gültigen Vereinsnamen (min. 2 Zeichen) ein.');
+    }
+    const clubName = rawName.slice(0, 60);
+
+    const rawSlug = typeof request.data?.slug === 'string' && request.data.slug.trim()
+        ? request.data.slug
+        : clubName;
+    const cleanSlug = rawSlug
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || `club-${Date.now()}`;
+
+    const allowedGames = new Set(['kniffel', 'schocken', 'kegeln']);
+    const requestedGames = Array.isArray(request.data?.enabledGames)
+        ? request.data.enabledGames.filter((g: unknown) => typeof g === 'string' && allowedGames.has(g))
+        : [];
+    const enabledGames: string[] = requestedGames.length > 0 ? requestedGames : ['kniffel', 'schocken', 'kegeln'];
+
+    const primaryColor = typeof request.data?.primaryColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(request.data.primaryColor)
+        ? request.data.primaryColor
+        : '#854d59';
+    const accentColor = typeof request.data?.accentColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(request.data.accentColor)
+        ? request.data.accentColor
+        : '#578d8e';
+
+    const displayNameInput = typeof request.data?.displayName === 'string' ? request.data.displayName.trim() : '';
+    const resolvedMemberName =
+        displayNameInput ||
+        (request.auth.token?.name as string) ||
+        (request.auth.token?.email ? String(request.auth.token.email).split('@')[0] : '') ||
+        'Admin';
+
+    const paypalMeHandle = typeof request.data?.paypalMeHandle === 'string' ? request.data.paypalMeHandle.trim() : '';
+    const treasuryEmail = typeof request.data?.treasuryEmail === 'string' && request.data.treasuryEmail.trim()
+        ? request.data.treasuryEmail.trim()
+        : (request.auth.token?.email || '');
+    const monthlyContributionEur =
+        typeof request.data?.monthlyContributionEur === 'number' && request.data.monthlyContributionEur >= 0
+            ? request.data.monthlyContributionEur
+            : 15;
+
+    const randSuffix = Math.random().toString(36).slice(2, 7);
+    const newClubId = `club_${cleanSlug}_${randSuffix}`;
+
+    const slugPart = (cleanSlug.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4) || 'CLUB').toUpperCase();
+    const inviteCode = `${slugPart}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+
+    const clubRef = db.collection('clubs').doc(newClubId);
+    const memberRef = clubRef.collection('members').doc(uid);
+    const cashConfigRef = clubRef.collection('config').doc('cash');
+    const settingsGeneralRef = clubRef.collection('settings').doc('general');
+    const userRef = db.collection('users').doc(uid);
+    const inviteRef = db.collection('club_invites').doc(inviteCode);
+
+    const newClubData = {
+        id: newClubId,
+        slug: cleanSlug,
+        name: clubName,
+        subtitle: 'KANPAI Club Workspace',
+        creatorUid: uid,
+        enabledGames,
+        defaultGame: enabledGames[0],
+        theme: {
+            primaryColor,
+            accentColor,
+            mode: 'dark',
+        },
+        paymentConfig: {
+            paypalMeHandle,
+            treasuryEmail,
+            monthlyContributionEur,
+            defaultPenaltyEur: 1,
+            currency: 'EUR',
+            paymentSyncMode: 'manual_confirm',
+        },
+        cashConfig: {
+            startingBalance: 0,
+        },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await db.runTransaction(async (tx) => {
+        const userSnap = await tx.get(userRef);
+
+        tx.set(clubRef, newClubData);
+        tx.set(memberRef, {
+            id: uid,
+            name: resolvedMemberName,
+            email: request.auth!.token?.email || '',
+            role: 'Admin',
+            roles: ['Admin'],
+            isAdmin: true,
+            points: 0,
+            tokenBalance: 5,
+            tokenShinyBalance: 0,
+            joinYear: new Date().getFullYear(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        tx.set(cashConfigRef, { startingBalance: 0 });
+        tx.set(settingsGeneralRef, { title: clubName });
+        tx.set(inviteRef, {
+            code: inviteCode,
+            clubId: newClubId,
+            clubName,
+            createdBy: uid,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: null,
+            maxUses: null,
+            usedCount: 0,
+            active: true,
+        });
+
+        if (userSnap.exists) {
+            const existingClubs = Array.isArray(userSnap.data()?.clubIds) ? userSnap.data()!.clubIds : [];
+            const nextClubs = Array.from(new Set([...existingClubs, newClubId]));
+            tx.update(userRef, {
+                clubIds: nextClubs,
+                defaultClubId: newClubId,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        } else {
+            tx.set(userRef, {
+                uid,
+                name: resolvedMemberName,
+                email: request.auth!.token?.email || '',
+                clubIds: [newClubId],
+                defaultClubId: newClubId,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+    });
+
+    return {
+        success: true,
+        clubId: newClubId,
+        slug: cleanSlug,
+        clubName,
+        inviteCode,
+    };
+});
