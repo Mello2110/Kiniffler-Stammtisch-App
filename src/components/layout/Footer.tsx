@@ -35,7 +35,8 @@ export function Footer() {
         <footer className="w-full border-t border-border py-4 text-xs text-muted-foreground bg-background/50 backdrop-blur-sm">
             <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col items-center gap-3 md:grid md:grid-cols-3 md:items-center">
                 <div className="hidden md:block" aria-hidden="true" />
-                <div className="flex items-center justify-center gap-2.5">
+                {/* Offset by half of the fixed lg:w-64 sidebar (128px) so the brand lockup sits at the true viewport center */}
+                <div className="flex items-center justify-center gap-2.5 lg:-translate-x-32">
                     <span className="text-xs sm:text-[13px] font-black tracking-[0.18em] text-primary/80 leading-none">KANPAI</span>
                     <span className="text-[11px] text-muted-foreground/60 font-medium lowercase leading-none">by</span>
                     <a
