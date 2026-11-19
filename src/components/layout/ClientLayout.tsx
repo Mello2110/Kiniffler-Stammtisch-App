@@ -61,7 +61,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {showSimpleLayout ? (
-                    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-transparent">
+                    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-transparent pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                         {children}
                     </main>
                 ) : (

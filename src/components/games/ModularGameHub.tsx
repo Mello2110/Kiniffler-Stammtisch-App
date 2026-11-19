@@ -389,7 +389,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                                                 )}
 
                                                 {fullscreenSessionId === sess.id && typeof document !== "undefined" && createPortal(
-                                                    <div className="fixed inset-0 z-[9999] bg-background flex flex-col overflow-hidden">
+                                                    <div className="fixed inset-0 z-[9999] bg-background flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
                                                         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 bg-card/85 backdrop-blur-xl shrink-0">
                                                             <div className="flex items-center gap-2.5 min-w-0">
                                                                 <div className="p-2 rounded-xl bg-primary/15 text-primary shrink-0">
