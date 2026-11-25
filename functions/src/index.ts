@@ -1170,6 +1170,12 @@ export const createClub = onCall(async (request) => {
         typeof request.data?.monthlyContributionEur === 'number' && request.data.monthlyContributionEur >= 0
             ? request.data.monthlyContributionEur
             : 15;
+    const currentYear = new Date().getFullYear();
+    const rawFoundingYear = Number(request.data?.foundingYear);
+    const foundingYear =
+        Number.isInteger(rawFoundingYear) && rawFoundingYear >= 1900 && rawFoundingYear <= currentYear + 1
+            ? rawFoundingYear
+            : currentYear;
 
     const randSuffix = Math.random().toString(36).slice(2, 7);
     const newClubId = `club_${cleanSlug}_${randSuffix}`;
@@ -1189,6 +1195,7 @@ export const createClub = onCall(async (request) => {
         slug: cleanSlug,
         name: clubName,
         subtitle: 'KANPAI Club Workspace',
+        foundingYear,
         creatorUid: uid,
         enabledGames,
         defaultGame: enabledGames[0],

@@ -7,12 +7,15 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileSidebar } from "./MobileSidebar";
 import { useTitle } from "@/contexts/TitleContext";
+import { useClub } from "@/contexts/ClubContext";
+import { ClubLogo } from "@/components/common/ClubLogo";
 // SyncStatusBadge removed
 
 export function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
     const { title } = useTitle();
+    const { club } = useClub();
 
     // Close mobile menu when route changes
     useEffect(() => {
@@ -36,6 +39,7 @@ export function Navbar() {
             <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl lg:hidden">
                 <div className="flex h-14 w-full items-center justify-between pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
                     <Link href="/dashboard" className="flex items-center gap-2 font-black text-lg hover:opacity-80 transition-opacity active:opacity-60">
+                        <ClubLogo club={club} size="sm" />
                         <span className="text-[#F5F0EB] max-w-[180px] truncate outfit">
                             {title}
                         </span>

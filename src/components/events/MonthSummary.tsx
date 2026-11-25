@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfMonth } from "date-fns";
+import { de, enUS, pl } from "date-fns/locale";
 import { Trophy, Calendar as CalendarIcon, MapPin, Trash2, Pencil, CalendarPlus } from "lucide-react";
 import { deleteDoc, doc, addDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -30,6 +31,8 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
     const [editingEvent, setEditingEvent] = useState<SetEvent | null>(null);
     const [creatingDateStr, setCreatingDateStr] = useState<string | null>(null);
 
+    const dateLocale = language === "de" ? de : language === "pl" ? pl : enUS;
+
     const handleQuickCreateStammtisch = async (dateStr: string) => {
         if (creatingDateStr) return;
         const alreadySet = setEvents.some((e) => e.date === dateStr);
@@ -38,11 +41,11 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
         try {
             const parsed = parseISO(dateStr);
             const payload = {
-                title: `Stammtisch ${format(parsed, "MMMM")}`,
+                title: `Stammtisch ${format(parsed, "MMMM", { locale: dateLocale })}`,
                 date: dateStr,
                 time: "20:00",
                 location: "Neutral",
-                description: "Manuell über Top Datum fixiert",
+                description: "",
                 month: parsed.getMonth(),
                 year: parsed.getFullYear(),
                 createdBy: currentUserId,
@@ -96,14 +99,15 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
             if (!hasEvent) {
                 const createAutoEvent = async () => {
                     try {
+                        const parsedWinner = parseISO(winningDate);
                         const payload = {
-                            title: `Stammtisch ${format(parseISO(winningDate), "MMMM")}`,
+                            title: `Stammtisch ${format(parsedWinner, "MMMM", { locale: dateLocale })}`,
                             date: winningDate,
                             time: "20:00",
                             location: "Neutral",
-                            description: "Auto-generated based on voting results",
-                            month: parseISO(winningDate).getMonth(),
-                            year: parseISO(winningDate).getFullYear(),
+                            description: "",
+                            month: parsedWinner.getMonth(),
+                            year: parsedWinner.getFullYear(),
                             createdBy: currentUserId,
                             createdAt: serverTimestamp()
                         };
@@ -118,7 +122,7 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
                 createAutoEvent();
             }
         }
-    }, [uniqueVotersCount, totalMembers, topDates, setEvents, currentUserId, clubId, clubCollection]);
+    }, [uniqueVotersCount, totalMembers, topDates, setEvents, currentUserId, clubId, clubCollection, dateLocale]);
 
     const handleDelete = async () => {
         if (!deletingId) return;
@@ -253,7 +257,24 @@ export function MonthSummary({ currentMonth, votes, setEvents, currentUserId, to
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 shadow-sm h-fit">
                 <div className="flex items-center justify-between gap-2 mb-4">
                     <h3 className="text-lg font-bold flex items-center gap-2"><CalendarIcon className="h-5 w-5 text-primary" />Set Events</h3>
-                    <button type="button" onClick={() => onCreateEvent(currentMonth)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary text-xs font-bold transition-colors cursor-pointer"><CalendarPlus className="h-3.5 w-3.5" />Hinzufügen</button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const unfixedTop = topDates.find((t) => !setEvents.some((e) => e.date === t.dateStr));
+                            if (unfixedTop) {
+                                onCreateEvent(parseISO(unfixedTop.dateStr));
+                                return;
+                            }
+                            const now = new Date();
+                            const isCurrentMonthView =
+                                currentMonth.getMonth() === now.getMonth() &&
+                                currentMonth.getFullYear() === now.getFullYear();
+                            onCreateEvent(isCurrentMonthView ? now : startOfMonth(currentMonth));
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary text-xs font-bold transition-colors cursor-pointer"
+                    >
+                        <CalendarPlus className="h-3.5 w-3.5" />Hinzufügen
+                    </button>
                 </div>
                 {setEvents.length > 0 ? (
                     <div className="space-y-4">

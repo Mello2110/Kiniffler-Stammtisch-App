@@ -15,7 +15,7 @@
  */
 
 import React, { useState, useMemo } from "react";
-import { doc, setDoc, updateDoc, addDoc, getDoc, serverTimestamp, collection } from "firebase/firestore";
+import { doc, setDoc, updateDoc, addDoc, getDoc, deleteDoc, serverTimestamp, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useClub } from "@/contexts/ClubContext";
 import { triggerHaptic } from "@/lib/haptics";
@@ -27,8 +27,11 @@ import {
     AlertTriangle,
     RotateCcw,
     Sparkles,
-    PlusCircle,
-    Coins
+    Undo2,
+    History,
+    Trash2,
+    ChevronDown,
+    ChevronUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEFAULT_CLUB_RULESET } from "@/lib/defaultRuleset";
@@ -49,6 +52,11 @@ export interface KegelnThrowEntry {
     isPudel: boolean;     // 0 Holz
     isAlleNeune: boolean; // 9 Holz
     isKranz: boolean;     // 8 Holz und König (#5) steht noch
+    prevActivePlayerId?: string;
+    prevRoundNumber?: number;
+    prevStandingPins?: number[];
+    linkedPenaltyId?: string;
+    linkedLedgerId?: string;
 }
 
 export interface KegelnPlayerStats {
@@ -131,6 +139,7 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
     // Aktuell vor dem Wurf-Speichern vom Nutzer als "gefallen" markierte Kegel
     const [selectedFallenPins, setSelectedFallenPins] = useState<number[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
 
     const players = useMemo(() => {
         const mMap = new Map(members.map(m => [m.id, m]));
@@ -161,11 +170,15 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
         }
     };
 
-    const bookKegelPenalty = async (playerId: string, amountEur: number, reason: string) => {
+    const bookKegelPenalty = async (
+        playerId: string,
+        amountEur: number,
+        reason: string
+    ): Promise<{ penaltyId: string; ledgerId: string } | null> => {
         const p = players.find(pl => pl.id === playerId);
-        if (!p) return;
+        if (!p) return null;
         const targetUid = p.isGuest ? p.hostMemberId : p.id;
-        if (!targetUid) return;
+        if (!targetUid) return null;
 
         triggerHaptic("penalty");
         const dateStr = new Date().toISOString().split("T")[0];
@@ -195,16 +208,38 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
                 createdAt: serverTimestamp(),
                 linkedDocId: penRef.id,
             };
-            await addDoc(clubCollection("ledger_entries"), ledgerPayload);
+            const ledgerRef = await addDoc(clubCollection("ledger_entries"), ledgerPayload);
 
             if (clubId === "club_original") {
                 await setDoc(doc(db, "penalties", penRef.id), penPayload).catch(() => {});
-                await addDoc(collection(db, "ledger_entries"), ledgerPayload).catch(() => {});
+                await setDoc(doc(db, "ledger_entries", ledgerRef.id), ledgerPayload).catch(() => {});
             }
 
             showToast(`✓ ${amountEur.toFixed(2)}€ Pudelkasse: ${p.name} (${reason})`);
+            return { penaltyId: penRef.id, ledgerId: ledgerRef.id };
         } catch (err) {
             console.error("Error booking Kegeln penalty:", err);
+            return null;
+        }
+    };
+
+    const rollbackLinkedPenalty = async (penaltyId?: string, ledgerId?: string) => {
+        if (!penaltyId && !ledgerId) return;
+        try {
+            if (penaltyId) {
+                await deleteDoc(clubDoc("penalties", penaltyId)).catch(() => {});
+                if (clubId === "club_original") {
+                    await deleteDoc(doc(db, "penalties", penaltyId)).catch(() => {});
+                }
+            }
+            if (ledgerId) {
+                await deleteDoc(clubDoc("ledger_entries", ledgerId)).catch(() => {});
+                if (clubId === "club_original") {
+                    await deleteDoc(doc(db, "ledger_entries", ledgerId)).catch(() => {});
+                }
+            }
+        } catch (err) {
+            console.error("Error rolling back Kegeln penalty:", err);
         }
     };
 
@@ -286,6 +321,11 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
             advancePlayer();
         }
 
+        let linkedIds: { penaltyId: string; ledgerId: string } | null = null;
+        if (isPudel && rules.autoBookPudelPenalty && rules.pudelPenaltyEur > 0) {
+            linkedIds = await bookKegelPenalty(activeId, rules.pudelPenaltyEur, "Pudel (Rinne / 0 Holz)");
+        }
+
         const newThrow: KegelnThrowEntry = {
             id: `throw_${Date.now()}`,
             timestamp: Date.now(),
@@ -297,6 +337,11 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
             isPudel,
             isAlleNeune,
             isKranz,
+            prevActivePlayerId: activeId,
+            prevRoundNumber: state.currentRound,
+            prevStandingPins: [...state.standingPins],
+            linkedPenaltyId: linkedIds?.penaltyId,
+            linkedLedgerId: linkedIds?.ledgerId,
         };
 
         const nextState: KegelnState = {
@@ -308,19 +353,93 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
                 ...state.statsByPlayer,
                 [activeId]: updatedPlayerStats,
             },
-            throwsHistory: [newThrow, ...(state.throwsHistory || []).slice(0, 39)],
+            throwsHistory: [newThrow, ...(state.throwsHistory || []).slice(0, 199)],
         };
 
         setSelectedFallenPins([]);
         await persistState(nextState);
 
-        if (isPudel && rules.autoBookPudelPenalty && rules.pudelPenaltyEur > 0) {
-            await bookKegelPenalty(activeId, rules.pudelPenaltyEur, "Pudel (Rinne / 0 Holz)");
-        } else if (isAlleNeune) {
+        if (isAlleNeune) {
             showToast(`🔥 ALLE NEUNE von ${players.find(p => p.id === activeId)?.name}!`);
         } else if (isKranz) {
             showToast(`👑 KRANZ (König steht!) von ${players.find(p => p.id === activeId)?.name}!`);
         }
+    };
+
+    const handleUndoLastThrow = async () => {
+        const lastThrow = state.throwsHistory?.[0];
+        if (!lastThrow || isSaving) return;
+
+        triggerHaptic("tap");
+        const prevStats = state.statsByPlayer[lastThrow.playerId];
+        const nextStatsByPlayer = { ...state.statsByPlayer };
+
+        if (prevStats) {
+            nextStatsByPlayer[lastThrow.playerId] = {
+                totalWood: Math.max(0, prevStats.totalWood - lastThrow.woodCount),
+                throwsCount: Math.max(0, prevStats.throwsCount - 1),
+                pudelCount: Math.max(0, prevStats.pudelCount - (lastThrow.isPudel ? 1 : 0)),
+                neunerCount: Math.max(0, prevStats.neunerCount - (lastThrow.isAlleNeune ? 1 : 0)),
+                kranzCount: Math.max(0, prevStats.kranzCount - (lastThrow.isKranz ? 1 : 0)),
+                volleWood: Math.max(0, prevStats.volleWood - (lastThrow.mode === "volle" ? lastThrow.woodCount : 0)),
+                abraeumenWood: Math.max(0, prevStats.abraeumenWood - (lastThrow.mode === "abraeumen" ? lastThrow.woodCount : 0)),
+            };
+        }
+
+        const nextState: KegelnState = {
+            ...state,
+            activePlayerId: lastThrow.prevActivePlayerId || lastThrow.playerId,
+            currentRound: lastThrow.prevRoundNumber || lastThrow.roundNumber,
+            standingPins: lastThrow.prevStandingPins || [...ALL_NINE_PINS],
+            statsByPlayer: nextStatsByPlayer,
+            throwsHistory: (state.throwsHistory || []).slice(1),
+        };
+
+        setSelectedFallenPins([]);
+        await persistState(nextState);
+        await rollbackLinkedPenalty(lastThrow.linkedPenaltyId, lastThrow.linkedLedgerId);
+
+        const playerName = players.find(p => p.id === lastThrow.playerId)?.name || "Kegler";
+        showToast(`↩️ Wurf von ${playerName} (${lastThrow.woodCount} Holz) rückgängig gemacht`);
+    };
+
+    const handleDeleteThrowEntry = async (throwId: string) => {
+        if (isSaving) return;
+        const idx = (state.throwsHistory || []).findIndex(t => t.id === throwId);
+        if (idx === -1) return;
+        if (idx === 0) {
+            await handleUndoLastThrow();
+            return;
+        }
+
+        const targetThrow = state.throwsHistory[idx];
+        triggerHaptic("tap");
+        const prevStats = state.statsByPlayer[targetThrow.playerId];
+        const nextStatsByPlayer = { ...state.statsByPlayer };
+
+        if (prevStats) {
+            nextStatsByPlayer[targetThrow.playerId] = {
+                totalWood: Math.max(0, prevStats.totalWood - targetThrow.woodCount),
+                throwsCount: Math.max(0, prevStats.throwsCount - 1),
+                pudelCount: Math.max(0, prevStats.pudelCount - (targetThrow.isPudel ? 1 : 0)),
+                neunerCount: Math.max(0, prevStats.neunerCount - (targetThrow.isAlleNeune ? 1 : 0)),
+                kranzCount: Math.max(0, prevStats.kranzCount - (targetThrow.isKranz ? 1 : 0)),
+                volleWood: Math.max(0, prevStats.volleWood - (targetThrow.mode === "volle" ? targetThrow.woodCount : 0)),
+                abraeumenWood: Math.max(0, prevStats.abraeumenWood - (targetThrow.mode === "abraeumen" ? targetThrow.woodCount : 0)),
+            };
+        }
+
+        const nextState: KegelnState = {
+            ...state,
+            statsByPlayer: nextStatsByPlayer,
+            throwsHistory: state.throwsHistory.filter(t => t.id !== throwId),
+        };
+
+        await persistState(nextState);
+        await rollbackLinkedPenalty(targetThrow.linkedPenaltyId, targetThrow.linkedLedgerId);
+
+        const playerName = players.find(p => p.id === targetThrow.playerId)?.name || "Kegler";
+        showToast(`🗑️ Wurf von ${playerName} (${targetThrow.woodCount} Holz) entfernt`);
     };
 
     // Ermittle aktuellen Pudelkönig (meiste Pudel > 0)
@@ -488,7 +607,17 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={handleUndoLastThrow}
+                                disabled={!state.throwsHistory?.length || isSaving}
+                                className="h-9 px-3 text-xs font-semibold rounded-xl flex items-center gap-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                                title="Letzten eingetragenen Wurf rückgängig machen"
+                            >
+                                <Undo2 className="h-4 w-4" />
+                                Letzten Wurf rückgängig
+                            </button>
                             <button
                                 onClick={handleTransferToMatrix}
                                 className="h-9 px-3 text-xs font-semibold rounded-xl flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 transition-colors cursor-pointer"
@@ -629,6 +758,78 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            {/* Wurf-Protokoll & Korrekturen */}
+            <div className="rounded-3xl border border-white/10 bg-card/40 overflow-hidden">
+                <button
+                    type="button"
+                    onClick={() => setShowHistory(prev => !prev)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-bold hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                        <History className="h-4 w-4 text-emerald-400" />
+                        Wurf-Protokoll &amp; Korrekturen ({state.throwsHistory?.length || 0})
+                    </span>
+                    {showHistory ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+
+                {showHistory && (
+                    <div className="border-t border-white/10 p-4 space-y-2 max-h-72 overflow-y-auto">
+                        {(!state.throwsHistory || state.throwsHistory.length === 0) ? (
+                            <p className="text-xs text-muted-foreground text-center py-4">
+                                Noch keine Würfe eingetragen.
+                            </p>
+                        ) : (
+                            state.throwsHistory.map((entry, idx) => {
+                                const pName = players.find(p => p.id === entry.playerId)?.name || "Kegler";
+                                return (
+                                    <div
+                                        key={entry.id}
+                                        className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5 text-xs"
+                                    >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/10 text-muted-foreground shrink-0">
+                                                R{entry.roundNumber}
+                                            </span>
+                                            <span className="font-bold truncate">{pName}</span>
+                                            <span className="text-muted-foreground shrink-0">
+                                                ({entry.mode === "abraeumen" ? "Abräumen" : "Volle"})
+                                            </span>
+                                            {entry.isPudel ? (
+                                                <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold shrink-0">
+                                                    Pudel (0)
+                                                </span>
+                                            ) : entry.isAlleNeune ? (
+                                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold shrink-0">
+                                                    Alle 9!
+                                                </span>
+                                            ) : entry.isKranz ? (
+                                                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold shrink-0">
+                                                    Kranz (8)
+                                                </span>
+                                            ) : (
+                                                <span className="font-bold text-emerald-400 shrink-0">
+                                                    {entry.woodCount} Holz
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteThrowEntry(entry.id)}
+                                            disabled={isSaving}
+                                            className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer shrink-0"
+                                            title={idx === 0 ? "Letzten Wurf rückgängig machen" : "Wurf entfernen & Statistik korrigieren"}
+                                        >
+                                            {idx === 0 ? <Undo2 className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

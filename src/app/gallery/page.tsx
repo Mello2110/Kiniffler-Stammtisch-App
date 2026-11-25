@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Sparkles, Camera, Map } from "lucide-react";
 import { YearCard } from "@/components/gallery/YearCard";
 import { EditableHeader } from "@/components/common/EditableHeader";
 import { BatchUpload } from "@/components/gallery/BatchUpload";
+import { useClub } from "@/contexts/ClubContext";
 
 export default function GalleryPage() {
-    // Generate years from 2015 to 2026
-    const years = Array.from({ length: 2026 - 2015 + 1 }, (_, i) => 2026 - i);
+    const { club } = useClub();
+    const currentYear = new Date().getFullYear();
+    const startYear = Math.min(club?.foundingYear || currentYear, currentYear);
+    const years = useMemo(
+        () => Array.from({ length: currentYear - startYear + 1 }, (_, i) => currentYear - i),
+        [currentYear, startYear]
+    );
 
     const [uploadStats, setUploadStats] = useState<{ [year: number]: number } | null>(null);
 
@@ -39,8 +45,8 @@ export default function GalleryPage() {
 
                     <div className="flex items-center gap-4 text-muted-foreground">
                         <div className="flex flex-col items-end">
-                            <span className="text-2xl font-black text-foreground outfit">11</span>
-                            <span className="text-xs uppercase font-bold tracking-widest">Jahre Fokus</span>
+                            <span className="text-2xl font-black text-foreground outfit">{years.length}</span>
+                            <span className="text-xs uppercase font-bold tracking-widest">{years.length === 1 ? "Jahr" : "Jahre"} Archiv</span>
                         </div>
                         <div className="h-10 w-px bg-border" />
                         <Camera className="h-8 w-8 text-accent/50" />
@@ -103,9 +109,9 @@ export default function GalleryPage() {
                         key={year}
                         year={year}
                         description={
-                            year === 2026 ? "Zukunftspläne" :
-                                year === 2025 ? "Aktuelles Jahr" :
-                                    year === 2024 ? "Die letzte Sause" :
+                            year === currentYear ? "Aktuelles Jahr" :
+                                year === currentYear - 1 ? "Letztes Jahr" :
+                                    year === startYear ? "Gründungsjahr" :
                                         undefined
                         }
                     />

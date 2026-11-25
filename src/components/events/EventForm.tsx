@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { format } from "date-fns";
 import { Clock, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { Member } from "@/types";
@@ -29,7 +30,7 @@ export function EventForm({ initialData, members, onSubmit, onCancel, isSubmitti
     // Default values if initialData is missing
     const [title, setTitle] = useState(initialData?.title || "");
     const [description, setDescription] = useState(initialData?.description || "");
-    const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(initialData?.date || format(new Date(), "yyyy-MM-dd"));
     const [time, setTime] = useState(initialData?.time || "19:00");
     const [location, setLocation] = useState(initialData?.location || "");
     const [hostId, setHostId] = useState(initialData?.hostId || "neutral");

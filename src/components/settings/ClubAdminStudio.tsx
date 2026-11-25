@@ -8,6 +8,8 @@ import { generateClubThemeTokens } from "@/lib/oklchTheme";
 import { DEFAULT_PRIMARY_HEX, DEFAULT_ACCENT_HEX, DEFAULT_HALL_OF_FAME_CATEGORIES } from "@/lib/defaultRuleset";
 import { ClubRulesetEditor } from "./ClubRulesetEditor";
 import { ClubInviteManager } from "./ClubInviteManager";
+import { ClubLogo } from "@/components/common/ClubLogo";
+import { deleteCloudinaryImage } from "@/lib/firebase";
 import { triggerHaptic } from "@/lib/haptics";
 import type { GameDisciplineId, HallOfFameCategoryId } from "@/types";
 import {
@@ -20,9 +22,67 @@ import {
     Plus,
     Link2,
     BookOpen,
-    Trophy
+    Trophy,
+    Upload,
+    Trash2,
+    Calendar,
+    Loader2,
+    Image as ImageIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "doasrf18u";
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "stammtisch_gallery";
+
+async function normalizeLogoForUpload(file: File): Promise<Blob> {
+    if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+        return file;
+    }
+
+    return new Promise((resolve) => {
+        const img = new window.Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+            try {
+                const maxDim = 512;
+                let width = img.naturalWidth || maxDim;
+                let height = img.naturalHeight || maxDim;
+                if (width > maxDim || height > maxDim) {
+                    const ratio = Math.min(maxDim / width, maxDim / height);
+                    width = Math.max(1, Math.round(width * ratio));
+                    height = Math.max(1, Math.round(height * ratio));
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(file);
+                    return;
+                }
+                ctx.clearRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob(
+                    (blob) => {
+                        URL.revokeObjectURL(objectUrl);
+                        resolve(blob || file);
+                    },
+                    "image/png",
+                    0.95
+                );
+            } catch {
+                URL.revokeObjectURL(objectUrl);
+                resolve(file);
+            }
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(file);
+        };
+        img.src = objectUrl;
+    });
+}
 
 const THEME_PRESETS = [
     { name: "KANPAI Rosewood & Sage", primary: DEFAULT_PRIMARY_HEX, accent: DEFAULT_ACCENT_HEX },
@@ -41,6 +101,7 @@ export function ClubAdminStudio() {
         club,
         createNewClub,
         updateClubTheme,
+        updateClubProfile,
         updateClubGames,
         updateClubPaymentConfig,
         updateClubHallOfFameCategories,
@@ -48,10 +109,20 @@ export function ClubAdminStudio() {
 
     const [activeTab, setActiveTab] = useState<StudioTab>("design");
 
-    // 1. Theme State
+    // 1. Theme & Club Profile State
     const [primaryColor, setPrimaryColor] = useState(club?.theme?.primaryColor || DEFAULT_PRIMARY_HEX);
     const [accentColor, setAccentColor] = useState(club?.theme?.accentColor || DEFAULT_ACCENT_HEX);
     const [themeSaved, setThemeSaved] = useState(false);
+
+    const [foundingYear, setFoundingYear] = useState<string>(
+        String(club?.foundingYear || new Date().getFullYear())
+    );
+    const [profileSaved, setProfileSaved] = useState(false);
+    const [logoBackground, setLogoBackground] = useState<"transparent" | "light" | "dark">(
+        club?.logoBackground || "transparent"
+    );
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+    const [logoError, setLogoError] = useState<string | null>(null);
 
     // 2. Games State
     const [enabledGames, setEnabledGames] = useState<GameDisciplineId[]>(
@@ -86,6 +157,8 @@ export function ClubAdminStudio() {
         if (!club) return;
         setPrimaryColor(club.theme?.primaryColor || DEFAULT_PRIMARY_HEX);
         setAccentColor(club.theme?.accentColor || DEFAULT_ACCENT_HEX);
+        setFoundingYear(String(club.foundingYear || new Date().getFullYear()));
+        setLogoBackground(club.logoBackground || "transparent");
         setEnabledGames(club.enabledGames || ["kniffel", "schocken", "kegeln"]);
         setDefaultGame(club.defaultGame || "kniffel");
         setHofCategories(club.hallOfFameCategories || DEFAULT_HALL_OF_FAME_CATEGORIES);
@@ -121,6 +194,75 @@ export function ClubAdminStudio() {
         await updateClubTheme({ primaryColor, accentColor });
         setThemeSaved(true);
         setTimeout(() => setThemeSaved(false), 2500);
+    };
+
+    const handleSaveFoundingYear = async () => {
+        const parsed = parseInt(foundingYear, 10);
+        const maxY = new Date().getFullYear() + 1;
+        if (!Number.isInteger(parsed) || parsed < 1900 || parsed > maxY) {
+            return;
+        }
+        triggerHaptic("success");
+        await updateClubProfile({ foundingYear: parsed });
+        setProfileSaved(true);
+        setTimeout(() => setProfileSaved(false), 2500);
+    };
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+
+        setLogoError(null);
+        setIsUploadingLogo(true);
+        try {
+            const normalizedBlob = await normalizeLogoForUpload(file);
+            const formData = new FormData();
+            formData.append("file", normalizedBlob, file.name.replace(/\.[^.]+$/, ".png"));
+            formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+            formData.append("folder", `club_logos/${clubId}`);
+
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                method: "POST",
+                body: formData,
+            });
+            if (!res.ok) {
+                throw new Error(`Upload fehlgeschlagen (${res.status})`);
+            }
+            const result = await res.json();
+            const previousPublicId = club?.logoPublicId;
+
+            await updateClubProfile({
+                logoUrl: result.secure_url,
+                logoPublicId: result.public_id,
+                logoBackground,
+            });
+
+            if (previousPublicId && previousPublicId !== result.public_id) {
+                deleteCloudinaryImage({ publicId: previousPublicId }).catch(() => {});
+            }
+            triggerHaptic("success");
+        } catch (err: unknown) {
+            console.error("Error uploading club logo:", err);
+            setLogoError(err instanceof Error ? err.message : "Logo-Upload fehlgeschlagen.");
+        } finally {
+            setIsUploadingLogo(false);
+        }
+    };
+
+    const handleChangeLogoBackground = async (bg: "transparent" | "light" | "dark") => {
+        setLogoBackground(bg);
+        triggerHaptic("tap");
+        await updateClubProfile({ logoBackground: bg });
+    };
+
+    const handleRemoveLogo = async () => {
+        const previousPublicId = club?.logoPublicId;
+        await updateClubProfile({ logoUrl: "", logoPublicId: "" });
+        if (previousPublicId) {
+            deleteCloudinaryImage({ publicId: previousPublicId }).catch(() => {});
+        }
+        triggerHaptic("tap");
     };
 
     const toggleGame = (id: GameDisciplineId) => {
@@ -229,6 +371,121 @@ export function ClubAdminStudio() {
 
             {/* 1. Design */}
             {activeTab === "design" && (
+                <div className="space-y-6">
+                {/* Vereinslogo & Gründungsjahr */}
+                <div className="rounded-2xl border border-white/10 bg-card/60 p-4 sm:p-6 space-y-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Gründungsjahr */}
+                        <div className="space-y-3">
+                            <div>
+                                <h3 className="text-base font-bold flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-primary shrink-0" />
+                                    Gründungsjahr
+                                </h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Bestimmt automatisch, ab welchem Jahr Ordner in Galerie &amp; Spiele-Arena generiert werden.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min={1900}
+                                    max={new Date().getFullYear() + 1}
+                                    value={foundingYear}
+                                    onChange={(e) => setFoundingYear(e.target.value)}
+                                    className="w-32 h-10 rounded-xl border border-white/10 bg-black/25 px-3 text-sm font-bold"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleSaveFoundingYear}
+                                    className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    {profileSaved ? <Check className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+                                    {profileSaved ? "Gespeichert!" : "Übernehmen"}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Vereinslogo */}
+                        <div className="space-y-3">
+                            <div>
+                                <h3 className="text-base font-bold flex items-center gap-2">
+                                    <ImageIcon className="h-4 w-4 text-primary shrink-0" />
+                                    Vereinslogo
+                                </h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    PNG, JPG, WebP oder SVG — Hoch-, Quer- und Rundformate werden automatisch sauber eingepasst.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-4">
+                                {club?.logoUrl ? (
+                                    <ClubLogo club={{ ...club, logoBackground }} size="lg" />
+                                ) : (
+                                    <div className="h-16 w-16 rounded-2xl border border-dashed border-white/20 bg-white/[0.03] flex items-center justify-center text-muted-foreground shrink-0">
+                                        <ImageIcon className="h-6 w-6 opacity-40" />
+                                    </div>
+                                )}
+
+                                <div className="flex-1 min-w-[200px] space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-bold cursor-pointer transition-colors">
+                                            {isUploadingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                                            <span>{isUploadingLogo ? "Wird hochgeladen..." : club?.logoUrl ? "Logo ersetzen" : "Logo hochladen"}</span>
+                                            <input
+                                                type="file"
+                                                accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg"
+                                                onChange={handleLogoUpload}
+                                                disabled={isUploadingLogo}
+                                                className="hidden"
+                                            />
+                                        </label>
+
+                                        {club?.logoUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveLogo}
+                                                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold cursor-pointer transition-colors"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                                Entfernen
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Badge Background Option */}
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="text-[11px] text-muted-foreground mr-1">Hintergrund:</span>
+                                        {([
+                                            { id: "transparent", label: "Transparent" },
+                                            { id: "light", label: "Heller Badge" },
+                                            { id: "dark", label: "Dunkler Badge" },
+                                        ] as const).map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => handleChangeLogoBackground(opt.id)}
+                                                className={cn(
+                                                    "px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer",
+                                                    logoBackground === opt.id
+                                                        ? "bg-primary/20 border-primary/40 text-primary"
+                                                        : "bg-white/5 border-white/10 text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {logoError && (
+                                        <p className="text-xs text-red-400">{logoError}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="rounded-2xl border border-white/10 bg-card/60 p-4 sm:p-6 space-y-5">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="min-w-0">
@@ -316,6 +573,7 @@ export function ClubAdminStudio() {
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
             )}
 

@@ -190,6 +190,7 @@ export function DateInteractionModal({ date, onClose, currentUserId, existingVot
                     </div>
                 ) : (
                     <EventForm
+                        key={dateStr}
                         initialData={{ date: dateStr }}
                         members={members}
                         onSubmit={handleAddEvent}

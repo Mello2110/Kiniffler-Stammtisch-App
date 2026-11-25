@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useMemo } from "react";
-import { doc, setDoc, updateDoc, addDoc, getDoc, serverTimestamp, collection } from "firebase/firestore";
+import { doc, setDoc, updateDoc, addDoc, getDoc, deleteDoc, serverTimestamp, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useClub } from "@/contexts/ClubContext";
 import { triggerHaptic } from "@/lib/haptics";
@@ -23,12 +23,16 @@ import {
     Trophy,
     Coins,
     RotateCcw,
-    CheckCircle2,
     Sparkles,
     Swords,
     Plus,
     Minus,
-    Dices
+    Dices,
+    Undo2,
+    History,
+    ChevronDown,
+    ChevronUp,
+    Wrench
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEFAULT_CLUB_RULESET } from "@/lib/defaultRuleset";
@@ -79,7 +83,23 @@ export interface SchockenHistoryEvent {
     coasters: number;
     receiverId: string;
     donorId?: string; // "stock" oder Spieler-ID im Stechen
+    rollerId?: string;
     note?: string;
+}
+
+export interface SchockenUndoSnapshot {
+    actionLabel: string;
+    stockRemaining: number;
+    currentPhase: "half1" | "half2" | "finale";
+    half1LoserId: string | null;
+    half2LoserId: string | null;
+    finalLoserId: string | null;
+    coastersByPlayer: Record<string, number>;
+    statsByPlayer: SchockenState["statsByPlayer"];
+    history: SchockenHistoryEvent[];
+    completedMatches: SchockenMatchRecord[];
+    linkedPenaltyId?: string;
+    linkedLedgerId?: string;
 }
 
 export interface SchockenMatchRecord {
@@ -108,6 +128,7 @@ export interface SchockenState {
     }>;
     history: SchockenHistoryEvent[];
     completedMatches: SchockenMatchRecord[];
+    undoStack?: SchockenUndoSnapshot[];
 }
 
 export function createInitialSchockenState(playerIds: string[], stockCoasters: number = 13): SchockenState {
@@ -156,6 +177,8 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
     const [selectedRollerId, setSelectedRollerId] = useState<string>("");
     const [selectedDonorId, setSelectedDonorId] = useState<string>("stock");
     const [isSaving, setIsSaving] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+    const [correctionMode, setCorrectionMode] = useState(false);
 
     const players = useMemo(() => {
         const mMap = new Map(members.map(m => [m.id, m]));
@@ -186,13 +209,37 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
         }
     };
 
-    const bookClubPenalty = async (playerId: string, amountEur: number, reason: string) => {
+    const createUndoSnapshot = (
+        actionLabel: string,
+        linkedIds?: { penaltyId: string; ledgerId: string } | null
+    ): SchockenUndoSnapshot => ({
+        actionLabel,
+        stockRemaining: state.stockRemaining,
+        currentPhase: state.currentPhase,
+        half1LoserId: state.half1LoserId,
+        half2LoserId: state.half2LoserId,
+        finalLoserId: state.finalLoserId,
+        coastersByPlayer: { ...state.coastersByPlayer },
+        statsByPlayer: Object.fromEntries(
+            Object.entries(state.statsByPlayer || {}).map(([k, v]) => [k, { ...v }])
+        ),
+        history: [...(state.history || [])],
+        completedMatches: [...(state.completedMatches || [])],
+        ...(linkedIds?.penaltyId ? { linkedPenaltyId: linkedIds.penaltyId } : {}),
+        ...(linkedIds?.ledgerId ? { linkedLedgerId: linkedIds.ledgerId } : {}),
+    });
+
+    const bookClubPenalty = async (
+        playerId: string,
+        amountEur: number,
+        reason: string
+    ): Promise<{ penaltyId: string; ledgerId: string } | null> => {
         const p = players.find(pl => pl.id === playerId);
-        if (!p) return;
+        if (!p) return null;
         const targetUid = p.isGuest ? p.hostMemberId : p.id;
         if (!targetUid) {
             showToast("Gast hat keinen zugewiesenen Gastgeber für Strafen.");
-            return;
+            return null;
         }
 
         triggerHaptic("penalty");
@@ -223,17 +270,65 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                 createdAt: serverTimestamp(),
                 linkedDocId: penRef.id,
             };
-            await addDoc(clubCollection("ledger_entries"), ledgerPayload);
+            const ledgerRef = await addDoc(clubCollection("ledger_entries"), ledgerPayload);
 
             if (clubId === "club_original") {
                 await setDoc(doc(db, "penalties", penRef.id), penPayload).catch(() => {});
-                await addDoc(collection(db, "ledger_entries"), ledgerPayload).catch(() => {});
+                await setDoc(doc(db, "ledger_entries", ledgerRef.id), ledgerPayload).catch(() => {});
             }
 
             showToast(`✓ ${amountEur.toFixed(2)}€ Strafe verbucht: ${p.name} (${reason})`);
+            return { penaltyId: penRef.id, ledgerId: ledgerRef.id };
         } catch (err) {
             console.error("Error booking Schocken penalty:", err);
+            return null;
         }
+    };
+
+    const rollbackLinkedPenalty = async (penaltyId?: string, ledgerId?: string) => {
+        if (!penaltyId && !ledgerId) return;
+        try {
+            if (penaltyId) {
+                await deleteDoc(clubDoc("penalties", penaltyId)).catch(() => {});
+                if (clubId === "club_original") {
+                    await deleteDoc(doc(db, "penalties", penaltyId)).catch(() => {});
+                }
+            }
+            if (ledgerId) {
+                await deleteDoc(clubDoc("ledger_entries", ledgerId)).catch(() => {});
+                if (clubId === "club_original") {
+                    await deleteDoc(doc(db, "ledger_entries", ledgerId)).catch(() => {});
+                }
+            }
+        } catch (err) {
+            console.error("Error rolling back Schocken penalty:", err);
+        }
+    };
+
+    const handleUndoLastAction = async () => {
+        const stack = state.undoStack || [];
+        if (stack.length === 0 || isSaving) return;
+
+        const snapshot = stack[0];
+        triggerHaptic("tap");
+
+        const nextState: SchockenState = {
+            ...state,
+            stockRemaining: snapshot.stockRemaining,
+            currentPhase: snapshot.currentPhase,
+            half1LoserId: snapshot.half1LoserId,
+            half2LoserId: snapshot.half2LoserId,
+            finalLoserId: snapshot.finalLoserId,
+            coastersByPlayer: snapshot.coastersByPlayer,
+            statsByPlayer: snapshot.statsByPlayer,
+            history: snapshot.history,
+            completedMatches: snapshot.completedMatches,
+            undoStack: stack.slice(1),
+        };
+
+        await persistState(nextState);
+        await rollbackLinkedPenalty(snapshot.linkedPenaltyId, snapshot.linkedLedgerId);
+        showToast(`↩️ Rückgängig: ${snapshot.actionLabel}`);
     };
 
     const handleAssignCoasters = async () => {
@@ -259,6 +354,9 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
             }
         }
 
+        const wasFromStock = selectedDonorId === "stock" && state.stockRemaining > 0;
+        let recordedDonorId = "stock";
+
         if (throwDef.instantLoss) {
             triggerHaptic("specialThrow");
             // Schock-Out: Verlierer der Runde bekommt sofort alle 13 Deckel und verliert die Hälfte!
@@ -266,12 +364,14 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                 nextCoasters[pid] = pid === selectedReceiverId ? state.totalStockCoasters : 0;
             }
             nextStock = 0;
+            recordedDonorId = "stock";
         } else {
             triggerHaptic("diceRoll");
-            if (selectedDonorId === "stock" && nextStock > 0) {
+            if (wasFromStock) {
                 const transfer = Math.min(throwDef.coasters, nextStock);
                 nextStock -= transfer;
                 nextCoasters[selectedReceiverId] = (nextCoasters[selectedReceiverId] || 0) + transfer;
+                recordedDonorId = "stock";
             } else {
                 // Stechen: Übergabe von einem anderen Spieler mit den meisten Deckeln oder gewähltem Geber
                 const effectiveDonor = selectedDonorId !== "stock"
@@ -291,8 +391,12 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                 const transfer = Math.min(throwDef.coasters, nextCoasters[effectiveDonor] || 0);
                 nextCoasters[effectiveDonor] -= transfer;
                 nextCoasters[selectedReceiverId] = (nextCoasters[selectedReceiverId] || 0) + transfer;
+                recordedDonorId = effectiveDonor;
             }
         }
+
+        const receiverName = players.find(p => p.id === selectedReceiverId)?.name || "Spieler";
+        const snapshot = createUndoSnapshot(`${throwDef.label} → ${receiverName}`);
 
         const newEvent: SchockenHistoryEvent = {
             id: `ev_${Date.now()}`,
@@ -302,7 +406,8 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
             throwLabel: throwDef.label,
             coasters: throwDef.coasters,
             receiverId: selectedReceiverId,
-            donorId: nextStock > 0 ? "stock" : selectedDonorId,
+            donorId: recordedDonorId,
+            ...(selectedRollerId ? { rollerId: selectedRollerId } : {}),
         };
 
         const nextState: SchockenState = {
@@ -310,7 +415,8 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
             stockRemaining: nextStock,
             coastersByPlayer: nextCoasters,
             statsByPlayer: nextStats,
-            history: [newEvent, ...(state.history || []).slice(0, 29)],
+            history: [newEvent, ...(state.history || []).slice(0, 99)],
+            undoStack: [snapshot, ...(state.undoStack || []).slice(0, 24)],
         };
 
         await persistState(nextState);
@@ -331,7 +437,11 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
             };
         }
 
+        const loserName = players.find(p => p.id === loserId)?.name || "Spieler";
+
         if (state.currentPhase === "half1") {
+            const linkedIds = await bookClubPenalty(loserId, rules.halfLossPenaltyEur, "1. Hälfte verloren");
+            const snapshot = createUndoSnapshot(`1. Hälfte verloren (${loserName})`, linkedIds);
             const nextState: SchockenState = {
                 ...state,
                 half1LoserId: loserId,
@@ -339,12 +449,14 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                 stockRemaining: state.totalStockCoasters,
                 coastersByPlayer: resetCoasters,
                 statsByPlayer: nextStats,
+                undoStack: [snapshot, ...(state.undoStack || []).slice(0, 24)],
             };
             await persistState(nextState);
-            await bookClubPenalty(loserId, rules.halfLossPenaltyEur, "1. Hälfte verloren");
         } else if (state.currentPhase === "half2") {
             // Wenn derselbe Spieler beide Hälften verliert -> Direktes Match-Ende ohne Finale!
             if (state.half1LoserId === loserId) {
+                const linkedIds = await bookClubPenalty(loserId, rules.doubleHalfLossPenaltyEur, "Beide Hälften verloren (Doppel-Niederlage)");
+                const snapshot = createUndoSnapshot(`Beide Hälften verloren (${loserName})`, linkedIds);
                 if (nextStats[loserId]) {
                     nextStats[loserId].matchesLost = (nextStats[loserId].matchesLost || 0) + 1;
                 }
@@ -371,10 +483,12 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                     coastersByPlayer: resetCoasters,
                     statsByPlayer: nextStats,
                     completedMatches: [...(state.completedMatches || []), matchRec],
+                    undoStack: [snapshot, ...(state.undoStack || []).slice(0, 24)],
                 };
                 await persistState(nextState);
-                await bookClubPenalty(loserId, rules.doubleHalfLossPenaltyEur, "Beide Hälften verloren (Doppel-Niederlage)");
             } else {
+                const linkedIds = await bookClubPenalty(loserId, rules.halfLossPenaltyEur, "2. Hälfte verloren");
+                const snapshot = createUndoSnapshot(`2. Hälfte verloren (${loserName})`, linkedIds);
                 const nextState: SchockenState = {
                     ...state,
                     half2LoserId: loserId,
@@ -382,11 +496,13 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                     stockRemaining: state.totalStockCoasters,
                     coastersByPlayer: resetCoasters,
                     statsByPlayer: nextStats,
+                    undoStack: [snapshot, ...(state.undoStack || []).slice(0, 24)],
                 };
                 await persistState(nextState);
-                await bookClubPenalty(loserId, rules.halfLossPenaltyEur, "2. Hälfte verloren");
             }
         } else if (state.currentPhase === "finale") {
+            const linkedIds = await bookClubPenalty(loserId, rules.finalLossPenaltyEur, "Schocken-Finale verloren (Runde zahlt)");
+            const snapshot = createUndoSnapshot(`Finale verloren (${loserName})`, linkedIds);
             if (nextStats[loserId]) {
                 nextStats[loserId].matchesLost = (nextStats[loserId].matchesLost || 0) + 1;
             }
@@ -413,9 +529,9 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                 coastersByPlayer: resetCoasters,
                 statsByPlayer: nextStats,
                 completedMatches: [...(state.completedMatches || []), matchRec],
+                undoStack: [snapshot, ...(state.undoStack || []).slice(0, 24)],
             };
             await persistState(nextState);
-            await bookClubPenalty(loserId, rules.finalLossPenaltyEur, "Schocken-Finale verloren (Runde zahlt)");
         }
     };
 
@@ -537,21 +653,50 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                         ))}
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 pt-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={handleUndoLastAction}
+                                disabled={!state.undoStack?.length || isSaving}
+                                className="text-xs flex items-center gap-1 text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-semibold"
+                                title={state.undoStack?.[0] ? `Rückgängig: ${state.undoStack[0].actionLabel}` : "Keine Aktion zum Rückgängigmachen"}
+                            >
+                                <Undo2 className="h-3.5 w-3.5" />
+                                Rückgängig
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setCorrectionMode(prev => !prev)}
+                                className={cn(
+                                    "text-xs flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer",
+                                    correctionMode
+                                        ? "bg-primary/20 border-primary/40 text-primary font-semibold"
+                                        : "bg-white/5 border-white/10 text-muted-foreground hover:text-foreground"
+                                )}
+                                title="Hälften- und Runden-Zähler manuell korrigieren"
+                            >
+                                <Wrench className="h-3.5 w-3.5" />
+                                Korrektur
+                            </button>
+                        </div>
+
                         <button
                             onClick={() => {
+                                const snapshot = createUndoSnapshot("Deckel zurück in Stock");
                                 const reset: Record<string, number> = {};
                                 orderedPlayerIds.forEach(id => reset[id] = 0);
                                 persistState({
                                     ...state,
                                     stockRemaining: state.totalStockCoasters,
                                     coastersByPlayer: reset,
+                                    undoStack: [snapshot, ...(state.undoStack || []).slice(0, 24)],
                                 });
                             }}
                             className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
                         >
                             <RotateCcw className="h-3.5 w-3.5" />
-                            Deckel zurück in Stock
+                            Deckel zurück
                         </button>
 
                         <button
@@ -715,11 +860,13 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                                     onClick={async () => {
                                         if (coasters <= 0) return;
                                         triggerHaptic("tap");
+                                        const snapshot = createUndoSnapshot(`-1 Deckel (${player.name})`);
                                         const nextC = { ...state.coastersByPlayer, [player.id]: coasters - 1 };
                                         await persistState({
                                             ...state,
                                             stockRemaining: Math.min(state.totalStockCoasters, state.stockRemaining + 1),
                                             coastersByPlayer: nextC,
+                                            undoStack: [snapshot, ...(state.undoStack || []).slice(0, 24)],
                                         });
                                     }}
                                     className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -735,11 +882,13 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                                             return;
                                         }
                                         triggerHaptic("tap");
+                                        const snapshot = createUndoSnapshot(`+1 Deckel (${player.name})`);
                                         const nextC = { ...state.coastersByPlayer, [player.id]: coasters + 1 };
                                         await persistState({
                                             ...state,
                                             stockRemaining: state.stockRemaining - 1,
                                             coastersByPlayer: nextC,
+                                            undoStack: [snapshot, ...(state.undoStack || []).slice(0, 24)],
                                         });
                                     }}
                                     className="p-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
@@ -749,15 +898,127 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
 
                                 <button
                                     onClick={() => handleConcludePhase(player.id)}
-                                    className="ml-auto px-3 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                                    className={cn(
+                                        "ml-auto px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer",
+                                        hasAllCoasters
+                                            ? "bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 animate-pulse"
+                                            : "bg-red-500/15 hover:bg-red-500/25 text-red-400"
+                                    )}
                                 >
                                     <ShieldAlert className="h-3.5 w-3.5" />
                                     {state.currentPhase === "finale" ? "Finale verloren" : "Hälfte verloren"}
                                 </button>
                             </div>
+
+                            {correctionMode && (
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-dashed border-white/10 text-[11px] text-muted-foreground">
+                                    <div className="flex items-center gap-1">
+                                        <span>Hälften:</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const nextStats = { ...state.statsByPlayer };
+                                                nextStats[player.id] = { ...pStats, halvesLost: Math.max(0, (pStats.halvesLost || 0) - 1) };
+                                                persistState({ ...state, statsByPlayer: nextStats });
+                                            }}
+                                            className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 cursor-pointer"
+                                        >-</button>
+                                        <span className="font-bold text-foreground px-1">{pStats.halvesLost}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const nextStats = { ...state.statsByPlayer };
+                                                nextStats[player.id] = { ...pStats, halvesLost: (pStats.halvesLost || 0) + 1 };
+                                                persistState({ ...state, statsByPlayer: nextStats });
+                                            }}
+                                            className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 cursor-pointer"
+                                        >+</button>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <span>Runden:</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const nextStats = { ...state.statsByPlayer };
+                                                nextStats[player.id] = { ...pStats, matchesLost: Math.max(0, (pStats.matchesLost || 0) - 1) };
+                                                persistState({ ...state, statsByPlayer: nextStats });
+                                            }}
+                                            className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 cursor-pointer"
+                                        >-</button>
+                                        <span className="font-bold text-foreground px-1">{pStats.matchesLost}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const nextStats = { ...state.statsByPlayer };
+                                                nextStats[player.id] = { ...pStats, matchesLost: (pStats.matchesLost || 0) + 1 };
+                                                persistState({ ...state, statsByPlayer: nextStats });
+                                            }}
+                                            className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 cursor-pointer"
+                                        >+</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     );
                 })}
+            </div>
+
+            {/* Wurf- & Runden-Protokoll */}
+            <div className="rounded-2xl border border-white/10 bg-card/40 overflow-hidden">
+                <button
+                    type="button"
+                    onClick={() => setShowHistory(prev => !prev)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-bold hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                        <History className="h-4 w-4 text-primary" />
+                        Wurf- &amp; Runden-Protokoll ({state.history?.length || 0} Züge • {state.completedMatches?.length || 0} Runden)
+                    </span>
+                    {showHistory ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+
+                {showHistory && (
+                    <div className="border-t border-white/10 p-4 space-y-4 max-h-80 overflow-y-auto">
+                        {state.completedMatches && state.completedMatches.length > 0 && (
+                            <div className="space-y-1.5">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Abgeschlossene Runden</div>
+                                {state.completedMatches.slice().reverse().map((m, i) => (
+                                    <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-xs">
+                                        <span className="font-bold">Runde #{state.completedMatches.length - i}</span>
+                                        <span className="text-muted-foreground">
+                                            1. Hälfte: <strong className="text-foreground">{getPlayerName(m.half1LoserId)}</strong> • 2. Hälfte: <strong className="text-foreground">{getPlayerName(m.half2LoserId)}</strong>
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold">
+                                            Verlierer: {getPlayerName(m.finalLoserId)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Letzte Züge</div>
+                            {(!state.history || state.history.length === 0) ? (
+                                <p className="text-xs text-muted-foreground text-center py-3">Noch keine Züge protokolliert.</p>
+                            ) : (
+                                state.history.map((ev) => (
+                                    <div key={ev.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5 text-xs">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-muted-foreground shrink-0">
+                                                {ev.phase === "half1" ? "1. H" : ev.phase === "half2" ? "2. H" : "Fin"}
+                                            </span>
+                                            <span className="font-bold text-amber-300 shrink-0">{ev.throwLabel}</span>
+                                            <span className="text-muted-foreground truncate">
+                                                {getPlayerName(ev.donorId || "stock")} &rarr; <strong className="text-foreground">{getPlayerName(ev.receiverId)}</strong>
+                                            </span>
+                                        </div>
+                                        <span className="font-bold text-primary shrink-0">{ev.coasters} Deckel</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

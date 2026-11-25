@@ -44,6 +44,7 @@ export default function OnboardingPage() {
     // Step 1: Club & Member Basics
     const [clubName, setClubName] = useState("");
     const [displayName, setDisplayName] = useState("");
+    const [foundingYear, setFoundingYear] = useState<string>(String(new Date().getFullYear()));
     const [enabledGames, setEnabledGames] = useState<GameDisciplineId[]>(["kniffel", "schocken", "kegeln"]);
 
     // Step 2: Theme & Treasury
@@ -107,10 +108,12 @@ export default function OnboardingPage() {
         setIsCreating(true);
         try {
             const parsedContrib = parseFloat(monthlyContributionEur);
+            const parsedFoundingYear = parseInt(foundingYear, 10);
             const result = await createNewClub({
                 name: clubName.trim(),
                 slug: previewSlug,
                 displayName: displayName.trim() || undefined,
+                foundingYear: Number.isInteger(parsedFoundingYear) ? parsedFoundingYear : new Date().getFullYear(),
                 primaryColor,
                 accentColor,
                 enabledGames,
@@ -225,18 +228,33 @@ export default function OnboardingPage() {
                             </p>
                         </div>
 
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                Dein Name im Verein
-                            </label>
-                            <input
-                                type="text"
-                                value={displayName}
-                                onChange={(e) => setDisplayName(e.target.value)}
-                                placeholder="z.B. Max"
-                                maxLength={40}
-                                className="w-full"
-                            />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="sm:col-span-2 space-y-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                    Dein Name im Verein
+                                </label>
+                                <input
+                                    type="text"
+                                    value={displayName}
+                                    onChange={(e) => setDisplayName(e.target.value)}
+                                    placeholder="z.B. Max"
+                                    maxLength={40}
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                    Gründungsjahr
+                                </label>
+                                <input
+                                    type="number"
+                                    min={1900}
+                                    max={new Date().getFullYear() + 1}
+                                    value={foundingYear}
+                                    onChange={(e) => setFoundingYear(e.target.value)}
+                                    className="w-full"
+                                />
+                            </div>
                         </div>
 
                         <div className="space-y-2">

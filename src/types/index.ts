@@ -339,6 +339,10 @@ export interface ClubTenant {
     slug: string;                    // URL-friendly slug, e.g. "stammtisch"
     name: string;                    // Display title
     subtitle?: string;
+    foundingYear?: number;           // e.g. 2016 — used to generate year folders for gallery & games
+    logoUrl?: string;                // Cloudinary URL for club logo
+    logoPublicId?: string;           // Cloudinary public_id for cleanup on replace/delete
+    logoBackground?: 'transparent' | 'light' | 'dark';
     creatorUid: string;
     enabledGames: GameDisciplineId[];
     defaultGame: GameDisciplineId;

@@ -32,12 +32,20 @@ interface CreateClubParams {
     name: string;
     slug?: string;
     displayName?: string;
+    foundingYear?: number;
     primaryColor?: string;
     accentColor?: string;
     enabledGames?: GameDisciplineId[];
     paypalMeHandle?: string;
     treasuryEmail?: string;
     monthlyContributionEur?: number;
+}
+
+interface UpdateClubProfileParams {
+    foundingYear?: number;
+    logoUrl?: string | null;
+    logoPublicId?: string | null;
+    logoBackground?: "transparent" | "light" | "dark";
 }
 
 interface ClubContextType {
@@ -48,6 +56,7 @@ interface ClubContextType {
     switchClub: (targetClubIdOrSlug: string) => Promise<void>;
     createNewClub: (params: CreateClubParams) => Promise<{ clubId: string; inviteCode: string }>;
     updateClubTheme: (theme: ClubThemeConfig) => Promise<void>;
+    updateClubProfile: (profile: UpdateClubProfileParams) => Promise<void>;
     updateClubGames: (enabledGames: GameDisciplineId[], defaultGame?: GameDisciplineId) => Promise<void>;
     updateClubPaymentConfig: (paymentConfig: Partial<ClubPaymentConfig>) => Promise<void>;
     updateClubRuleset: (ruleset: ClubRulesetConfig) => Promise<void>;
@@ -61,6 +70,7 @@ const DEFAULT_CLUB_FALLBACK: ClubTenant = {
     slug: "stammtisch",
     name: "Stammtisch",
     subtitle: "The Original Kniffel & Stammtisch Crew",
+    foundingYear: 2016,
     creatorUid: "",
     enabledGames: ["kniffel", "schocken", "kegeln"],
     defaultGame: "kniffel",
@@ -91,6 +101,7 @@ const ClubContext = createContext<ClubContextType>({
     switchClub: async () => {},
     createNewClub: async () => ({ clubId: DEFAULT_CLUB_ID, inviteCode: "" }),
     updateClubTheme: async () => {},
+    updateClubProfile: async () => {},
     updateClubGames: async () => {},
     updateClubPaymentConfig: async () => {},
     updateClubRuleset: async () => {},
@@ -336,6 +347,17 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         });
     }, [clubId]);
 
+    const updateClubProfile = useCallback(async (profile: UpdateClubProfileParams) => {
+        if (!clubId) return;
+        const payload: Record<string, any> = {};
+        if (profile.foundingYear !== undefined) payload.foundingYear = profile.foundingYear;
+        if (profile.logoUrl !== undefined) payload.logoUrl = profile.logoUrl || "";
+        if (profile.logoPublicId !== undefined) payload.logoPublicId = profile.logoPublicId || "";
+        if (profile.logoBackground !== undefined) payload.logoBackground = profile.logoBackground;
+        if (Object.keys(payload).length === 0) return;
+        await updateDoc(doc(db, "clubs", clubId), payload);
+    }, [clubId]);
+
     const updateClubGames = useCallback(async (enabledGames: GameDisciplineId[], defaultGame?: GameDisciplineId) => {
         if (!clubId || enabledGames.length === 0) return;
         await updateDoc(doc(db, "clubs", clubId), {
@@ -387,6 +409,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         switchClub,
         createNewClub,
         updateClubTheme,
+        updateClubProfile,
         updateClubGames,
         updateClubPaymentConfig,
         updateClubRuleset,
@@ -401,6 +424,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         switchClub,
         createNewClub,
         updateClubTheme,
+        updateClubProfile,
         updateClubGames,
         updateClubPaymentConfig,
         updateClubRuleset,

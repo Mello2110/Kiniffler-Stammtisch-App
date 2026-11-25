@@ -25,13 +25,14 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useClub } from "@/contexts/ClubContext";
 import { useTitle } from "@/contexts/TitleContext";
+import { ClubLogo } from "@/components/common/ClubLogo";
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const { logout, user } = useAuth();
     const { dict, language } = useLanguage();
     const { title, setTitle } = useTitle();
-    const { clubId, availableClubs, switchClub, clubDoc } = useClub();
+    const { clubId, club, availableClubs, switchClub, clubDoc } = useClub();
 
     const [editValue, setEditValue] = useState(title);
     const [isEditing, setIsEditing] = useState(false);
@@ -110,7 +111,8 @@ export function Sidebar({ className }: { className?: string }) {
                     />
                 ) : (
                     <div className="flex items-center w-full group">
-                        <Link href="/dashboard" className="block truncate max-w-[170px] hover:opacity-80 transition-opacity cursor-pointer">
+                        <Link href="/dashboard" className="flex items-center gap-2.5 truncate max-w-[185px] hover:opacity-80 transition-opacity cursor-pointer">
+                            <ClubLogo club={club} size="sm" />
                             <h1
                                 className="text-2xl font-black font-heading text-[#F5F0EB] truncate"
                                 title={title}

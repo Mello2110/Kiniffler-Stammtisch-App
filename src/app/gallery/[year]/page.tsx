@@ -1,8 +1,10 @@
 import YearPageClient from "./YearPageClient";
 
 export async function generateStaticParams() {
-    // Generate years from 2015 to 2026
-    const years = Array.from({ length: 2026 - 2015 + 1 }, (_, i) => (2026 - i).toString());
+    // Cover a wide range of founding years (1950..2035) for static export
+    const maxYear = 2035;
+    const minYear = 1950;
+    const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => (maxYear - i).toString());
     return years.map((year) => ({
         year: year,
     }));
