@@ -111,7 +111,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                             )}
                         >
                             <Navbar />
-                            <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 pb-24 md:pb-10 min-w-0 overflow-x-clip">
+                            <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-[max(1.25rem,env(safe-area-inset-top))] lg:pt-[max(2rem,env(safe-area-inset-top))] pb-24 md:pb-10 min-w-0 overflow-x-clip">
                                 {children}
                             </main>
                             <div className="hidden md:block">

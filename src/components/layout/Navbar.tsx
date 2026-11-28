@@ -36,7 +36,7 @@ export function Navbar() {
 
     return (
         <>
-            <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl md:hidden">
+            <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-xl md:hidden">
                 <div className="flex h-14 w-full items-center justify-between pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
                     <Link href="/dashboard" className="flex items-center gap-2 font-black text-lg hover:opacity-80 transition-opacity active:opacity-60">
                         <ClubLogo club={club} size="sm" />
