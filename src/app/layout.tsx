@@ -20,8 +20,6 @@ const outfit = Outfit({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
@@ -49,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="de">
       <body
         className={`${inter.variable} ${outfit.variable} antialiased bg-background text-foreground`}
       >

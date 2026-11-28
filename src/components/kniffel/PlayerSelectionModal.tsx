@@ -244,7 +244,7 @@ export function PlayerSelectionModal({
                 />
 
                 {/* Modal */}
-                <div className="relative w-full max-w-4xl max-h-[90vh] bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl ring-1 ring-white/5 overflow-hidden flex flex-col">
+                <div className="relative w-full max-w-4xl max-h-[90dvh] overscroll-contain bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl ring-1 ring-white/5 overflow-hidden flex flex-col">
                     {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-white/10">
                         <div className="flex items-center gap-3">

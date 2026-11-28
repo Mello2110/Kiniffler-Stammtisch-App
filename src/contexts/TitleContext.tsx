@@ -23,16 +23,23 @@ export function TitleProvider({ children }: { children: React.ReactNode }) {
     }, [club?.name]);
 
     useEffect(() => {
+        if (!clubId) return;
         // Subscribe to club-specific settings/general
         const ref = clubDoc("settings", "general");
-        const unsubscribe = onSnapshot(ref, (snap) => {
-            if (snap.exists()) {
-                const data = snap.data();
-                if (data?.title) {
-                    setTitleState(data.title);
+        const unsubscribe = onSnapshot(
+            ref,
+            (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data?.title) {
+                        setTitleState(data.title);
+                    }
                 }
+            },
+            () => {
+                // Ignore transient permission errors during auth/club transitions
             }
-        });
+        );
 
         return () => unsubscribe();
     }, [clubId, clubDoc]);

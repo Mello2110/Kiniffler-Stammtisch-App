@@ -75,7 +75,7 @@ export function PointsMatrix({ members, points, currentYear, gameType = "kniffel
     }).sort((a, b) => b.totalPoints - a.totalPoints);
 
     return (
-        <div className="w-full max-w-full rounded-xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl shadow-2xl overflow-hidden overflow-x-auto ring-1 ring-white/5">
+        <div className="w-full max-w-full rounded-xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl shadow-2xl overflow-x-auto ring-1 ring-white/5">
             {!canEdit && (
                 <div className="px-4 py-2 text-[11px] text-muted-foreground border-b border-white/10 bg-black/20">
                     Gesamt-Ansicht aller Disziplinen (schreibgeschützt). Wähle eine einzelne Disziplin zum Bearbeiten.
@@ -84,7 +84,7 @@ export function PointsMatrix({ members, points, currentYear, gameType = "kniffel
             <table className="w-full text-sm">
                 <thead>
                     <tr>
-                        <th className="h-10 px-4 text-left font-medium sticky left-0 bg-secondary/95 backdrop-blur z-10 border-r border-white/20">Mitglied</th>
+                        <th className="h-10 px-4 text-left font-medium sticky left-0 bg-secondary z-10 border-r border-white/20">Mitglied</th>
                         {MONTHS.map(m => (
                             <th key={m} className="h-10 px-2 text-center font-medium w-12">{m}</th>
                         ))}
@@ -94,7 +94,7 @@ export function PointsMatrix({ members, points, currentYear, gameType = "kniffel
                 <tbody>
                     {memberTotals.map(member => (
                         <tr key={member.id} className="group">
-                            <td className="p-3 sm:p-4 font-medium sticky left-0 bg-secondary/95 backdrop-blur z-10 border-r border-white/20 whitespace-nowrap">
+                            <td className="p-3 sm:p-4 font-medium sticky left-0 bg-secondary z-10 border-r border-white/20 whitespace-nowrap">
                                 {member.name}
                             </td>
                             {MONTHS.map((_, monthIndex) => {

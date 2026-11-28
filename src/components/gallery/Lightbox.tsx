@@ -86,7 +86,7 @@ export function Lightbox({
 
     return (
         <div
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 animate-in fade-in duration-300 touch-none"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] animate-in fade-in duration-300 overscroll-contain touch-none"
             onClick={onClose}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
@@ -94,7 +94,8 @@ export function Lightbox({
             {/* Close Button */}
             <button
                 onClick={onClose}
-                className="absolute top-4 right-4 md:top-6 md:right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-[210]"
+                aria-label="Schließen"
+                className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] min-h-[44px] min-w-[44px] flex items-center justify-center p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-[210] cursor-pointer"
             >
                 <X className="h-6 w-6" />
             </button>
@@ -118,15 +119,15 @@ export function Lightbox({
             )}
 
             <div
-                className="relative max-w-5xl w-full flex flex-col items-center gap-6"
+                className="relative max-w-5xl w-full max-h-[92dvh] overflow-y-auto overscroll-contain flex flex-col items-center gap-4 sm:gap-6"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="relative w-full max-h-[75vh] flex items-center justify-center">
+                <div className="relative w-full max-h-[70dvh] sm:max-h-[75dvh] flex items-center justify-center">
                     <img
                         key={image.id} // Retrigger animation on image change
                         src={image.url}
                         alt={image.description || "Gallery"}
-                        className="max-w-full max-h-[75vh] object-contain transition-all duration-300 animate-in fade-in zoom-in-95 pointer-events-none select-none"
+                        className="max-w-full max-h-[70dvh] sm:max-h-[75dvh] object-contain transition-all duration-300 animate-in fade-in zoom-in-95 pointer-events-none select-none"
                     />
                 </div>
 

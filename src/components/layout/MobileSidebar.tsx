@@ -56,7 +56,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         <>
             {/* Backdrop Overlay */}
             <div
-                className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 md:hidden"
+                className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 lg:hidden"
                 onClick={onClose}
                 aria-hidden="true"
             />
@@ -64,7 +64,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             {/* Sidebar Panel */}
             <div className={cn(
                 "fixed inset-y-0 right-0 z-50 w-[82%] max-w-[300px] bg-secondary/95 backdrop-blur-md border-l border-white/10 shadow-2xl pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)]",
-                "animate-in slide-in-from-right duration-200 md:hidden",
+                "animate-in slide-in-from-right duration-200 lg:hidden",
                 "flex flex-col"
             )}>
                 {/* Header */}

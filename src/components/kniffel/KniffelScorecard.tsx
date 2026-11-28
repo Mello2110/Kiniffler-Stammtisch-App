@@ -1224,7 +1224,7 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
             {transferModalOpen && (
                 (canPortal ? createPortal : (el: React.ReactNode) => el)(
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10001] flex items-center justify-center p-4">
-                    <div className="bg-secondary w-full max-w-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="bg-secondary w-full max-w-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] overscroll-contain">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
                             <h3 className="font-semibold text-lg">{dict.kniffel.transferConfirmTitle}</h3>
                             <button onClick={() => setTransferModalOpen(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors">

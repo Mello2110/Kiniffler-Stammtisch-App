@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from "date-fns";
+import { de, enUS, pl } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { StammtischVote, SetEvent, Member } from "@/types";
 import { MemberAvatar } from "@/components/common/MemberAvatar";
 interface CalendarViewProps {
@@ -16,6 +18,8 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMonthChange, members }: CalendarViewProps) {
+    const { language } = useLanguage();
+    const dateLocale = language === "de" ? de : language === "pl" ? pl : enUS;
     const firstDayOfMonth = startOfMonth(currentMonth);
     const lastDayOfMonth = endOfMonth(currentMonth);
     const startDate = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 }); // Monday start
@@ -27,20 +31,34 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
     const nextMonth = () => onMonthChange(addMonths(currentMonth, 1));
     const prevMonth = () => onMonthChange(subMonths(currentMonth, 1));
 
-    const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const weekDays = language === "de"
+        ? ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+        : language === "pl"
+            ? ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"]
+            : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
     return (
         <div className="flex flex-col gap-4">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold font-heading">
-                    {format(currentMonth, "MMMM yyyy")}
+                <h2 className="text-xl font-bold font-heading capitalize">
+                    {format(currentMonth, "MMMM yyyy", { locale: dateLocale })}
                 </h2>
                 <div className="flex gap-2">
-                    <button onClick={prevMonth} className="p-2 rounded-full hover:bg-muted transition-colors">
+                    <button
+                        type="button"
+                        onClick={prevMonth}
+                        aria-label="Vorheriger Monat"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted transition-colors cursor-pointer"
+                    >
                         <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <button onClick={nextMonth} className="p-2 rounded-full hover:bg-muted transition-colors">
+                    <button
+                        type="button"
+                        onClick={nextMonth}
+                        aria-label="Nächster Monat"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted transition-colors cursor-pointer"
+                    >
                         <ChevronRight className="h-5 w-5" />
                     </button>
                 </div>
@@ -50,9 +68,9 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
             <div className="rounded-xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl shadow-2xl overflow-hidden select-none ring-1 ring-white/5">
                 {/* Week Days */}
                 <div className="grid grid-cols-7 border-b border-white/20 bg-primary/10">
-                    {weekDays.map((day, idx) => (
+                    {weekDays.map((day) => (
                         <div key={day} className={cn(
-                            "py-3 text-center text-sm font-bold text-primary tracking-wide border-r border-white/20 last:border-r-0"
+                            "py-2 sm:py-3 text-center text-xs sm:text-sm font-bold text-primary tracking-wide border-r border-white/20 last:border-r-0"
                         )}>
                             {day}
                         </div>
@@ -60,7 +78,7 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                 </div>
 
                 {/* Days */}
-                <div className="grid grid-cols-7 auto-rows-[minmax(100px,auto)] text-sm bg-transparent">
+                <div className="grid grid-cols-7 auto-rows-[minmax(64px,auto)] sm:auto-rows-[minmax(100px,auto)] text-sm bg-transparent">
                     {days.map((day, dayIdx) => {
                         const dateStr = format(day, "yyyy-MM-dd");
 
@@ -82,7 +100,7 @@ export function CalendarView({ votes, setEvents, onDateClick, currentMonth, onMo
                                 key={day.toString()}
                                 onClick={() => onDateClick(day)}
                                 className={cn(
-                                    "min-h-[100px] border-b border-r border-white/20 p-2 transition-all hover:bg-white/10 flex flex-col gap-1 cursor-pointer relative",
+                                    "min-h-[64px] sm:min-h-[100px] min-w-0 border-b border-r border-white/20 p-1 sm:p-2 transition-all hover:bg-white/10 flex flex-col gap-1 cursor-pointer relative",
                                     !isCurrentMonth && "bg-black/20 text-muted-foreground opacity-50",
                                     isLastInRow && "border-r-0"
                                 )}

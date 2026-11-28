@@ -94,27 +94,27 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {showSimpleLayout ? (
-                    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-transparent pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+                    <main className="min-h-[100dvh] w-full max-w-full overflow-x-clip bg-transparent pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                         {children}
                     </main>
                 ) : (
-                    <div className="flex min-h-screen w-full max-w-full overflow-x-clip">
+                    <div className="flex min-h-[100dvh] w-full max-w-full overflow-x-clip">
                         <Sidebar
-                            className="hidden md:flex fixed inset-y-0 z-50"
+                            className="hidden lg:flex fixed inset-y-0 z-50"
                             collapsed={sidebarCollapsed}
                             onToggleCollapse={handleToggleSidebar}
                         />
                         <div
                             className={cn(
                                 "flex flex-1 flex-col min-w-0 max-w-full transition-all duration-300",
-                                sidebarCollapsed ? "md:pl-[76px]" : "md:pl-64"
+                                sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-64"
                             )}
                         >
                             <Navbar />
-                            <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-[max(1.25rem,env(safe-area-inset-top))] lg:pt-[max(2rem,env(safe-area-inset-top))] pb-24 md:pb-10 min-w-0 overflow-x-clip">
+                            <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 lg:pt-[max(2rem,env(safe-area-inset-top))] pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-10 min-w-0 overflow-x-clip">
                                 {children}
                             </main>
-                            <div className="hidden md:block">
+                            <div className="hidden lg:block">
                                 <Footer />
                             </div>
                             <MobileBottomNav />

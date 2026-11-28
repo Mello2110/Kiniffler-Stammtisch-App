@@ -27,10 +27,10 @@ export const LandingPage = () => {
     };
 
     return (
-        <div className="min-h-screen md:h-screen w-full overflow-y-auto md:snap-y md:snap-mandatory scroll-smooth bg-background text-foreground no-scrollbar">
+        <div className="min-h-[100dvh] lg:h-[100dvh] w-full overflow-y-auto lg:snap-y lg:snap-mandatory scroll-smooth bg-background text-foreground no-scrollbar">
 
             {/* --- SECTION 1: HERO (KANPAI) --- */}
-            <section className="min-h-[100dvh] md:h-screen w-full md:snap-start flex flex-col items-center justify-center relative overflow-hidden">
+            <section className="min-h-[100dvh] w-full lg:snap-start flex flex-col items-center justify-center relative overflow-hidden">
                 {/* Background Decor */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none opacity-50" />
 
@@ -97,7 +97,7 @@ export const LandingPage = () => {
 
 
             {/* --- SECTION 2: FEATURES --- */}
-            <section className="min-h-[100dvh] md:h-screen w-full md:snap-start flex flex-col items-center justify-center relative overflow-hidden bg-background px-4 py-14 md:py-0 md:px-6">
+            <section className="min-h-[100dvh] w-full lg:snap-start flex flex-col items-center justify-center relative overflow-hidden bg-background px-4 py-14 md:py-16 md:px-6">
                 {/* Background Decor - Deeper/More Detailed */}
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />

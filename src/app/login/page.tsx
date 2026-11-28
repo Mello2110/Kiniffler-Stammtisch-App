@@ -124,7 +124,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-background text-foreground">
+        <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center relative overflow-hidden bg-background text-foreground pb-16">
             {/* Background Decor */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none opacity-50" />
 
@@ -239,7 +239,7 @@ export default function LoginPage() {
                                         setRedirectUrl("/onboarding");
                                         setError("");
                                     }}
-                                    className="text-primary hover:underline font-semibold cursor-pointer"
+                                    className="min-h-[44px] inline-flex items-center justify-center px-3 text-primary hover:underline font-semibold cursor-pointer"
                                 >
                                     Noch keinen Verein? Neuen Verein gründen &rarr;
                                 </button>
@@ -313,13 +313,13 @@ export default function LoginPage() {
                         </button>
 
                         {/* Back Link */}
-                        <div className="flex flex-col gap-3 mt-4 text-sm font-medium">
+                        <div className="flex flex-col gap-1 mt-3 text-sm font-medium">
                             {!(isRegisterMode && canRegister) && (
                                 <button
                                     type="button"
                                     onClick={handlePasswordReset}
                                     disabled={isLoading}
-                                    className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                                    className="min-h-[44px] inline-flex items-center justify-center px-3 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                                 >
                                     Passwort vergessen?
                                 </button>
@@ -327,9 +327,9 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowEmailForm(false)}
-                                className="text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                                className="min-h-[44px] text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1.5 px-3 transition-colors cursor-pointer"
                             >
-                                <ArrowLeft className="w-3 h-3" /> Zurück
+                                <ArrowLeft className="w-3.5 h-3.5" /> Zurück
                             </button>
                             {!canRegister && (
                                 <Link
@@ -340,7 +340,7 @@ export default function LoginPage() {
                                         setRedirectUrl("/onboarding");
                                         setError("");
                                     }}
-                                    className="text-xs text-primary hover:underline"
+                                    className="min-h-[44px] inline-flex items-center justify-center px-3 text-xs text-primary hover:underline"
                                 >
                                     Noch keinen Verein? Neuen Verein gründen &rarr;
                                 </Link>
