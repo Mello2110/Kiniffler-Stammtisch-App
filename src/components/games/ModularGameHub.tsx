@@ -419,7 +419,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                                                             </button>
                                                         </div>
 
-                                                        <div className="flex-1 overflow-auto p-3 sm:p-5 pb-16">
+                                                        <div className="flex-1 min-h-0 overflow-auto overscroll-contain p-3 sm:p-5 pb-16">
                                                             <div className="w-full">
                                                                 <ScorecardComp
                                                                     session={sess}

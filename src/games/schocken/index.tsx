@@ -12,7 +12,8 @@
  */
 
 import React, { useState, useMemo } from "react";
-import { doc, setDoc, updateDoc, addDoc, getDoc, deleteDoc, serverTimestamp, collection } from "firebase/firestore";
+import { createPortal } from "react-dom";
+import { doc, setDoc, updateDoc, addDoc, getDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useClub } from "@/contexts/ClubContext";
 import { triggerHaptic } from "@/lib/haptics";
@@ -582,14 +583,18 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
         return players.find(p => p.id === id)?.name || "Unbekannt";
     };
 
+    const toastElement = <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />;
+
     return (
         <div className="space-y-6">
-            <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />
+            {isFullscreen && typeof document !== "undefined"
+                ? createPortal(toastElement, document.body)
+                : toastElement}
 
             {/* Top Bar: Besteck (13 Deckel) & Hälften-Status */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Besteck / Stock Visualisierung */}
-                <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-background to-background p-5 flex flex-col justify-between">
+                <div className="min-w-0 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-background to-background p-5 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                             <Coins className="h-4 w-4" />
@@ -620,7 +625,7 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                 </div>
 
                 {/* Hälften-Status & Phasen-Schalter */}
-                <div className="rounded-2xl border border-primary/20 bg-card/60 p-5 flex flex-col justify-between">
+                <div className="min-w-0 rounded-2xl border border-primary/20 bg-card/60 p-5 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                             <Swords className="h-4 w-4" />
@@ -710,7 +715,7 @@ function SchockenScorecard({ session, members, isFullscreen }: ScorecardComponen
                 </div>
 
                 {/* Wurf-Schnellrechner & Deckel-Verteilung */}
-                <div className="rounded-2xl border border-white/10 bg-card/60 p-5 flex flex-col justify-between space-y-3">
+                <div className="min-w-0 rounded-2xl border border-white/10 bg-card/60 p-5 flex flex-col justify-between space-y-3">
                     <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                         <Dices className="h-4 w-4 text-primary" />
                         Wurf & Deckel zuteilen

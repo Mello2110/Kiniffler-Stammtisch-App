@@ -15,7 +15,8 @@
  */
 
 import React, { useState, useMemo } from "react";
-import { doc, setDoc, updateDoc, addDoc, getDoc, deleteDoc, serverTimestamp, collection } from "firebase/firestore";
+import { createPortal } from "react-dom";
+import { doc, setDoc, updateDoc, addDoc, getDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useClub } from "@/contexts/ClubContext";
 import { triggerHaptic } from "@/lib/haptics";
@@ -495,15 +496,18 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
     };
 
     const activePlayer = players.find(p => p.id === state.activePlayerId) || players[0];
+    const toastElement = <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />;
 
     return (
         <div className="space-y-6">
-            <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />
+            {isFullscreen && typeof document !== "undefined"
+                ? createPortal(toastElement, document.body)
+                : toastElement}
 
             {/* Top Layout: Grafisches 9-Kegel-Touchpad links + Aktiver Werfer & Schnellwahl rechts */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* 1. Grafische 9-Kegel-Raute (Touch-Interaktiv) */}
-                <div className="lg:col-span-5 rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 via-background to-background p-6 flex flex-col items-center justify-between">
+                <div className="lg:col-span-5 min-w-0 rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 via-background to-background p-5 sm:p-6 flex flex-col items-center justify-between">
                     <div className="w-full flex items-center justify-between mb-2">
                         <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                             <Target className="h-4 w-4" />
@@ -588,7 +592,7 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
                 </div>
 
                 {/* 2. Aktiver Kegler, Schnellwahl (0..9, Pudel, Kranz, Alle 9) & Pudelkasse */}
-                <div className="lg:col-span-7 rounded-3xl border border-white/10 bg-card/60 p-6 flex flex-col justify-between space-y-5">
+                <div className="lg:col-span-7 min-w-0 rounded-3xl border border-white/10 bg-card/60 p-5 sm:p-6 flex flex-col justify-between space-y-5">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -697,16 +701,16 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
             {/* Kegel-Rangliste & Pudelkönig-Tabelle */}
             <div className="rounded-3xl border border-white/10 bg-card/50 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-max min-w-full text-sm border-separate border-spacing-0">
                         <thead>
                             <tr>
-                                <th className="px-4 py-3 text-left">Kegler</th>
+                                <th className="px-4 py-3 text-left sticky left-0 z-20 bg-secondary border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)]">Kegler</th>
                                 <th className="px-4 py-3 text-center">Würfe</th>
                                 <th className="px-4 py-3 text-center">Volle</th>
                                 <th className="px-4 py-3 text-center">Abräumen</th>
-                                <th className="px-4 py-3 text-center">Alle 9 / Kranz</th>
-                                <th className="px-4 py-3 text-center">Pudel (Rinne)</th>
-                                <th className="px-4 py-3 text-right">Gesamt-Holz</th>
+                                <th className="px-4 py-3 text-center whitespace-nowrap">Alle 9 / Kranz</th>
+                                <th className="px-4 py-3 text-center whitespace-nowrap">Pudel (Rinne)</th>
+                                <th className="px-4 py-3 text-right whitespace-nowrap">Gesamt-Holz</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -732,13 +736,15 @@ function KegelnScorecard({ session, members, isFullscreen }: ScorecardComponentP
                                             isActive && "bg-emerald-500/10"
                                         )}
                                     >
-                                        <td className="px-4 py-3 font-bold flex items-center gap-2">
-                                            <span>{p.name}</span>
-                                            {isPudelKing && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-bold">
-                                                    🐩 Pudelkönig
-                                                </span>
-                                            )}
+                                        <td className="px-4 py-3 font-bold sticky left-0 z-10 bg-secondary border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] whitespace-nowrap">
+                                            <div className="flex items-center gap-2">
+                                                <span>{p.name}</span>
+                                                {isPudelKing && (
+                                                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-bold">
+                                                        🐩 Pudelkönig
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3 text-center">{st.throwsCount}</td>
                                         <td className="px-4 py-3 text-center">{st.volleWood}</td>
