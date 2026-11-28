@@ -1006,7 +1006,7 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
                     <table className="w-max min-w-full text-sm border-separate border-spacing-0">
                         <thead className="sticky top-0 z-20">
                             <tr>
-                                <th className="w-[84px] min-w-[84px] sm:w-[100px] sm:min-w-[100px] text-center p-2 font-semibold sticky left-0 top-0 z-30 bg-secondary border-b border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] sticky-col">
+                                <th className="w-[88px] min-w-[88px] max-w-[88px] sm:w-[104px] sm:min-w-[104px] sm:max-w-[104px] text-center p-2 font-semibold sticky left-0 top-0 z-30 bg-secondary border-b border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] sticky-col">
                                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Rubrik</span>
                                 </th>
                                 <SortableContext
@@ -1030,10 +1030,9 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
                         <tbody>
                             {/* Upper Section Header */}
                             <tr className="bg-primary/15">
-                                <td className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-secondary border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] whitespace-nowrap sticky-col">
-                                    <span className="text-primary">{dict.kniffel.upperSection}</span>
+                                <td colSpan={sortedPlayers.length + 1} className="p-2 text-center font-bold text-primary text-xs uppercase tracking-wider bg-primary/15 border-b border-white/10">
+                                    {dict.kniffel.upperSection}
                                 </td>
-                                <td colSpan={Math.max(1, sortedPlayers.length)} className="p-2 bg-primary/10" />
                             </tr>
 
                             {/* Upper Section Fields */}
@@ -1057,7 +1056,9 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
 
                             {/* Upper Sum */}
                             <tr className="bg-white/5 font-semibold">
-                                <td className="p-2 text-xs sm:text-sm sticky left-0 z-10 bg-secondary border-b border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] whitespace-nowrap sticky-col">{dict.kniffel.upperSum}</td>
+                                <td className="p-1.5 sm:p-2 text-center text-[11px] sm:text-xs leading-tight sticky left-0 z-10 bg-secondary border-b border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] sticky-col">
+                                    <div className="w-full break-words">{dict.kniffel.upperSum}</div>
+                                </td>
                                 {sortedPlayers.map((player: Player) => (
                                     <td key={player.id} className={cn("p-2 text-center transition-colors duration-300", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         {calculateUpperSum(player.id)}
@@ -1067,7 +1068,12 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
 
                             {/* Bonus */}
                             <tr className="bg-white/5 font-semibold">
-                                <td className="p-2 text-xs sm:text-sm sticky left-0 z-10 bg-secondary border-b border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] whitespace-nowrap sticky-col">{dict.kniffel.bonus}</td>
+                                <td className="p-1.5 sm:p-2 text-center text-[11px] sm:text-xs leading-tight sticky left-0 z-10 bg-secondary border-b border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] sticky-col" title={dict.kniffel.bonus}>
+                                    <div className="w-full">
+                                        <span className="block font-semibold">Bonus</span>
+                                        <span className="block text-[9px] font-normal text-muted-foreground">(ab {rules.upperBonusThreshold})</span>
+                                    </div>
+                                </td>
                                 {sortedPlayers.map((player: Player) => (
                                     <td key={player.id} className={cn("p-2 text-center transition-colors duration-300", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         <span className={cn(calculateBonus(player.id) > 0 && "text-green-400")}>
@@ -1079,10 +1085,9 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
 
                             {/* Lower Section Header */}
                             <tr className="bg-primary/15">
-                                <td className="p-2 font-bold text-primary text-xs uppercase tracking-wider sticky left-0 z-20 bg-secondary border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] whitespace-nowrap sticky-col">
-                                    <span className="text-primary">{dict.kniffel.lowerSection}</span>
+                                <td colSpan={sortedPlayers.length + 1} className="p-2 text-center font-bold text-primary text-xs uppercase tracking-wider bg-primary/15 border-b border-white/10">
+                                    {dict.kniffel.lowerSection}
                                 </td>
-                                <td colSpan={Math.max(1, sortedPlayers.length)} className="p-2 bg-primary/10" />
                             </tr>
 
                             {/* Lower Section Fields */}
@@ -1111,7 +1116,9 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
 
                             {/* Lower Sum */}
                             <tr className="bg-white/5 font-semibold">
-                                <td className="p-2 text-xs sm:text-sm sticky left-0 z-10 bg-secondary border-b border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] whitespace-nowrap sticky-col">{dict.kniffel.lowerSum}</td>
+                                <td className="p-1.5 sm:p-2 text-center text-[11px] sm:text-xs leading-tight sticky left-0 z-10 bg-secondary border-b border-r border-white/10 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] sticky-col">
+                                    <div className="w-full break-words">{dict.kniffel.lowerSum}</div>
+                                </td>
                                 {sortedPlayers.map((player: Player) => (
                                     <td key={player.id} className={cn("p-2 text-center transition-colors duration-300", getActivePlayerId() === player.id && "bg-primary/10")}>
                                         {calculateLowerSum(player.id)}
@@ -1135,10 +1142,10 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
 
                             {/* Penalty Row */}
                             <tr className="bg-red-500/10 border-t-2 border-red-500/30">
-                                <td className="p-2 font-medium sticky left-0 z-10 bg-secondary border-t border-r border-red-500/30 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] sticky-col">
-                                    <div className="flex items-center justify-center gap-1 text-xs">
+                                <td className="p-1.5 sm:p-2 font-medium text-center sticky left-0 z-10 bg-secondary border-t border-r border-red-500/30 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.5)] sticky-col" title={dict.kniffel.penalty}>
+                                    <div className="flex flex-col items-center justify-center gap-0.5 text-[10px] sm:text-xs leading-tight">
                                         <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
-                                        <span className="truncate">{dict.kniffel.penalty}</span>
+                                        <span className="break-words w-full">{dict.kniffel.penalty}</span>
                                     </div>
                                 </td>
                                 {sortedPlayers.map((player: Player) => (
