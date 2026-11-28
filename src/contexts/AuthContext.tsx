@@ -78,6 +78,20 @@ async function checkUserMembership(currentUser: User): Promise<boolean> {
     }
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<T>((resolve) => {
+                timer = setTimeout(() => resolve(fallback), ms);
+            }),
+        ]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [hasClubMembership, setHasClubMembership] = useState(false);
@@ -94,8 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return false;
         }
         try {
-            const hasMembership = await checkUserMembership(auth.currentUser);
+            const hasMembership = await withTimeout(checkUserMembership(auth.currentUser), 6000, false);
             setHasClubMembership(hasMembership);
+            if (typeof window !== "undefined") {
+                localStorage.setItem(`kanpai_member_${auth.currentUser.uid}`, hasMembership ? "1" : "0");
+            }
             return hasMembership;
         } catch (err) {
             console.error("Error refreshing membership:", err);
@@ -104,27 +121,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     useEffect(() => {
+        let settled = false;
+        const safetyTimer = setTimeout(() => {
+            if (!settled) {
+                console.warn("[AuthProvider] Auth initialization timed out, releasing loading lock.");
+                setLoading(false);
+            }
+        }, 8000);
+
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (!currentUser) {
+                settled = true;
+                clearTimeout(safetyTimer);
                 setUser(null);
                 setHasClubMembership(false);
                 setLoading(false);
                 return;
             }
 
+            const cachedMembership =
+                typeof window !== "undefined" &&
+                localStorage.getItem(`kanpai_member_${currentUser.uid}`) === "1";
+
             try {
-                const hasMembership = await checkUserMembership(currentUser);
+                const hasMembership = await withTimeout(
+                    checkUserMembership(currentUser),
+                    6000,
+                    cachedMembership
+                );
+                if (typeof window !== "undefined") {
+                    localStorage.setItem(`kanpai_member_${currentUser.uid}`, hasMembership ? "1" : "0");
+                }
                 setHasClubMembership(hasMembership);
                 setUser(currentUser);
             } catch (error) {
                 console.error("Error in auth state change:", error);
                 setUser(currentUser);
-                setHasClubMembership(false);
+                setHasClubMembership(cachedMembership);
             } finally {
+                settled = true;
+                clearTimeout(safetyTimer);
                 setLoading(false);
             }
         });
-        return () => unsubscribe();
+        return () => {
+            clearTimeout(safetyTimer);
+            unsubscribe();
+        };
     }, []);
 
     const logout = async () => {

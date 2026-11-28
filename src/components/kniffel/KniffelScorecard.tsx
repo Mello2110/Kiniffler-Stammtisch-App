@@ -1203,33 +1203,26 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
 
     const toastElement = <Toast message={toast.message} isVisible={toast.visible} onClose={hideToast} />;
 
+    const canPortal = typeof document !== "undefined";
+
     return (
         <>
-            {/* Toast: portal to body in fullscreen so it appears above z-9999 overlay */}
-            {isFullscreen && typeof document !== 'undefined'
-                ? createPortal(toastElement, document.body)
-                : toastElement
-            }
-            {isFullscreen && typeof document !== 'undefined'
+            {/* Always portal modals & toast to document.body so parent backdrop-blur/overflow-hidden never clips or traps fixed overlays */}
+            {canPortal ? createPortal(toastElement, document.body) : toastElement}
+            {isFullscreen && canPortal
                 ? createPortal(scorecardContent, document.body)
                 : scorecardContent
             }
 
-            {/* Dice Count Entry Modal - render via portal if in fullscreen */}
-            {isFullscreen && typeof document !== 'undefined'
-                ? createPortal(modalElement, document.body)
-                : modalElement
-            }
+            {/* Dice Count Entry Modal */}
+            {canPortal ? createPortal(modalElement, document.body) : modalElement}
 
             {/* Numpad Entry Modal */}
-            {isFullscreen && typeof document !== 'undefined'
-                ? createPortal(numpadModalElement, document.body)
-                : numpadModalElement
-            }
+            {canPortal ? createPortal(numpadModalElement, document.body) : numpadModalElement}
 
             {/* Matrix Transfer Modal */}
             {transferModalOpen && (
-                (isFullscreen && typeof document !== 'undefined' ? createPortal : (el: React.ReactNode) => el)(
+                (canPortal ? createPortal : (el: React.ReactNode) => el)(
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10001] flex items-center justify-center p-4">
                     <div className="bg-secondary w-full max-w-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">

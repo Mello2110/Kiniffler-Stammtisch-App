@@ -24,8 +24,17 @@ export function useFirestoreQuery<T = DocumentData>(
 
         setLoading(true);
 
+        let resolved = false;
+        const safetyTimer = setTimeout(() => {
+            if (!resolved) {
+                setLoading(false);
+            }
+        }, 10000);
+
         const unsubscribe = onSnapshot(queryRef,
             (snapshot) => {
+                resolved = true;
+                clearTimeout(safetyTimer);
                 const docs = snapshot.docs.map(doc => ({
                     ...(options.idField ? { [options.idField]: doc.id } : { id: doc.id }),
                     ...doc.data()
@@ -35,6 +44,8 @@ export function useFirestoreQuery<T = DocumentData>(
                 setError(null);
             },
             (err) => {
+                resolved = true;
+                clearTimeout(safetyTimer);
                 console.error("Firestore Listen Error:", err);
                 setError(err);
                 setLoading(false);
@@ -42,6 +53,7 @@ export function useFirestoreQuery<T = DocumentData>(
         );
 
         return () => {
+            clearTimeout(safetyTimer);
             unsubscribe();
         };
     }, [queryRef]); // Dependency on queryRef object identity
