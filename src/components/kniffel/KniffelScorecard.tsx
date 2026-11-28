@@ -1000,7 +1000,7 @@ export function KniffelScorecard({ sheet, members, externalFullscreen, onExitFul
                 onDragEnd={handleColumnReorder}
             >
                 <div className={cn(
-                    "kniffel-table-wrapper w-full overflow-x-auto rounded-xl border-2 border-white/15 shadow-lg",
+                    "kniffel-table-wrapper w-full overflow-x-auto rounded-xl border-2 border-white/15 bg-card shadow-lg",
                     isFullscreen && "flex-1 overflow-auto"
                 )}>
                     <table className="w-max min-w-full text-sm border-separate border-spacing-0">

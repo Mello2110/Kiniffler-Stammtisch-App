@@ -250,7 +250,9 @@ h6 {
   height: 100vh !important;
   height: 100dvh !important;
   z-index: 9999 !important;
-  background: var(--background, #09090b) !important;
+  background-color: #10090b !important;
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
   display: flex !important;
   flex-direction: column !important;
   padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)) !important;
