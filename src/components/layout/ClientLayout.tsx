@@ -26,7 +26,9 @@ function subscribeSidebar(callback: () => void) {
 }
 
 function getSidebarSnapshot(): boolean {
-    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+    const saved = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    if (saved !== null) return saved === "true";
+    return window.innerWidth < 1024;
 }
 
 function getSidebarServerSnapshot(): boolean {
@@ -96,23 +98,23 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                         {children}
                     </main>
                 ) : (
-                    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
+                    <div className="flex min-h-screen w-full max-w-full overflow-x-clip">
                         <Sidebar
-                            className="hidden lg:flex fixed inset-y-0 z-50"
+                            className="hidden md:flex fixed inset-y-0 z-50"
                             collapsed={sidebarCollapsed}
                             onToggleCollapse={handleToggleSidebar}
                         />
                         <div
                             className={cn(
                                 "flex flex-1 flex-col min-w-0 max-w-full transition-all duration-300",
-                                sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-64"
+                                sidebarCollapsed ? "md:pl-[76px]" : "md:pl-64"
                             )}
                         >
                             <Navbar />
-                            <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 pb-24 lg:pb-10 min-w-0 overflow-x-hidden">
+                            <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 pb-24 md:pb-10 min-w-0 overflow-x-clip">
                                 {children}
                             </main>
-                            <div className="hidden lg:block">
+                            <div className="hidden md:block">
                                 <Footer />
                             </div>
                             <MobileBottomNav />

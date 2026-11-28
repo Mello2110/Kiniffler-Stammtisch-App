@@ -76,11 +76,15 @@ export function KniffelYearNav({
                     <ChevronLeft className="h-4 w-4" />
                 </button>
 
-                <div className="relative flex-1 min-w-0">
+                <div className="relative flex-1 min-w-0 h-10 rounded-xl border border-primary/30 bg-background/80 flex items-center justify-center px-3 focus-within:ring-2 focus-within:ring-primary/50">
+                    <span className="text-sm font-black text-foreground select-none pointer-events-none">
+                        {selectedYear}
+                    </span>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <select
                         value={selectedYear}
                         onChange={(e) => onSelectYear(Number(e.target.value))}
-                        className="w-full min-w-0 h-10 appearance-none rounded-xl border border-primary/30 bg-background/80 pl-3 pr-8 py-0 text-sm font-black text-center [text-align-last:center] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         aria-label="Jahr auswählen"
                     >
                         {years.map((year) => (
@@ -89,7 +93,6 @@ export function KniffelYearNav({
                             </option>
                         ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 </div>
 
                 <button
@@ -104,8 +107,8 @@ export function KniffelYearNav({
                 </button>
             </div>
 
-            {/* Compact 3x4 Month Grid */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 gap-1.5">
+            {/* Compact Month Grid: 2x6 on tablets, 3x4 on mobile & desktop sidebar */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 xl:grid-cols-3 gap-1.5">
                 {dict.kniffel.months.map((monthName: string, monthIndex: number) => {
                     const isSelectedMonth = monthIndex === selectedMonth;
                     const count = monthCounts[monthIndex];

@@ -251,7 +251,7 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
             </div>
 
             {/* Main Grid: Chronologische Jahr/Monats-Navigation + Scorecards */}
-            <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] gap-6 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] gap-6 items-start">
                 <div className="min-w-0">
                     <KniffelYearNav
                         selectedYear={selectedYear}

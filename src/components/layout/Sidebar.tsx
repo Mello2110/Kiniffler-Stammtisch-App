@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getDoc } from "firebase/firestore";
 import {
     LayoutDashboard,
@@ -21,7 +21,9 @@ import {
     Dice5,
     User,
     PanelLeftClose,
-    PanelLeftOpen
+    PanelLeftOpen,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -46,6 +48,24 @@ export function Sidebar({ className, collapsed = false, onToggleCollapse }: Side
     const [isEditing, setIsEditing] = useState(false);
     const [memberName, setMemberName] = useState<string>("");
     const [showEmail, setShowEmail] = useState(true);
+    const touchStartX = useRef<number | null>(null);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0]?.clientX ?? null;
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (!onToggleCollapse || touchStartX.current === null) return;
+        const endX = e.changedTouches[0]?.clientX;
+        if (endX === undefined) return;
+        const deltaX = endX - touchStartX.current;
+        touchStartX.current = null;
+        if (deltaX < -45 && !collapsed) {
+            onToggleCollapse();
+        } else if (deltaX > 45 && collapsed) {
+            onToggleCollapse();
+        }
+    };
 
     useEffect(() => {
         setEditValue(title);
@@ -107,12 +127,25 @@ export function Sidebar({ className, collapsed = false, onToggleCollapse }: Side
 
     return (
         <div
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
             className={cn(
                 "flex h-full flex-col border-r border-border/60 bg-secondary/40 backdrop-blur-xl text-card-foreground transition-all duration-300",
                 collapsed ? "w-[76px]" : "w-64",
                 className
             )}
         >
+            {onToggleCollapse && (
+                <button
+                    type="button"
+                    onClick={onToggleCollapse}
+                    className="absolute -right-3.5 top-20 z-50 flex h-11 w-7 items-center justify-center rounded-full border border-border/80 bg-card/95 text-muted-foreground shadow-lg backdrop-blur-md hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors cursor-pointer"
+                    title={collapsed ? (language === "de" ? "Menü ausklappen" : "Expand sidebar") : (language === "de" ? "Menü einklappen" : "Collapse sidebar")}
+                    aria-label={collapsed ? (language === "de" ? "Menü ausklappen" : "Expand sidebar") : (language === "de" ? "Menü einklappen" : "Collapse sidebar")}
+                >
+                    {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </button>
+            )}
             <div className={cn("flex h-16 items-center border-b border-border/60", collapsed ? "justify-center px-2" : "px-4")}>
                 {isEditing && !collapsed ? (
                     <input
