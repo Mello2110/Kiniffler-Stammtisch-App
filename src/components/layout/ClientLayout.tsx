@@ -1,22 +1,53 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { TitleProvider } from "@/contexts/TitleContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
 import { generateClubThemeTokens } from "@/lib/oklchTheme";
 import { DEFAULT_PRIMARY_HEX, DEFAULT_ACCENT_HEX } from "@/lib/defaultRuleset";
+import { cn } from "@/lib/utils";
+
+const SIDEBAR_STORAGE_KEY = "stammtisch_sidebar_collapsed";
+const SIDEBAR_EVENT = "stammtisch-sidebar-change";
+
+function subscribeSidebar(callback: () => void) {
+    window.addEventListener("storage", callback);
+    window.addEventListener(SIDEBAR_EVENT, callback);
+    return () => {
+        window.removeEventListener("storage", callback);
+        window.removeEventListener(SIDEBAR_EVENT, callback);
+    };
+}
+
+function getSidebarSnapshot(): boolean {
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+}
+
+function getSidebarServerSnapshot(): boolean {
+    return false;
+}
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const { user, loading } = useAuth();
     const { club } = useClub();
+    const sidebarCollapsed = useSyncExternalStore(
+        subscribeSidebar,
+        getSidebarSnapshot,
+        getSidebarServerSnapshot
+    );
+
+    const handleToggleSidebar = () => {
+        if (typeof window === "undefined") return;
+        const next = !getSidebarSnapshot();
+        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+        window.dispatchEvent(new Event(SIDEBAR_EVENT));
+    };
 
     // Phase 6 V2: Apply 2-color OKLCH theme variables in real-time
     useEffect(() => {
@@ -66,8 +97,17 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                     </main>
                 ) : (
                     <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
-                        <Sidebar className="hidden lg:flex fixed inset-y-0 z-50 w-64" />
-                        <div className="flex flex-1 flex-col min-w-0 max-w-full lg:pl-64 transition-all duration-300">
+                        <Sidebar
+                            className="hidden lg:flex fixed inset-y-0 z-50"
+                            collapsed={sidebarCollapsed}
+                            onToggleCollapse={handleToggleSidebar}
+                        />
+                        <div
+                            className={cn(
+                                "flex flex-1 flex-col min-w-0 max-w-full transition-all duration-300",
+                                sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-64"
+                            )}
+                        >
                             <Navbar />
                             <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 lg:p-8 pb-24 lg:pb-10 min-w-0 overflow-x-hidden">
                                 {children}

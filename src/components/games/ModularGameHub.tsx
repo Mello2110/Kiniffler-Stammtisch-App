@@ -251,8 +251,8 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
             </div>
 
             {/* Main Grid: Chronologische Jahr/Monats-Navigation + Scorecards */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div className="lg:col-span-1">
+            <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] gap-6 items-start">
+                <div className="min-w-0">
                     <KniffelYearNav
                         selectedYear={selectedYear}
                         selectedMonth={selectedMonth}
@@ -262,14 +262,14 @@ export function ModularGameHub({ initialDiscipline, initialSessionId }: ModularG
                     />
                 </div>
 
-                <div className="lg:col-span-3">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-xl font-semibold outfit">
+                <div className="min-w-0">
+                    <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <h2 className="text-xl font-semibold outfit truncate">
                             {dict.kniffel.months[selectedMonth]} {selectedYear} — {activePlugin.title}
                         </h2>
                         <button
                             onClick={() => setIsAddModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-sm transition-all duration-300 shadow-lg shadow-primary/25 cursor-pointer"
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-sm transition-all duration-300 shadow-lg shadow-primary/25 cursor-pointer shrink-0"
                         >
                             <Plus className="h-4 w-4" />
                             Neue {activePlugin.shortTitle}-Runde starten

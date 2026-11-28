@@ -87,7 +87,7 @@ export function CashBalance({ members = [], totalOutstanding = 0 }: { members?: 
                 </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 border-t border-primary/10 pt-4">
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 border-t border-primary/10 pt-4">
                 <div>
                     <div className="text-xs text-muted-foreground mb-1">PayPal Kontostand</div>
                     <div className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">

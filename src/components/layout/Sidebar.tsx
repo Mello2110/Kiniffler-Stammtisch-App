@@ -19,7 +19,9 @@ import {
     Beer,
     MessageSquarePlus,
     Dice5,
-    User
+    User,
+    PanelLeftClose,
+    PanelLeftOpen
 } from "lucide-react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -27,7 +29,13 @@ import { useClub } from "@/contexts/ClubContext";
 import { useTitle } from "@/contexts/TitleContext";
 import { ClubLogo } from "@/components/common/ClubLogo";
 
-export function Sidebar({ className }: { className?: string }) {
+interface SidebarProps {
+    className?: string;
+    collapsed?: boolean;
+    onToggleCollapse?: () => void;
+}
+
+export function Sidebar({ className, collapsed = false, onToggleCollapse }: SidebarProps) {
     const pathname = usePathname();
     const { logout, user } = useAuth();
     const { dict, language } = useLanguage();
@@ -98,9 +106,15 @@ export function Sidebar({ className }: { className?: string }) {
     ];
 
     return (
-        <div className={cn("flex h-full w-64 flex-col border-r border-border/60 bg-secondary/40 backdrop-blur-xl text-card-foreground", className)}>
-            <div className="flex h-16 items-center border-b border-border/60 px-6">
-                {isEditing ? (
+        <div
+            className={cn(
+                "flex h-full flex-col border-r border-border/60 bg-secondary/40 backdrop-blur-xl text-card-foreground transition-all duration-300",
+                collapsed ? "w-[76px]" : "w-64",
+                className
+            )}
+        >
+            <div className={cn("flex h-16 items-center border-b border-border/60", collapsed ? "justify-center px-2" : "px-4")}>
+                {isEditing && !collapsed ? (
                     <input
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
@@ -109,34 +123,63 @@ export function Sidebar({ className }: { className?: string }) {
                         autoFocus
                         className="w-full bg-background/50 text-2xl font-bold font-heading border border-primary rounded px-2 py-1 outline-none text-foreground"
                     />
+                ) : collapsed ? (
+                    <div className="flex items-center justify-center gap-1 w-full">
+                        <button
+                            type="button"
+                            onClick={onToggleCollapse}
+                            className="flex items-center justify-center w-11 h-11 rounded-xl hover:bg-primary/15 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                            title={language === "de" ? "Menü ausklappen" : "Expand sidebar"}
+                            aria-label={language === "de" ? "Menü ausklappen" : "Expand sidebar"}
+                        >
+                            <PanelLeftOpen className="h-5 w-5" />
+                        </button>
+                    </div>
                 ) : (
-                    <div className="flex items-center w-full group">
-                        <Link href="/dashboard" className="flex items-center gap-2.5 truncate max-w-[185px] hover:opacity-80 transition-opacity cursor-pointer">
+                    <div className="flex items-center w-full gap-1.5 group min-w-0">
+                        <Link href="/dashboard" className="flex items-center gap-2.5 truncate flex-1 min-w-0 hover:opacity-80 transition-opacity cursor-pointer">
                             <ClubLogo club={club} size="sm" />
                             <h1
-                                className="text-2xl font-black font-heading text-[#F5F0EB] truncate"
+                                className="text-xl font-black font-heading text-[#F5F0EB] truncate"
                                 title={title}
                             >
                                 {title}
                             </h1>
                         </Link>
                         <button
+                            type="button"
                             onClick={() => setIsEditing(true)}
-                            className="ml-auto p-1.5 rounded-lg hover:bg-primary/20 transition-colors group/edit cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-primary/20 transition-colors group/edit cursor-pointer shrink-0"
                             aria-label="Edit Title"
+                            title="Titel bearbeiten"
                         >
-                            <Beer className="h-5 w-5 text-accent shrink-0 transition-transform group-hover/edit:scale-110" />
+                            <Beer className="h-4 w-4 text-accent shrink-0 transition-transform group-hover/edit:scale-110" />
                         </button>
+                        {onToggleCollapse && (
+                            <button
+                                type="button"
+                                onClick={onToggleCollapse}
+                                className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+                                title={language === "de" ? "Menü einklappen" : "Collapse sidebar"}
+                                aria-label={language === "de" ? "Menü einklappen" : "Collapse sidebar"}
+                            >
+                                <PanelLeftClose className="h-4 w-4" />
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
-                {primaryGroups.map((group) => (
+            <div className={cn("flex-1 overflow-y-auto py-4 space-y-6", collapsed ? "px-2" : "px-3")}>
+                {primaryGroups.map((group, idx) => (
                     <div key={group.title} className="space-y-1">
-                        <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                            {group.title}
-                        </div>
+                        {collapsed ? (
+                            idx > 0 && <div className="h-px bg-border/50 mx-2 my-2" />
+                        ) : (
+                            <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                {group.title}
+                            </div>
+                        )}
                         <nav className="grid gap-1">
                             {group.items.map((item) => {
                                 const isActive = item.match(pathname);
@@ -144,15 +187,20 @@ export function Sidebar({ className }: { className?: string }) {
                                     <Link
                                         key={item.href}
                                         href={item.href}
+                                        title={collapsed ? item.label : undefined}
+                                        aria-label={item.label}
                                         className={cn(
-                                            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 relative overflow-hidden",
+                                            "flex items-center rounded-xl py-2.5 text-sm font-semibold transition-all duration-200 relative overflow-hidden min-h-[42px]",
+                                            collapsed ? "justify-center px-0" : "gap-3 px-3",
                                             isActive
-                                                ? "text-[#F5F0EB] bg-primary/18 border-l-2 border-primary shadow-sm"
+                                                ? collapsed
+                                                    ? "text-primary bg-primary/20 shadow-sm"
+                                                    : "text-[#F5F0EB] bg-primary/18 border-l-2 border-primary shadow-sm"
                                                 : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                                         )}
                                     >
-                                        <item.icon className={cn("h-4 w-4 transition-transform duration-200", isActive ? "scale-110 text-primary" : "")} />
-                                        <span className="truncate">{item.label}</span>
+                                        <item.icon className={cn("h-4 w-4 shrink-0 transition-transform duration-200", isActive ? "scale-110 text-primary" : "")} />
+                                        {!collapsed && <span className="truncate">{item.label}</span>}
                                     </Link>
                                 );
                             })}
@@ -161,8 +209,8 @@ export function Sidebar({ className }: { className?: string }) {
                 ))}
             </div>
 
-            <div className="border-t border-border/60 p-4 space-y-2">
-                {availableClubs.length > 1 && (
+            <div className={cn("border-t border-border/60 space-y-2", collapsed ? "p-2" : "p-4")}>
+                {!collapsed && availableClubs.length > 1 && (
                     <div className="px-1 pb-1">
                         <select
                             value={clubId}
@@ -177,21 +225,32 @@ export function Sidebar({ className }: { className?: string }) {
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-1 pt-1">
+                <div className={cn("grid gap-1 pt-1", collapsed ? "grid-cols-1" : "grid-cols-2")}>
                     <Link
                         href="/profile"
-                        className="flex items-center justify-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+                        title={collapsed ? "Profil" : undefined}
+                        aria-label="Profil"
+                        className={cn(
+                            "flex items-center justify-center rounded-xl py-2 text-xs font-semibold text-muted-foreground transition-all hover:bg-muted hover:text-foreground min-h-[40px]",
+                            collapsed ? "px-0" : "gap-2 px-2.5"
+                        )}
                     >
-                        <User className="h-3.5 w-3.5" />
-                        Profil
+                        <User className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span>Profil</span>}
                     </Link>
 
                     <button
+                        type="button"
                         onClick={() => logout()}
-                        className="flex items-center justify-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-red-400/90 transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
+                        title={collapsed ? "Logout" : undefined}
+                        aria-label="Logout"
+                        className={cn(
+                            "flex items-center justify-center rounded-xl py-2 text-xs font-semibold text-red-400/90 transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer min-h-[40px]",
+                            collapsed ? "px-0" : "gap-2 px-2.5"
+                        )}
                     >
-                        <LogOut className="h-3.5 w-3.5" />
-                        Logout
+                        <LogOut className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span>Logout</span>}
                     </button>
                 </div>
             </div>

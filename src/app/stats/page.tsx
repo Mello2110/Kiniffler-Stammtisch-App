@@ -102,7 +102,7 @@ export default function StatsPage() {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md w-full lg:w-auto shrink-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md w-full lg:w-auto shrink-0">
                         {hubTabs.map((tab) => (
                             <button
                                 key={tab.id}

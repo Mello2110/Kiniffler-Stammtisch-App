@@ -74,7 +74,7 @@ export function ContributionTable({ members, currentYear, currentUserId, canMana
             <table className="w-full text-sm">
                 <thead>
                     <tr className="border-b bg-muted/50">
-                        <th className="h-10 px-4 text-left font-medium sticky left-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-r bg-card z-20">Member</th>
+                        <th className="h-10 px-4 text-left font-medium sticky left-0 bg-card/95 backdrop-blur border-b border-r z-20 min-w-[120px]">Member</th>
                         {MONTHS.map(m => (
                             <th key={m} className="h-10 px-2 text-center font-medium w-16 border-b border-r last:border-r-0">{m}</th>
                         ))}
@@ -83,7 +83,7 @@ export function ContributionTable({ members, currentYear, currentUserId, canMana
                 <tbody>
                     {members.map(member => (
                         <tr key={member.id} className="last:border-0 hover:bg-muted/50 transition-colors">
-                            <td className="p-4 font-medium sticky left-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r border-b bg-card z-10">
+                            <td className="px-4 py-2.5 font-medium sticky left-0 bg-card/95 backdrop-blur border-r border-b z-10 whitespace-nowrap">
                                 {member.name}
                             </td>
                             {MONTHS.map((_, monthIndex) => {
@@ -97,7 +97,7 @@ export function ContributionTable({ members, currentYear, currentUserId, canMana
                                             disabled={isToggling || !canManage}
                                             title={!canManage ? "Nur für Admins/Kassenwart" : undefined}
                                             className={cn(
-                                                "w-full h-full min-h-[40px] flex items-center justify-center transition-all",
+                                                "w-full h-full min-h-[44px] min-w-[44px] flex items-center justify-center transition-all",
                                                 isPaid
                                                     ? "text-primary bg-primary/5"
                                                     : "hover:bg-muted/50",
